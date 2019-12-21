@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="./logo.png" alt="HarmonyX Logo" />
+	<img src="./logo.png" alt="HarmonyX Logo" height="128" />
 </p>
 
 ***
