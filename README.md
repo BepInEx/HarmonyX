@@ -1,44 +1,14 @@
 <p align="center">
-	<img src="https://raw.githubusercontent.com/pardeike/Harmony/master/HarmonyLogo.png" alt="Harmony" width="128" />
+	<img src="./logo.png" alt="HarmonyX Logo" />
 </p>
 
-<hr>
-
-<p align="center">
-	<a href="../../releases/latest">
-		<img src="https://img.shields.io/github/release/pardeike/harmony.svg?style=flat" />
-	</a>
-	<a href="https://www.nuget.org/packages/lib.harmony">
-		<img src="https://img.shields.io/nuget/v/lib.harmony.svg?style=flat" />
-	</a>
-	<a href="../../wiki">
-		<img src="https://img.shields.io/badge/documentation-Wiki-yellow.svg?style=flat" />
-	</a>
-	<a href="../../blob/master/LICENSE">
-		<img src="https://img.shields.io/github/license/pardeike/harmony.svg?style=flat" />
-	</a>
-</p>
-<p align="center">
-	<img src="https://img.shields.io/travis/com/pardeike/Harmony/master.svg?logo=travis&label=travis:master" /> 
-	<img src="https://img.shields.io/appveyor/ci/pardeike/Harmony/master.svg?logo=appveyor&label=appveyor:master" /> 
-</p>
-<p align="center">
-	<a href="mailto:andreas@pardeike.net">
-		<img src="https://img.shields.io/badge/email-andreas@pardeike.net-blue.svg?style=flat" />
-	</a>
-	<a href="https://twitter.com/pardeike">
-		<img src="https://img.shields.io/badge/twitter-@pardeike-blue.svg?style=flat&logo=twitter" />
-	</a>
-	<a href="https://discord.gg/xXgghXR">
-		<img src="https://img.shields.io/discord/131466550938042369.svg?style=flat&logo=discord&label=discord" />
-	</a>
-</p>
+***
 
 <p align="center">
 	A library for patching, replacing and decorating .NET and Mono methods during runtime.
 </p>
 
-<hr>
+***
 
 Harmony gives you an elegant and high level way to alter the functionality in applications written in C#. It works great in games and is in fact well established in games like  
 - Rimworld
