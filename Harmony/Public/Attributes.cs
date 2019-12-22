@@ -3,472 +3,491 @@ using System.Collections.Generic;
 
 namespace HarmonyLib
 {
-	/// <summary>Specifies the type of method</summary>
-	///
-	public enum MethodType
-	{
-		/// <summary>This is a normal method</summary>
-		Normal,
-		/// <summary>This is a getter</summary>
-		Getter,
-		/// <summary>This is a setter</summary>
-		Setter,
-		/// <summary>This is a constructor</summary>
-		Constructor,
-		/// <summary>This is a static constructor</summary>
-		StaticConstructor
-	}
+    /// <summary>Specifies the type of method</summary>
+    ///
+    public enum MethodType
+    {
+        /// <summary>This is a normal method</summary>
+        Normal,
 
-	/// <summary>Specifies the type of argument</summary>
-	///
-	public enum ArgumentType
-	{
-		/// <summary>This is a normal argument</summary>
-		Normal,
-		/// <summary>This is a reference argument (ref)</summary>
-		Ref,
-		/// <summary>This is an out argument (out)</summary>
-		Out,
-		/// <summary>This is a pointer argument (&amp;)</summary>
-		Pointer
-	}
+        /// <summary>This is a getter</summary>
+        Getter,
 
-	/// <summary>Specifies the type of patch</summary>
-	///
-	public enum HarmonyPatchType
-	{
-		/// <summary>Any patch</summary>
-		All,
-		/// <summary>A prefix patch</summary>
-		Prefix,
-		/// <summary>A postfix patch</summary>
-		Postfix,
-		/// <summary>A transpiler</summary>
-		Transpiler,
-		/// <summary>A finalizer</summary>
-		Finalizer
-	}
+        /// <summary>This is a setter</summary>
+        Setter,
 
-	/// <summary>Specifies the type of reverse patch</summary>
-	///
-	public enum HarmonyReversePatchType
-	{
-		/// <summary>Use the unmodified original method</summary>
-		Original,
-		/// <summary>Patch your local method with a new method that calls the (possibly patched) original</summary>
-		Wrapped
-	}
+        /// <summary>This is a constructor</summary>
+        Constructor,
 
-	/// <summary>The base class for all Harmony annotations (not meant to be used directly)</summary>
-	///
-	public class HarmonyAttribute : Attribute
-	{
-		/// <summary>The common information for all attributes</summary>
-		public HarmonyMethod info = new HarmonyMethod();
-	}
+        /// <summary>This is a static constructor</summary>
+        StaticConstructor
+    }
 
-	/// <summary>Annotation to define your Harmony patch methods</summary>
-	///
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-	public class HarmonyPatch : HarmonyAttribute
-	{
-		/// <summary>An empty annotation can be used together with TargetMethod(s)</summary>
-		///
-		public HarmonyPatch()
-		{
-		}
+    /// <summary>Specifies the type of argument</summary>
+    ///
+    public enum ArgumentType
+    {
+        /// <summary>This is a normal argument</summary>
+        Normal,
 
-		/// <summary>An annotation that specifies a class to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		///
-		public HarmonyPatch(Type declaringType)
-		{
-			info.declaringType = declaringType;
-		}
+        /// <summary>This is a reference argument (ref)</summary>
+        Ref,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="argumentTypes">The argument types of the method or constructor to patch</param>
-		///
-		public HarmonyPatch(Type declaringType, Type[] argumentTypes)
-		{
-			info.declaringType = declaringType;
-			info.argumentTypes = argumentTypes;
-		}
+        /// <summary>This is an out argument (out)</summary>
+        Out,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		///
-		public HarmonyPatch(Type declaringType, string methodName)
-		{
-			info.declaringType = declaringType;
-			info.methodName = methodName;
-		}
+        /// <summary>This is a pointer argument (&amp;)</summary>
+        Pointer
+    }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		///
-		public HarmonyPatch(Type declaringType, string methodName, params Type[] argumentTypes)
-		{
-			info.declaringType = declaringType;
-			info.methodName = methodName;
-			info.argumentTypes = argumentTypes;
-		}
+    /// <summary>Specifies the type of patch</summary>
+    ///
+    public enum HarmonyPatchType
+    {
+        /// <summary>Any patch</summary>
+        All,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		/// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
-		///
-		public HarmonyPatch(Type declaringType, string methodName, Type[] argumentTypes, ArgumentType[] argumentVariations)
-		{
-			info.declaringType = declaringType;
-			info.methodName = methodName;
-			ParseSpecialArguments(argumentTypes, argumentVariations);
-		}
+        /// <summary>A prefix patch</summary>
+        Prefix,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		///
-		public HarmonyPatch(Type declaringType, MethodType methodType)
-		{
-			info.declaringType = declaringType;
-			info.methodType = methodType;
-		}
+        /// <summary>A postfix patch</summary>
+        Postfix,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		///
-		public HarmonyPatch(Type declaringType, MethodType methodType, params Type[] argumentTypes)
-		{
-			info.declaringType = declaringType;
-			info.methodType = methodType;
-			info.argumentTypes = argumentTypes;
-		}
+        /// <summary>A transpiler</summary>
+        Transpiler,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		/// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
-		///
-		public HarmonyPatch(Type declaringType, MethodType methodType, Type[] argumentTypes, ArgumentType[] argumentVariations)
-		{
-			info.declaringType = declaringType;
-			info.methodType = methodType;
-			ParseSpecialArguments(argumentTypes, argumentVariations);
-		}
+        /// <summary>A finalizer</summary>
+        Finalizer
+    }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="declaringType">The declaring class</param>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		///
-		public HarmonyPatch(Type declaringType, string methodName, MethodType methodType)
-		{
-			info.declaringType = declaringType;
-			info.methodName = methodName;
-			info.methodType = methodType;
-		}
+    /// <summary>Specifies the type of reverse patch</summary>
+    ///
+    public enum HarmonyReversePatchType
+    {
+        /// <summary>Use the unmodified original method</summary>
+        Original,
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		///
-		public HarmonyPatch(string methodName)
-		{
-			info.methodName = methodName;
-		}
+        /// <summary>Patch your local method with a new method that calls the (possibly patched) original</summary>
+        Wrapped
+    }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		///
-		public HarmonyPatch(string methodName, params Type[] argumentTypes)
-		{
-			info.methodName = methodName;
-			info.argumentTypes = argumentTypes;
-		}
+    /// <summary>The base class for all Harmony annotations (not meant to be used directly)</summary>
+    ///
+    public class HarmonyAttribute : Attribute
+    {
+        /// <summary>The common information for all attributes</summary>
+        public HarmonyMethod info = new HarmonyMethod();
+    }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		/// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
-		///
-		public HarmonyPatch(string methodName, Type[] argumentTypes, ArgumentType[] argumentVariations)
-		{
-			info.methodName = methodName;
-			ParseSpecialArguments(argumentTypes, argumentVariations);
-		}
+    /// <summary>Annotation to define your Harmony patch methods</summary>
+    ///
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
+    public class HarmonyPatch : HarmonyAttribute
+    {
+        /// <summary>An empty annotation can be used together with TargetMethod(s)</summary>
+        ///
+        public HarmonyPatch()
+        {
+        }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodName">The name of the method, property or constructor to patch</param>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		///
-		public HarmonyPatch(string methodName, MethodType methodType)
-		{
-			info.methodName = methodName;
-			info.methodType = methodType;
-		}
+        /// <summary>An annotation that specifies a class to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        ///
+        public HarmonyPatch(Type declaringType)
+        {
+            info.declaringType = declaringType;
+        }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		///
-		public HarmonyPatch(MethodType methodType)
-		{
-			info.methodType = methodType;
-		}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="argumentTypes">The argument types of the method or constructor to patch</param>
+        ///
+        public HarmonyPatch(Type declaringType, Type[] argumentTypes)
+        {
+            info.declaringType = declaringType;
+            info.argumentTypes = argumentTypes;
+        }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		///
-		public HarmonyPatch(MethodType methodType, params Type[] argumentTypes)
-		{
-			info.methodType = methodType;
-			info.argumentTypes = argumentTypes;
-		}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        ///
+        public HarmonyPatch(Type declaringType, string methodName)
+        {
+            info.declaringType = declaringType;
+            info.methodName = methodName;
+        }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		/// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
-		///
-		public HarmonyPatch(MethodType methodType, Type[] argumentTypes, ArgumentType[] argumentVariations)
-		{
-			info.methodType = methodType;
-			ParseSpecialArguments(argumentTypes, argumentVariations);
-		}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        ///
+        public HarmonyPatch(Type declaringType, string methodName, params Type[] argumentTypes)
+        {
+            info.declaringType = declaringType;
+            info.methodName = methodName;
+            info.argumentTypes = argumentTypes;
+        }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		///
-		public HarmonyPatch(Type[] argumentTypes)
-		{
-			info.argumentTypes = argumentTypes;
-		}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        /// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
+        ///
+        public HarmonyPatch(Type declaringType, string methodName, Type[] argumentTypes,
+                            ArgumentType[] argumentVariations)
+        {
+            info.declaringType = declaringType;
+            info.methodName = methodName;
+            ParseSpecialArguments(argumentTypes, argumentVariations);
+        }
 
-		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="argumentTypes">An array of argument types to target overloads</param>
-		/// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
-		///
-		public HarmonyPatch(Type[] argumentTypes, ArgumentType[] argumentVariations)
-		{
-			ParseSpecialArguments(argumentTypes, argumentVariations);
-		}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        ///
+        public HarmonyPatch(Type declaringType, MethodType methodType)
+        {
+            info.declaringType = declaringType;
+            info.methodType = methodType;
+        }
 
-		void ParseSpecialArguments(Type[] argumentTypes, ArgumentType[] argumentVariations)
-		{
-			if (argumentVariations == null || argumentVariations.Length == 0)
-			{
-				info.argumentTypes = argumentTypes;
-				return;
-			}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        ///
+        public HarmonyPatch(Type declaringType, MethodType methodType, params Type[] argumentTypes)
+        {
+            info.declaringType = declaringType;
+            info.methodType = methodType;
+            info.argumentTypes = argumentTypes;
+        }
 
-			if (argumentTypes.Length < argumentVariations.Length)
-				throw new ArgumentException("argumentVariations contains more elements than argumentTypes", nameof(argumentVariations));
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        /// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
+        ///
+        public HarmonyPatch(Type declaringType, MethodType methodType, Type[] argumentTypes,
+                            ArgumentType[] argumentVariations)
+        {
+            info.declaringType = declaringType;
+            info.methodType = methodType;
+            ParseSpecialArguments(argumentTypes, argumentVariations);
+        }
 
-			var types = new List<Type>();
-			for (var i = 0; i < argumentTypes.Length; i++)
-			{
-				var type = argumentTypes[i];
-				switch (argumentVariations[i])
-				{
-					case ArgumentType.Normal:
-						break;
-					case ArgumentType.Ref:
-					case ArgumentType.Out:
-						type = type.MakeByRefType();
-						break;
-					case ArgumentType.Pointer:
-						type = type.MakePointerType();
-						break;
-				}
-				types.Add(type);
-			}
-			info.argumentTypes = types.ToArray();
-		}
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="declaringType">The declaring class</param>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        ///
+        public HarmonyPatch(Type declaringType, string methodName, MethodType methodType)
+        {
+            info.declaringType = declaringType;
+            info.methodName = methodName;
+            info.methodType = methodType;
+        }
 
-	/// <summary>Annotation to define your standin methods for reverse patching</summary>
-	///
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
-	public class HarmonyReversePatch : HarmonyAttribute
-	{
-		/// <summary>An annotation that specifies the type of reverse patching</summary>
-		///
-		public HarmonyReversePatch(HarmonyReversePatchType type = HarmonyReversePatchType.Original)
-		{
-			info.reversePatchType = type;
-		}
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        ///
+        public HarmonyPatch(string methodName)
+        {
+            info.methodName = methodName;
+        }
 
-	/// <summary>A Harmony annotation to define that all methods in a class are to be patched</summary>
-	[AttributeUsage(AttributeTargets.Class)]
-	public class HarmonyPatchAll : HarmonyAttribute
-	{
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        ///
+        public HarmonyPatch(string methodName, params Type[] argumentTypes)
+        {
+            info.methodName = methodName;
+            info.argumentTypes = argumentTypes;
+        }
 
-	/// <summary>A Harmony annotation</summary>
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-	public class HarmonyPriority : HarmonyAttribute
-	{
-		/// <summary>A Harmony annotation to define patch priority</summary>
-		/// <param name="priority">The priority</param>
-		///
-		public HarmonyPriority(int priority)
-		{
-			info.priority = priority;
-		}
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        /// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
+        ///
+        public HarmonyPatch(string methodName, Type[] argumentTypes, ArgumentType[] argumentVariations)
+        {
+            info.methodName = methodName;
+            ParseSpecialArguments(argumentTypes, argumentVariations);
+        }
 
-	/// <summary>A Harmony annotation</summary>
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-	public class HarmonyBefore : HarmonyAttribute
-	{
-		/// <summary>A Harmony annotation to define that a patch comes before another patch</summary>
-		/// <param name="before">The harmony ID of the other patch</param>
-		///
-		public HarmonyBefore(params string[] before)
-		{
-			info.before = before;
-		}
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodName">The name of the method, property or constructor to patch</param>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        ///
+        public HarmonyPatch(string methodName, MethodType methodType)
+        {
+            info.methodName = methodName;
+            info.methodType = methodType;
+        }
 
-	/// <summary>A Harmony annotation</summary>
-	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-	public class HarmonyAfter : HarmonyAttribute
-	{
-		/// <summary>A Harmony annotation to define that a patch comes after another patch</summary>
-		/// <param name="after">The harmony ID of the other patch</param>
-		///
-		public HarmonyAfter(params string[] after)
-		{
-			info.after = after;
-		}
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        ///
+        public HarmonyPatch(MethodType methodType)
+        {
+            info.methodType = methodType;
+        }
 
-	/// <summary>Specifies the Prepare function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyPrepare : Attribute
-	{
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        ///
+        public HarmonyPatch(MethodType methodType, params Type[] argumentTypes)
+        {
+            info.methodType = methodType;
+            info.argumentTypes = argumentTypes;
+        }
 
-	/// <summary>Specifies the Cleanup function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyCleanup : Attribute
-	{
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="methodType">The type of entry: method, getter, setter or constructor</param>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        /// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
+        ///
+        public HarmonyPatch(MethodType methodType, Type[] argumentTypes, ArgumentType[] argumentVariations)
+        {
+            info.methodType = methodType;
+            ParseSpecialArguments(argumentTypes, argumentVariations);
+        }
 
-	/// <summary>Specifies the TargetMethod function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyTargetMethod : Attribute
-	{
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        ///
+        public HarmonyPatch(Type[] argumentTypes)
+        {
+            info.argumentTypes = argumentTypes;
+        }
 
-	/// <summary>Specifies the TargetMethods function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyTargetMethods : Attribute
-	{
-	}
+        /// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+        /// <param name="argumentTypes">An array of argument types to target overloads</param>
+        /// <param name="argumentVariations">An array of extra argument subtypes (ref, out, pointer)</param>
+        ///
+        public HarmonyPatch(Type[] argumentTypes, ArgumentType[] argumentVariations)
+        {
+            ParseSpecialArguments(argumentTypes, argumentVariations);
+        }
 
-	/// <summary>Specifies the Prefix function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyPrefix : Attribute
-	{
-	}
+        private void ParseSpecialArguments(Type[] argumentTypes, ArgumentType[] argumentVariations)
+        {
+            if (argumentVariations == null || argumentVariations.Length == 0)
+            {
+                info.argumentTypes = argumentTypes;
+                return;
+            }
 
-	/// <summary>Specifies the Postfix function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyPostfix : Attribute
-	{
-	}
+            if (argumentTypes.Length < argumentVariations.Length)
+                throw new ArgumentException("argumentVariations contains more elements than argumentTypes",
+                                            nameof(argumentVariations));
 
-	/// <summary>Specifies the Transpiler function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyTranspiler : Attribute
-	{
-	}
+            var types = new List<Type>();
+            for (var i = 0; i < argumentTypes.Length; i++)
+            {
+                var type = argumentTypes[i];
+                switch (argumentVariations[i])
+                {
+                    case ArgumentType.Normal:
+                        break;
+                    case ArgumentType.Ref:
+                    case ArgumentType.Out:
+                        type = type.MakeByRefType();
+                        break;
+                    case ArgumentType.Pointer:
+                        type = type.MakePointerType();
+                        break;
+                }
 
-	/// <summary>Specifies the Finalizer function in a patch class</summary>
-	[AttributeUsage(AttributeTargets.Method)]
-	public class HarmonyFinalizer : Attribute
-	{
-	}
+                types.Add(type);
+            }
 
-	/// <summary>A Harmony annotation</summary>
-	[AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
-	public class HarmonyArgument : Attribute
-	{
-		/// <summary>The name of the original argument</summary>
-		public string OriginalName { get; private set; }
+            info.argumentTypes = types.ToArray();
+        }
+    }
 
-		/// <summary>The index of the original argument</summary>
-		public int Index { get; private set; }
+    /// <summary>Annotation to define your standin methods for reverse patching</summary>
+    ///
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
+    public class HarmonyReversePatch : HarmonyAttribute
+    {
+        /// <summary>An annotation that specifies the type of reverse patching</summary>
+        ///
+        public HarmonyReversePatch(HarmonyReversePatchType type = HarmonyReversePatchType.Original)
+        {
+            info.reversePatchType = type;
+        }
+    }
 
-		/// <summary>The new name of the original argument</summary>
-		public string NewName { get; private set; }
+    /// <summary>A Harmony annotation to define that all methods in a class are to be patched</summary>
+    [AttributeUsage(AttributeTargets.Class)]
+    public class HarmonyPatchAll : HarmonyAttribute
+    {
+    }
 
-		/// <summary>An annotation to declare injected arguments by name</summary>
-		public HarmonyArgument(string originalName) : this(originalName, null)
-		{
-		}
+    /// <summary>A Harmony annotation</summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+    public class HarmonyPriority : HarmonyAttribute
+    {
+        /// <summary>A Harmony annotation to define patch priority</summary>
+        /// <param name="priority">The priority</param>
+        ///
+        public HarmonyPriority(int priority)
+        {
+            info.priority = priority;
+        }
+    }
 
-		/// <summary>An annotation to declare injected arguments by index</summary>
-		/// <param name="index">Zero-based index</param>
-		///
-		public HarmonyArgument(int index) : this(index, null)
-		{
-		}
+    /// <summary>A Harmony annotation</summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+    public class HarmonyBefore : HarmonyAttribute
+    {
+        /// <summary>A Harmony annotation to define that a patch comes before another patch</summary>
+        /// <param name="before">The harmony ID of the other patch</param>
+        ///
+        public HarmonyBefore(params string[] before)
+        {
+            info.before = before;
+        }
+    }
 
-		/// <summary>An annotation to declare injected arguments by renaming them</summary>
-		/// <param name="originalName">Name of the original argument</param>
-		/// <param name="newName">New name</param>
-		///
-		public HarmonyArgument(string originalName, string newName)
-		{
-			OriginalName = originalName;
-			Index = -1;
-			NewName = newName;
-		}
+    /// <summary>A Harmony annotation</summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+    public class HarmonyAfter : HarmonyAttribute
+    {
+        /// <summary>A Harmony annotation to define that a patch comes after another patch</summary>
+        /// <param name="after">The harmony ID of the other patch</param>
+        ///
+        public HarmonyAfter(params string[] after)
+        {
+            info.after = after;
+        }
+    }
 
-		/// <summary>An annotation to declare injected arguments by index and renaming them</summary>
-		/// <param name="index">Zero-based index</param>
-		/// <param name="name">New name</param>
-		///
-		public HarmonyArgument(int index, string name)
-		{
-			OriginalName = null;
-			Index = index;
-			NewName = name;
-		}
-	}
+    /// <summary>Specifies the Prepare function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyPrepare : Attribute
+    {
+    }
 
-	// This attribute is for Harmony patching itself to the latest
-	//
-	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor)]
-	internal class UpgradeToLatestVersion : Attribute
-	{
-		/// <summary>The version.</summary>
-		public int version;
-		public Type[] types;
+    /// <summary>Specifies the Cleanup function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyCleanup : Attribute
+    {
+    }
 
-		public UpgradeToLatestVersion(int version)
-		{
-			this.version = version;
-			types = null;
-		}
+    /// <summary>Specifies the TargetMethod function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyTargetMethod : Attribute
+    {
+    }
 
-		public UpgradeToLatestVersion(int version, Type[] types)
-		{
-			this.version = version;
-			this.types = types;
-		}
-	}
+    /// <summary>Specifies the TargetMethods function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyTargetMethods : Attribute
+    {
+    }
+
+    /// <summary>Specifies the Prefix function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyPrefix : Attribute
+    {
+    }
+
+    /// <summary>Specifies the Postfix function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyPostfix : Attribute
+    {
+    }
+
+    /// <summary>Specifies the Transpiler function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyTranspiler : Attribute
+    {
+    }
+
+    /// <summary>Specifies the Finalizer function in a patch class</summary>
+    [AttributeUsage(AttributeTargets.Method)]
+    public class HarmonyFinalizer : Attribute
+    {
+    }
+
+    /// <summary>A Harmony annotation</summary>
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method | AttributeTargets.Class,
+                    AllowMultiple = true)]
+    public class HarmonyArgument : Attribute
+    {
+        /// <summary>The name of the original argument</summary>
+        public string OriginalName { get; private set; }
+
+        /// <summary>The index of the original argument</summary>
+        public int Index { get; private set; }
+
+        /// <summary>The new name of the original argument</summary>
+        public string NewName { get; private set; }
+
+        /// <summary>An annotation to declare injected arguments by name</summary>
+        public HarmonyArgument(string originalName) : this(originalName, null)
+        {
+        }
+
+        /// <summary>An annotation to declare injected arguments by index</summary>
+        /// <param name="index">Zero-based index</param>
+        ///
+        public HarmonyArgument(int index) : this(index, null)
+        {
+        }
+
+        /// <summary>An annotation to declare injected arguments by renaming them</summary>
+        /// <param name="originalName">Name of the original argument</param>
+        /// <param name="newName">New name</param>
+        ///
+        public HarmonyArgument(string originalName, string newName)
+        {
+            OriginalName = originalName;
+            Index = -1;
+            NewName = newName;
+        }
+
+        /// <summary>An annotation to declare injected arguments by index and renaming them</summary>
+        /// <param name="index">Zero-based index</param>
+        /// <param name="name">New name</param>
+        ///
+        public HarmonyArgument(int index, string name)
+        {
+            OriginalName = null;
+            Index = index;
+            NewName = name;
+        }
+    }
+
+    // This attribute is for Harmony patching itself to the latest
+    //
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor)]
+    internal class UpgradeToLatestVersion : Attribute
+    {
+        /// <summary>The version.</summary>
+        public int version;
+
+        public Type[] types;
+
+        public UpgradeToLatestVersion(int version)
+        {
+            this.version = version;
+            types = null;
+        }
+
+        public UpgradeToLatestVersion(int version, Type[] types)
+        {
+            this.version = version;
+            this.types = types;
+        }
+    }
 }
