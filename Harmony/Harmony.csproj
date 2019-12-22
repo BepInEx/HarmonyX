@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net35;net45;net472;net48;netstandard2.1;netcoreapp3.0</TargetFrameworks>
+    <TargetFrameworks>net35;net40;netstandard2.1</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Product>Harmony</Product>
     <Company>Andreas Pardeike</Company>
@@ -44,10 +44,19 @@
     <Optimize>true</Optimize>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
+    <DefineConstants>TRACE;CECIL0_10</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(OS)'!='Windows_NT'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0-preview.2" PrivateAssets="All" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Include="../MonoMod.Common/**/*.cs" Exclude="../MonoMod.Common/obj/**;../MonoMod.Common/bin/**" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" Version="0.10.0" />
   </ItemGroup>
 
 </Project>
