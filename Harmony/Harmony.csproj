@@ -50,13 +50,5 @@
   <ItemGroup Condition="'$(OS)'!='Windows_NT'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0-preview.2" PrivateAssets="All" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Include="../MonoMod.Common/**/*.cs" Exclude="../MonoMod.Common/obj/**;../MonoMod.Common/bin/**" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="Mono.Cecil" Version="0.10.0" />
-  </ItemGroup>
 
 </Project>
