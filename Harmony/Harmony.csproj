@@ -51,4 +51,8 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0-preview.2" PrivateAssets="All" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="19.12.4.1" />
+  </ItemGroup>
+
 </Project>
