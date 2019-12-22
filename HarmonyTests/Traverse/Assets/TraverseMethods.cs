@@ -2,71 +2,72 @@ using System.Linq;
 
 namespace HarmonyLibTests.Assets
 {
-	public class TraverseMethods_Instance
-	{
-		public bool Method1_called;
+    public class TraverseMethods_Instance
+    {
+        public bool Method1_called;
 
 #pragma warning disable IDE0051
-		void Method1()
-		{
-			Method1_called = true;
-		}
+        private void Method1()
+        {
+            Method1_called = true;
+        }
 
-		string Method2(string arg1)
-		{
-			return arg1 + arg1;
-		}
+        private string Method2(string arg1)
+        {
+            return arg1 + arg1;
+        }
 #pragma warning restore IDE0051
-	}
+    }
 
-	public static class TraverseMethods_Static
-	{
+    public static class TraverseMethods_Static
+    {
 #pragma warning disable IDE0051
-		static int StaticMethod(int a, int b)
-		{
-			return a * b;
-		}
+        private static int StaticMethod(int a, int b)
+        {
+            return a * b;
+        }
 #pragma warning restore IDE0051
-	}
+    }
 
-	public static class TraverseMethods_VarArgs
-	{
+    public static class TraverseMethods_VarArgs
+    {
 #pragma warning disable IDE0051
-		static int Test1(int a, int b)
-		{
-			return a + b;
-		}
+        private static int Test1(int a, int b)
+        {
+            return a + b;
+        }
 
-		static int Test2(int a, int b, int c)
-		{
-			return a + b + c;
-		}
-		static int Test3(int multiplier, params int[] n)
-		{
-			return n.Aggregate(0, (acc, x) => acc + x) * multiplier;
-		}
+        private static int Test2(int a, int b, int c)
+        {
+            return a + b + c;
+        }
+
+        private static int Test3(int multiplier, params int[] n)
+        {
+            return n.Aggregate(0, (acc, x) => acc + x) * multiplier;
+        }
 #pragma warning restore IDE0051
-	}
+    }
 
-	public static class TraverseMethods_Parameter
-	{
+    public static class TraverseMethods_Parameter
+    {
 #pragma warning disable IDE0051
-		static string WithRefParameter(ref string refParameter)
-		{
-			refParameter = "hello";
-			return "ok";
-		}
+        private static string WithRefParameter(ref string refParameter)
+        {
+            refParameter = "hello";
+            return "ok";
+        }
 
-		static string WithOutParameter(out string refParameter)
-		{
-			refParameter = "hello";
-			return "ok";
-		}
+        private static string WithOutParameter(out string refParameter)
+        {
+            refParameter = "hello";
+            return "ok";
+        }
 
-		static T WithGenericParameter<T>(T refParameter)
-		{
-			return refParameter;
-		}
+        private static T WithGenericParameter<T>(T refParameter)
+        {
+            return refParameter;
+        }
 #pragma warning restore IDE0051
-	}
+    }
 }

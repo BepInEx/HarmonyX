@@ -8,7 +8,7 @@ namespace HarmonyLib
 {
     internal static class PatchTools
     {
-        static readonly Dictionary<object, object> objectReferences = new Dictionary<object, object>();
+        private static readonly Dictionary<object, object> objectReferences = new Dictionary<object, object>();
 
         internal static void RememberObject(object key, object value)
         {
@@ -22,10 +22,8 @@ namespace HarmonyLib
                                   .FirstOrDefault(m => m.GetCustomAttributes(true)
                                                         .Any(a => a.GetType().FullName == attributeType));
             if (method == null)
-            {
                 // not-found is common and normal case, don't use AccessTools which will generate not-found warnings
                 method = patchType.GetMethod(name, AccessTools.all);
-            }
 
             return method;
         }

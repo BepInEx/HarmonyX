@@ -11,7 +11,7 @@ namespace HarmonyLib
     /// <summary>Patch serialization</summary>
     internal static class PatchInfoSerialization
     {
-        class Binder : SerializationBinder
+        private class Binder : SerializationBinder
         {
             /// <summary>Control the binding of a serialized object to a type</summary>
             /// <param name="assemblyName">Specifies the assembly name of the serialized object</param>
@@ -76,7 +76,7 @@ namespace HarmonyLib
             var theirIndex = trv.Field("index").GetValue<int>();
 
             if (priority != theirPriority)
-                return -(priority.CompareTo(theirPriority));
+                return -priority.CompareTo(theirPriority);
 
             return index.CompareTo(theirIndex);
         }
@@ -236,22 +236,22 @@ namespace HarmonyLib
     public class Patch : IComparable
     {
         /// <summary>Zero-based index</summary>
-        readonly public int index;
+        public readonly int index;
 
         /// <summary>The owner (Harmony ID)</summary>
-        readonly public string owner;
+        public readonly string owner;
 
         /// <summary>The priority</summary>
-        readonly public int priority;
+        public readonly int priority;
 
         /// <summary>The before</summary>
-        readonly public string[] before;
+        public readonly string[] before;
 
         /// <summary>The after</summary>
-        readonly public string[] after;
+        public readonly string[] after;
 
         /// <summary>The patch method</summary>
-        readonly public MethodInfo patch;
+        public readonly MethodInfo patch;
 
         /// <summary>Creates a patch</summary>
         /// <param name="patch">The patch</param>
@@ -297,7 +297,7 @@ namespace HarmonyLib
         ///
         public override bool Equals(object obj)
         {
-            return ((obj != null) && (obj is Patch) && (patch == ((Patch) obj).patch));
+            return obj != null && obj is Patch && patch == ((Patch) obj).patch;
         }
 
         /// <summary>Determines how patches sort</summary>

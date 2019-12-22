@@ -54,7 +54,7 @@ namespace HarmonyLib
             var high = (uint) (buffer[position + 4] | (buffer[position + 5] << 8) | (buffer[position + 6] << 16) |
                                (buffer[position + 7] << 24));
 
-            var value = (((long) high) << 32) | low;
+            var value = ((long) high << 32) | low;
             position += 8;
             return value;
         }
@@ -89,7 +89,7 @@ namespace HarmonyLib
             return value;
         }
 
-        void CheckCanRead(int count)
+        private void CheckCanRead(int count)
         {
             if (position + count > buffer.Length)
                 throw new ArgumentOutOfRangeException();

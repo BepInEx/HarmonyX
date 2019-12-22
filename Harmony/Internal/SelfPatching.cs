@@ -25,9 +25,8 @@ namespace HarmonyLib
 
         private static Type[] GetGenericTypes(MethodBase method)
         {
-            var attribute = method
-                            .GetCustomAttributes(false)
-                            .FirstOrDefault(attr => attr.GetType().FullName == upgradeToLatestVersionFullName);
+            var attribute = method.GetCustomAttributes(false)
+                                  .FirstOrDefault(attr => attr.GetType().FullName == upgradeToLatestVersionFullName);
             if (attribute == null)
                 return null;
             return Traverse.Create(attribute).Field("types").GetValue<Type[]>();

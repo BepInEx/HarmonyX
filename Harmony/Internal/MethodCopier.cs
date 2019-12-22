@@ -511,8 +511,7 @@ namespace HarmonyLib
                     Debugger.Log(0, "TEST", "METHOD " + method.FullDescription() + "\n");
                     Debugger.Log(
                         0, "TEST",
-                        "Signature = " +
-                        bytes.Select(b => $"0x{b:x02}").Aggregate((a, b) => a + " " + b) + "\n");
+                        "Signature = " + bytes.Select(b => $"0x{b:x02}").Aggregate((a, b) => a + " " + b) + "\n");
                     Debugger.Break();
                     break;
                 }
