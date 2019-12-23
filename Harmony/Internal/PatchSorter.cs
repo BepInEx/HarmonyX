@@ -172,7 +172,7 @@ namespace HarmonyLib
             public int CompareTo(object obj)
             {
                 var p = obj as PatchSortingWrapper;
-                return PatchInfoSerialization.PriorityComparer(p?.innerPatch, innerPatch.index, innerPatch.priority);
+                return innerPatch.CompareTo(p?.innerPatch);
             }
 
             /// <summary>Determines whether patches are equal</summary>

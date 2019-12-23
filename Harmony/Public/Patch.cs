@@ -1,94 +1,13 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace HarmonyLib
 {
-    /// <summary>Patch serialization</summary>
-    internal static class PatchInfoSerialization
-    {
-        private class Binder : SerializationBinder
-        {
-            /// <summary>Control the binding of a serialized object to a type</summary>
-            /// <param name="assemblyName">Specifies the assembly name of the serialized object</param>
-            /// <param name="typeName">Specifies the type name of the serialized object</param>
-            /// <returns>The type of the object the formatter creates a new instance of</returns>
-            ///
-            public override Type BindToType(string assemblyName, string typeName)
-            {
-                var types = new Type[]
-                {
-                    typeof(PatchInfo),
-                    typeof(Patch[]),
-                    typeof(Patch)
-                };
-                foreach (var type in types)
-                    if (typeName == type.FullName)
-                        return type;
-                var typeToDeserialize = Type.GetType($"{typeName}, {assemblyName}");
-                return typeToDeserialize;
-            }
-        }
-
-        /// <summary>Serializes a patch info</summary>
-        /// <param name="patchInfo">The patch info</param>
-        /// <returns>A byte array</returns>
-        ///
-        internal static byte[] Serialize(this PatchInfo patchInfo)
-        {
-#pragma warning disable XS0001
-            using (var streamMemory = new MemoryStream())
-            {
-                var formatter = new BinaryFormatter();
-                formatter.Serialize(streamMemory, patchInfo);
-                return streamMemory.GetBuffer();
-            }
-#pragma warning restore XS0001
-        }
-
-        /// <summary>Deserialize a patch info</summary>
-        /// <param name="bytes">The byte array</param>
-        /// <returns>A patch info</returns>
-        ///
-        internal static PatchInfo Deserialize(byte[] bytes)
-        {
-            var formatter = new BinaryFormatter {Binder = new Binder()};
-#pragma warning disable XS0001
-            var streamMemory = new MemoryStream(bytes);
-#pragma warning restore XS0001
-            return (PatchInfo) formatter.Deserialize(streamMemory);
-        }
-
-        /// <summary>Compare function to sort patch priorities</summary>
-        /// <param name="obj">The patch</param>
-        /// <param name="index">Zero-based index</param>
-        /// <param name="priority">The priority</param>
-        /// <returns>A standard sort integer (-1, 0, 1)</returns>
-        ///
-        internal static int PriorityComparer(object obj, int index, int priority)
-        {
-            var trv = Traverse.Create(obj);
-            var theirPriority = trv.Field("priority").GetValue<int>();
-            var theirIndex = trv.Field("index").GetValue<int>();
-
-            if (priority != theirPriority)
-                return -priority.CompareTo(theirPriority);
-
-            return index.CompareTo(theirIndex);
-        }
-    }
-
     /// <summary>Serializable patch information</summary>
-    [Serializable]
     public class PatchInfo
     {
-
-
         /// <summary>The prefixes</summary>
         public Patch[] prefixes;
 
@@ -235,7 +154,6 @@ namespace HarmonyLib
     }
 
     /// <summary>A serializable patch</summary>
-    [Serializable]
     public class Patch : IComparable
     {
         /// <summary>Zero-based index</summary>
@@ -300,7 +218,7 @@ namespace HarmonyLib
         ///
         public override bool Equals(object obj)
         {
-            return obj != null && obj is Patch && patch == ((Patch) obj).patch;
+            return obj is Patch patch1 && patch == patch1.patch;
         }
 
         /// <summary>Determines how patches sort</summary>
@@ -309,7 +227,13 @@ namespace HarmonyLib
         ///
         public int CompareTo(object obj)
         {
-            return PatchInfoSerialization.PriorityComparer(obj, index, priority);
+            if (!(obj is Patch other))
+                return 0;
+
+            if (other.priority != priority)
+                return -priority.CompareTo(other.priority);
+
+            return index.CompareTo(other.index);
         }
 
         /// <summary>Hash function</summary>
