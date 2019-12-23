@@ -28,7 +28,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             patcher.AddPostfix(new HarmonyMethod(postfix));
             patcher.Patch();
 

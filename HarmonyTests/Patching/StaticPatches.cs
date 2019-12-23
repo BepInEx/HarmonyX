@@ -26,7 +26,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPostfix(postfix);
             patcher.Patch();
@@ -56,7 +56,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPrefix(prefix);
             patcher.AddPostfix(postfix);
@@ -66,14 +66,14 @@ namespace HarmonyLibTests
             patcher.Patch();
             var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out var _);
             Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
-            unsafe
-            {
-                var patchedCode = *(byte*) originalMethodStartPre;
-                if (IntPtr.Size == sizeof(long))
-                    Assert.IsTrue(patchedCode == 0x48);
-                else
-                    Assert.IsTrue(patchedCode == 0x68);
-            }
+            // unsafe
+                            // {
+                            //     var patchedCode = *(byte*) originalMethodStartPre;
+                            //     if (IntPtr.Size == sizeof(long))
+                            //         Assert.IsTrue(patchedCode == 0x48);
+                            //     else
+                            //         Assert.IsTrue(patchedCode == 0x68);
+                            // }
 
             Class1.Method1();
             Assert.IsTrue(Class1Patch.prefixed, "Prefix was not executed");
@@ -102,7 +102,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPrefix(prefix);
             patcher.AddPostfix(postfix);
@@ -112,14 +112,14 @@ namespace HarmonyLibTests
             patcher.Patch();
             var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out var _);
             Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
-            unsafe
-            {
-                var patchedCode = *(byte*) originalMethodStartPre;
-                if (IntPtr.Size == sizeof(long))
-                    Assert.IsTrue(patchedCode == 0x48);
-                else
-                    Assert.IsTrue(patchedCode == 0x68);
-            }
+            // unsafe
+            // {
+            //     var patchedCode = *(byte*) originalMethodStartPre;
+            //     if (IntPtr.Size == sizeof(long))
+            //         Assert.IsTrue(patchedCode == 0x48);
+            //     else
+            //         Assert.IsTrue(patchedCode == 0x68);
+            // }
 
             new Class2().Method2();
             Assert.IsTrue(Class2Patch.prefixed, "Prefix was not executed");
@@ -144,7 +144,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPrefix(prefix);
 
@@ -152,14 +152,14 @@ namespace HarmonyLibTests
             patcher.Patch();
             var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out var _);
             Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
-            unsafe
-            {
-                var patchedCode = *(byte*) originalMethodStartPre;
-                if (IntPtr.Size == sizeof(long))
-                    Assert.IsTrue(patchedCode == 0x48);
-                else
-                    Assert.IsTrue(patchedCode == 0x68);
-            }
+            // unsafe
+            // {
+            //     var patchedCode = *(byte*) originalMethodStartPre;
+            //     if (IntPtr.Size == sizeof(long))
+            //         Assert.IsTrue(patchedCode == 0x48);
+            //     else
+            //         Assert.IsTrue(patchedCode == 0x68);
+            // }
 
             new Class4().Method4("foo");
             Assert.IsTrue(Class4Patch.prefixed, "Prefix was not executed");
@@ -186,7 +186,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPrefix(prefix);
             patcher.AddPostfix(postfix);
@@ -214,7 +214,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPrefix(prefix);
             patcher.AddPostfix(postfix);
@@ -269,7 +269,7 @@ namespace HarmonyLibTests
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
 
-            var patcher = instance.CreateProcessor(originalMethod);
+            var patcher = new PatchProcessor(instance, originalMethod);
             Assert.IsNotNull(patcher);
             patcher.AddPostfix(postfix);
             patcher.Patch();
