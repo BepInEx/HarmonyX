@@ -4,24 +4,15 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 
 namespace HarmonyLib
 {
-    internal static class PatchProcessorExtensions
-    {
-        /// <summary>Creates an empty patch processor</summary>
-        /// <param name="instance">The Harmony instance</param>
-        /// <param name="original">An optional original method</param>
-        ///
-        public static PatchProcessor CreateProcessor(this Harmony instance, MethodBase original = null)
-        {
-            return new PatchProcessor(instance, original);
-        }
-    }
-
     /// <summary>A patch processor</summary>
     public class PatchProcessor
     {
+
+        // TODO: Remove
         private static readonly object locker = new object();
 
         private readonly Harmony instance;
@@ -198,11 +189,22 @@ namespace HarmonyLib
                     if (individualPrepareResult)
                     {
                         var patchInfo = original.ToPatchInfo();
+                        var ilHook = original.GetILHook();
 
-                        PatchFunctions.AddPrefix(patchInfo, instance.Id, prefix);
-                        PatchFunctions.AddPostfix(patchInfo, instance.Id, postfix);
-                        PatchFunctions.AddTranspiler(patchInfo, instance.Id, transpiler);
-                        PatchFunctions.AddFinalizer(patchInfo, instance.Id, finalizer);
+                        // Lock patch info so we can assign the patches all at once
+                        lock (patchInfo)
+                        {
+                            patchInfo.AddPrefix(instance.Id, prefix);
+                            patchInfo.AddPostfix(instance.Id, postfix);
+                            patchInfo.AddTranspiler(instance.Id, transpiler);
+                            patchInfo.AddFinalizer(instance.Id, finalizer);
+                        }
+
+                        // TODO: Add batching by calling Refresh when needed
+
+                        ilHook.MarkApply(true).Apply();
+
+                        // TODO: Remove
                         dynamicMethods.Add(PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id));
 
                         RunMethod<HarmonyCleanup>(original);
@@ -224,15 +226,23 @@ namespace HarmonyLib
                 foreach (var original in originals)
                 {
                     var patchInfo = original.ToPatchInfo();
+                    var ilHook = original.GetILHook();
 
-                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Prefix)
-                        PatchFunctions.RemovePrefix(patchInfo, harmonyID);
-                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Postfix)
-                        PatchFunctions.RemovePostfix(patchInfo, harmonyID);
-                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Transpiler)
-                        PatchFunctions.RemoveTranspiler(patchInfo, harmonyID);
-                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Finalizer)
-                        PatchFunctions.RemoveFinalizer(patchInfo, harmonyID);
+                    lock (patchInfo)
+                    {
+                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Prefix)
+                            patchInfo.RemovePrefix(harmonyID);
+                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Postfix)
+                            patchInfo.RemovePostfix(harmonyID);
+                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Transpiler)
+                            patchInfo.RemoveTranspiler(harmonyID);
+                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Finalizer)
+                            patchInfo.RemoveFinalizer(harmonyID);
+                    }
+
+                    ilHook.MarkApply(true).Apply();
+
+                    // TODO: Remove
                     PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
                 }
             }
@@ -250,8 +260,13 @@ namespace HarmonyLib
                 foreach (var original in originals)
                 {
                     var patchInfo = original.ToPatchInfo();
+                    var ilHook = original.GetILHook();
 
-                    PatchFunctions.RemovePatch(patchInfo, patch);
+                    patchInfo.RemovePatch(patch);
+
+                    ilHook.MarkApply(false).Apply();
+
+                    // TODO: Remove
                     PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
                 }
             }
@@ -399,8 +414,8 @@ namespace HarmonyLib
                     return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
 
                 case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attr.declaringType).Where(c => c.IsStatic)
-                                      .FirstOrDefault();
+                    return AccessTools.GetDeclaredConstructors(attr.declaringType)
+                                      .FirstOrDefault(c => c.IsStatic);
             }
 
             return null;
@@ -410,6 +425,7 @@ namespace HarmonyLib
         {
             var attr = containerAttributes.Merge(new HarmonyMethod(standin));
             if (attr.declaringType == null) return null;
+
             switch (attr.methodType)
             {
                 case MethodType.Normal:
@@ -431,8 +447,8 @@ namespace HarmonyLib
                     return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
 
                 case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attr.declaringType).Where(c => c.IsStatic)
-                                      .FirstOrDefault();
+                    return AccessTools.GetDeclaredConstructors(attr.declaringType)
+                                      .FirstOrDefault(c => c.IsStatic);
             }
 
             return null;
@@ -472,8 +488,6 @@ namespace HarmonyLib
                 var actualParameters = AccessTools.ActualParameters(method, input);
                 method.Invoke(null, actualParameters);
             }
-
-            return;
         }
     }
 }
