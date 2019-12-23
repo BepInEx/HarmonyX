@@ -4,6 +4,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using HarmonyLib.Internal.Native;
 
 namespace HarmonyLibTests
 {

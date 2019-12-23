@@ -5,7 +5,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.Native
 {
     // A test for https://github.com/dotnet/coreclr/blob/master/Documentation/botr/clr-abi.md
     //

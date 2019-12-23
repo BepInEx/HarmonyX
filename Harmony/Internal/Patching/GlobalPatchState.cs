@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.Patching
 {
     internal static class GlobalPatchState
     {

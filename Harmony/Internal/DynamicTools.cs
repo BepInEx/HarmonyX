@@ -3,8 +3,10 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using HarmonyLib.Internal.CIL;
+using HarmonyLib.Internal.Native;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal
 {
     /// <summary>Creating dynamic methods</summary>
     internal static class DynamicTools

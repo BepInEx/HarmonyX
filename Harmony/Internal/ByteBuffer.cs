@@ -1,6 +1,6 @@
 using System;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal
 {
     internal class ByteBuffer
     {

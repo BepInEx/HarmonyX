@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Internal.CIL;
+using HarmonyLib.Internal.Native;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.Patching
 {
     /// <summary>Patch function helpers</summary>
     internal static class PatchFunctions

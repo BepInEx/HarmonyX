@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Internal;
+using HarmonyLib.Internal.Patching;
 
 namespace HarmonyLib
 {

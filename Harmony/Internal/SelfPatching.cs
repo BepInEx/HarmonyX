@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using HarmonyLib.Internal.Native;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal
 {
     internal static class SelfPatching
     {
@@ -41,7 +42,7 @@ namespace HarmonyLib
         {
             try
             {
-                return assembly.ReflectionOnly == false && assembly.GetType(typeof(Harmony).FullName) != null;
+                return assembly.ReflectionOnly == false && assembly.GetType(typeof(HarmonyLib.Harmony).FullName) != null;
             }
             catch
             {
@@ -76,7 +77,7 @@ namespace HarmonyLib
             watch.Start();
 
             var ourAssembly = new StackTrace(true).GetFrame(1).GetMethod().DeclaringType.Assembly;
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
             {
                 var originalVersion = ourAssembly.GetName().Version;
                 var runningVersion = typeof(SelfPatching).Assembly.GetName().Version;
@@ -101,7 +102,7 @@ namespace HarmonyLib
                                                   .Where(assembly => IsHarmonyAssembly(assembly) &&
                                                                      assembly != ourAssembly).ToList();
 
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
             {
                 otherHarmonyAssemblies.Do(assembly => FileLog.Log("Found Harmony " + AssemblyInfo(assembly)));
 
@@ -134,7 +135,7 @@ namespace HarmonyLib
                                 {
                                     var oldMethodInfo = (oldMethod as MethodInfo).MakeGenericMethod(generic);
                                     var newMethodInfo = (newMethod as MethodInfo).MakeGenericMethod(generic);
-                                    if (Harmony.DEBUG)
+                                    if (HarmonyLib.Harmony.DEBUG)
                                         FileLog.Log("Self-patching " + oldMethodInfo.FullDescription() + " with <" +
                                                     generic.FullName + "> in " + AssemblyInfo(assembly));
                                     Memory.DetourMethod(oldMethodInfo, newMethodInfo);
@@ -144,7 +145,7 @@ namespace HarmonyLib
                             }
                             else
                             {
-                                if (Harmony.DEBUG)
+                                if (HarmonyLib.Harmony.DEBUG)
                                     FileLog.Log("Self-patching " + oldMethod.FullDescription() + " in " +
                                                 AssemblyInfo(assembly));
                                 patchedCounter++;
@@ -155,7 +156,7 @@ namespace HarmonyLib
                 }
             }
 
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
                 FileLog.Log("Self-patched " + patchedCounter + " out of " + totalCounter + " methods (" +
                             (potentialCounter - patchedCounter) + " skipped) in " + watch.ElapsedMilliseconds + "ms");
         }

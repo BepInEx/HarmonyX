@@ -5,7 +5,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.Native
 {
     /// <summary>A bit-field of flags for protections</summary>
     [Flags]
@@ -120,7 +120,7 @@ namespace HarmonyLib
          * This is still a rough part in Harmony. So much information and no easy way
          * to determine when and what is valid. Especially with different environments
          * and .NET versions. More information might be found here:
-         * 
+         *
          * https://stackoverflow.com/questions/38782934/how-to-replace-the-pointer-to-the-overridden-virtual-method-in-the-pointer-of/
          * https://stackoverflow.com/questions/39034018/how-to-replace-a-pointer-to-a-pointer-to-a-method-in-a-class-of-my-method-inheri
          */

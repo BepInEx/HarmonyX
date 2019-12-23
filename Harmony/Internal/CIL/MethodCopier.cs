@@ -5,8 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using HarmonyLib.Internal.Patching;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.CIL
 {
     internal class MethodCopier
     {
@@ -262,7 +263,7 @@ namespace HarmonyLib
             transpilers.Do(transpiler => codeTranspiler.Add(transpiler));
             var codeInstructions = codeTranspiler.GetResult(generator, method);
 
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
                 Emitter.LogComment(generator, "start original");
 
             // pass3 - log out all new local variables
@@ -365,7 +366,7 @@ namespace HarmonyLib
                             if (emitMethod == null)
                                 throw new Exception("Unknown Emit argument type " + operand.GetType() + " in " +
                                                     codeInstruction);
-                            if (Harmony.DEBUG)
+                            if (HarmonyLib.Harmony.DEBUG)
                                 FileLog.LogBuffered(Emitter.CodePos(generator) + code + " " +
                                                     Emitter.FormatArgument(operand));
                             emitMethod.Invoke(generator, new object[] {code, operand});
@@ -377,7 +378,7 @@ namespace HarmonyLib
                 idx++;
             });
 
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
                 Emitter.LogComment(generator, "end original");
         }
 

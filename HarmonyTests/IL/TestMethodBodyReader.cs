@@ -2,6 +2,8 @@ using System.Collections;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
+using HarmonyLib.Internal;
+using HarmonyLib.Internal.CIL;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
 

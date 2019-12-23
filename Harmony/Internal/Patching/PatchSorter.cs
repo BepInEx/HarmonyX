@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.Patching
 {
     internal class PatchSorter
     {
@@ -106,7 +106,7 @@ namespace HarmonyLib
                     if (!_handledPatches.Contains(afterNode))
                     {
                         _waitingList[i].RemoveAfterDependency(afterNode);
-                        if (Harmony.DEBUG)
+                        if (HarmonyLib.Harmony.DEBUG)
                             FileLog.LogBuffered(
                                 $"Breaking dependance between {afterNode.innerPatch.patch.FullDescription()} and {_waitingList[i].innerPatch.patch.FullDescription()}");
                         return;

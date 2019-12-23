@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.CIL
 {
     internal class LeaveTry
     {
@@ -41,7 +41,7 @@ namespace HarmonyLib
 
         internal static void LogIL(ILGenerator il, OpCode opCode, object argument)
         {
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
             {
                 var argStr = FormatArgument(argument);
                 var space = argStr.Length > 0 ? " " : "";
@@ -56,7 +56,7 @@ namespace HarmonyLib
 
         internal static void LogLocalVariable(LocalBuilder variable)
         {
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
             {
                 var str =
                     $"{CodePos(0)}Local var {variable.LocalIndex}: {variable.LocalType.FullName}{(variable.IsPinned ? "(pinned)" : "")}";
@@ -87,7 +87,7 @@ namespace HarmonyLib
 
         internal static void MarkLabel(ILGenerator il, Label label)
         {
-            if (Harmony.DEBUG) FileLog.LogBuffered(CodePos(il) + FormatArgument(label));
+            if (HarmonyLib.Harmony.DEBUG) FileLog.LogBuffered(CodePos(il) + FormatArgument(label));
             il.MarkLabel(label);
         }
 
@@ -97,7 +97,7 @@ namespace HarmonyLib
             switch (block.blockType)
             {
                 case ExceptionBlockType.BeginExceptionBlock:
-                    if (Harmony.DEBUG)
+                    if (HarmonyLib.Harmony.DEBUG)
                     {
                         FileLog.LogBuffered(".try");
                         FileLog.LogBuffered("{");
@@ -108,7 +108,7 @@ namespace HarmonyLib
                     return;
 
                 case ExceptionBlockType.BeginCatchBlock:
-                    if (Harmony.DEBUG)
+                    if (HarmonyLib.Harmony.DEBUG)
                     {
                         // fake log a LEAVE code since BeginCatchBlock() does add it
                         LogIL(il, OpCodes.Leave, new LeaveTry());
@@ -125,7 +125,7 @@ namespace HarmonyLib
                     return;
 
                 case ExceptionBlockType.BeginExceptFilterBlock:
-                    if (Harmony.DEBUG)
+                    if (HarmonyLib.Harmony.DEBUG)
                     {
                         // fake log a LEAVE code since BeginCatchBlock() does add it
                         LogIL(il, OpCodes.Leave, new LeaveTry());
@@ -142,7 +142,7 @@ namespace HarmonyLib
                     return;
 
                 case ExceptionBlockType.BeginFaultBlock:
-                    if (Harmony.DEBUG)
+                    if (HarmonyLib.Harmony.DEBUG)
                     {
                         // fake log a LEAVE code since BeginCatchBlock() does add it
                         LogIL(il, OpCodes.Leave, new LeaveTry());
@@ -159,7 +159,7 @@ namespace HarmonyLib
                     return;
 
                 case ExceptionBlockType.BeginFinallyBlock:
-                    if (Harmony.DEBUG)
+                    if (HarmonyLib.Harmony.DEBUG)
                     {
                         // fake log a LEAVE code since BeginCatchBlock() does add it
                         LogIL(il, OpCodes.Leave, new LeaveTry());
@@ -181,7 +181,7 @@ namespace HarmonyLib
         {
             if (block.blockType == ExceptionBlockType.EndExceptionBlock)
             {
-                if (Harmony.DEBUG)
+                if (HarmonyLib.Harmony.DEBUG)
                 {
                     // fake log a LEAVE code since BeginCatchBlock() does add it
                     LogIL(il, OpCodes.Leave, new LeaveTry());
@@ -196,7 +196,7 @@ namespace HarmonyLib
 
         internal static void Emit(ILGenerator il, OpCode opcode)
         {
-            if (Harmony.DEBUG) FileLog.LogBuffered(CodePos(il) + opcode);
+            if (HarmonyLib.Harmony.DEBUG) FileLog.LogBuffered(CodePos(il) + opcode);
             il.Emit(opcode);
         }
 
@@ -299,7 +299,7 @@ namespace HarmonyLib
         internal static void EmitCall(ILGenerator il, OpCode opcode, MethodInfo methodInfo,
                                       Type[] optionalParameterTypes)
         {
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
                 FileLog.LogBuffered(string.Format("{0}Call {1} {2} {3}", CodePos(il), opcode, methodInfo,
                                                   optionalParameterTypes));
             il.EmitCall(opcode, methodInfo, optionalParameterTypes);
@@ -308,7 +308,7 @@ namespace HarmonyLib
         internal static void EmitCalli(ILGenerator il, OpCode opcode, CallingConvention unmanagedCallConv,
                                        Type returnType, Type[] parameterTypes)
         {
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
                 FileLog.LogBuffered(string.Format("{0}Calli {1} {2} {3} {4}", CodePos(il), opcode, unmanagedCallConv,
                                                   returnType, parameterTypes));
             il.EmitCalli(opcode, unmanagedCallConv, returnType, parameterTypes);
@@ -317,7 +317,7 @@ namespace HarmonyLib
         internal static void EmitCalli(ILGenerator il, OpCode opcode, CallingConventions callingConvention,
                                        Type returnType, Type[] parameterTypes, Type[] optionalParameterTypes)
         {
-            if (Harmony.DEBUG)
+            if (HarmonyLib.Harmony.DEBUG)
                 FileLog.LogBuffered(string.Format("{0}Calli {1} {2} {3} {4} {5}", CodePos(il), opcode,
                                                   callingConvention, returnType, parameterTypes,
                                                   optionalParameterTypes));

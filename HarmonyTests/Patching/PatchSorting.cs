@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
+using HarmonyLib.Internal.Patching;
 using NUnit.Framework;
 
 namespace HarmonyLibTests

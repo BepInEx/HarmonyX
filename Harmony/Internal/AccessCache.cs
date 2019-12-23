@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal
 {
     internal class AccessCache
     {

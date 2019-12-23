@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Internal.Native;
 
-namespace HarmonyLib
+namespace HarmonyLib.Internal.CIL
 {
     internal static class MethodPatcher
     {
@@ -30,7 +31,7 @@ namespace HarmonyLib
 
                 Memory.MarkForNoInlining(original);
 
-                if (Harmony.DEBUG)
+                if (HarmonyLib.Harmony.DEBUG)
                 {
                     FileLog.LogBuffered("### Patch " + original.FullDescription());
                     FileLog.FlushBuffer();
@@ -157,7 +158,7 @@ namespace HarmonyLib
 
                 Emitter.Emit(il, OpCodes.Ret);
 
-                if (Harmony.DEBUG)
+                if (HarmonyLib.Harmony.DEBUG)
                 {
                     FileLog.LogBuffered("DONE");
                     FileLog.LogBuffered("");
@@ -171,7 +172,7 @@ namespace HarmonyLib
             {
                 var exceptionString = "Exception from HarmonyInstance \"" + harmonyInstanceID + "\" patching " +
                                       original.FullDescription() + ": " + ex;
-                if (Harmony.DEBUG)
+                if (HarmonyLib.Harmony.DEBUG)
                 {
                     var savedIndentLevel = FileLog.indentLevel;
                     FileLog.indentLevel = 0;
@@ -183,7 +184,7 @@ namespace HarmonyLib
             }
             finally
             {
-                if (Harmony.DEBUG)
+                if (HarmonyLib.Harmony.DEBUG)
                     FileLog.FlushBuffer();
             }
         }
