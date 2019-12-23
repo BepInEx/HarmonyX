@@ -21,6 +21,7 @@ namespace HarmonyLib
         }
     }
 
+
     /// <summary>A reverse patcher</summary>
     public class ReversePatcher
     {
@@ -48,6 +49,8 @@ namespace HarmonyLib
                 throw new NullReferenceException("Null method for " + instance.Id);
 
             var transpiler = GetTranspiler(standin);
+
+            // TODO: Add ILHook to this
             PatchFunctions.ReversePatch(standin, original, instance.Id, transpiler);
         }
 
