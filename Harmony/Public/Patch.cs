@@ -29,6 +29,36 @@ namespace HarmonyLib
             finalizers = new Patch[0];
         }
 
+        private void AddPatch(ref Patch[] list, string owner, HarmonyMethod info)
+        {
+            if (info?.method == null) return;
+
+            var priority = info.priority == -1 ? Priority.Normal : info.priority;
+            var before = info.before ?? new string[0];
+            var after = info.after ?? new string[0];
+
+            AddPatch(ref list, info.method, owner, priority, before, after);
+        }
+
+        private void AddPatch(ref Patch[] list, MethodInfo patch, string owner, int priority, string[] before,
+                              string[] after)
+        {
+            var l = list.ToList();
+            l.Add(new Patch(patch, prefixes.Count() + 1, owner, priority, before, after));
+            list = l.ToArray();
+        }
+
+        private void RemovePatch(ref Patch[] list, string owner)
+        {
+            if (owner == "*")
+            {
+                list = new Patch[0];
+                return;
+            }
+
+            list = list.Where(patch => patch.owner != owner).ToArray();
+        }
+
         /// <summary>Adds a prefix</summary>
         /// <param name="patch">The patch</param>
         /// <param name="owner">The owner (Harmony ID)</param>
@@ -38,9 +68,12 @@ namespace HarmonyLib
         ///
         public void AddPrefix(MethodInfo patch, string owner, int priority, string[] before, string[] after)
         {
-            var l = prefixes.ToList();
-            l.Add(new Patch(patch, prefixes.Count() + 1, owner, priority, before, after));
-            prefixes = l.ToArray();
+            AddPatch(ref prefixes, patch, owner, priority, before, after);
+        }
+
+        public void AddPrefix(string owner, HarmonyMethod info)
+        {
+            AddPatch(ref prefixes, owner, info);
         }
 
         /// <summary>Removes a prefix</summary>
@@ -48,13 +81,7 @@ namespace HarmonyLib
         ///
         public void RemovePrefix(string owner)
         {
-            if (owner == "*")
-            {
-                prefixes = new Patch[0];
-                return;
-            }
-
-            prefixes = prefixes.Where(patch => patch.owner != owner).ToArray();
+            RemovePatch(ref prefixes, owner);
         }
 
         /// <summary>Adds a postfix</summary>
@@ -66,9 +93,12 @@ namespace HarmonyLib
         ///
         public void AddPostfix(MethodInfo patch, string owner, int priority, string[] before, string[] after)
         {
-            var l = postfixes.ToList();
-            l.Add(new Patch(patch, postfixes.Count() + 1, owner, priority, before, after));
-            postfixes = l.ToArray();
+            AddPatch(ref postfixes, patch, owner, priority, before, after);
+        }
+
+        public void AddPostfix(string owner, HarmonyMethod info)
+        {
+            AddPatch(ref postfixes, owner, info);
         }
 
         /// <summary>Removes a postfix</summary>
@@ -76,13 +106,7 @@ namespace HarmonyLib
         ///
         public void RemovePostfix(string owner)
         {
-            if (owner == "*")
-            {
-                postfixes = new Patch[0];
-                return;
-            }
-
-            postfixes = postfixes.Where(patch => patch.owner != owner).ToArray();
+            RemovePatch(ref postfixes, owner);
         }
 
         /// <summary>Adds a transpiler</summary>
@@ -94,9 +118,12 @@ namespace HarmonyLib
         ///
         public void AddTranspiler(MethodInfo patch, string owner, int priority, string[] before, string[] after)
         {
-            var l = transpilers.ToList();
-            l.Add(new Patch(patch, transpilers.Count() + 1, owner, priority, before, after));
-            transpilers = l.ToArray();
+            AddPatch(ref transpilers, patch, owner, priority, before, after);
+        }
+
+        public void AddTranspiler(string owner, HarmonyMethod info)
+        {
+            AddPatch(ref transpilers, owner, info);
         }
 
         /// <summary>Removes a transpiler</summary>
@@ -104,13 +131,7 @@ namespace HarmonyLib
         ///
         public void RemoveTranspiler(string owner)
         {
-            if (owner == "*")
-            {
-                transpilers = new Patch[0];
-                return;
-            }
-
-            transpilers = transpilers.Where(patch => patch.owner != owner).ToArray();
+            RemovePatch(ref transpilers, owner);
         }
 
         /// <summary>Adds a finalizer</summary>
@@ -122,9 +143,12 @@ namespace HarmonyLib
         ///
         public void AddFinalizer(MethodInfo patch, string owner, int priority, string[] before, string[] after)
         {
-            var l = finalizers.ToList();
-            l.Add(new Patch(patch, finalizers.Count() + 1, owner, priority, before, after));
-            finalizers = l.ToArray();
+            AddPatch(ref finalizers, patch, owner, priority, before, after);
+        }
+
+        public void AddFinalizer(string owner, HarmonyMethod info)
+        {
+            AddPatch(ref finalizers, owner, info);
         }
 
         /// <summary>Removes a finalizer</summary>
@@ -132,13 +156,7 @@ namespace HarmonyLib
         ///
         public void RemoveFinalizer(string owner)
         {
-            if (owner == "*")
-            {
-                finalizers = new Patch[0];
-                return;
-            }
-
-            finalizers = finalizers.Where(patch => patch.owner != owner).ToArray();
+            RemovePatch(ref finalizers, owner);
         }
 
         /// <summary>Removes a patch</summary>
@@ -146,10 +164,13 @@ namespace HarmonyLib
         ///
         public void RemovePatch(MethodInfo patch)
         {
-            prefixes = prefixes.Where(p => p.patch != patch).ToArray();
-            postfixes = postfixes.Where(p => p.patch != patch).ToArray();
-            transpilers = transpilers.Where(p => p.patch != patch).ToArray();
-            finalizers = finalizers.Where(p => p.patch != patch).ToArray();
+            lock (this)
+            {
+                prefixes = prefixes.Where(p => p.patch != patch).ToArray();
+                postfixes = postfixes.Where(p => p.patch != patch).ToArray();
+                transpilers = transpilers.Where(p => p.patch != patch).ToArray();
+                finalizers = finalizers.Where(p => p.patch != patch).ToArray();
+            }
         }
     }
 
