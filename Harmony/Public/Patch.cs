@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -86,6 +87,8 @@ namespace HarmonyLib
     [Serializable]
     public class PatchInfo
     {
+
+
         /// <summary>The prefixes</summary>
         public Patch[] prefixes;
 

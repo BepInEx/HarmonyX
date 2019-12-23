@@ -55,7 +55,7 @@ namespace HarmonyLib
         }
 
         /// <summary>Searches current assembly for Harmony annotations and uses them to create patches</summary>
-        /// 
+        ///
         public void PatchAll()
         {
             var method = new StackTrace().GetFrame(1).GetMethod();
@@ -65,7 +65,7 @@ namespace HarmonyLib
 
         /// <summary>Create a patch processor from an annotated class</summary>
         /// <param name="type">The class</param>
-        /// 
+        ///
         public PatchProcessor ProcessorForAnnotatedClass(Type type)
         {
             var parentMethodInfos = HarmonyMethodExtensions.GetFromType(type);
@@ -80,7 +80,7 @@ namespace HarmonyLib
 
         /// <summary>Searches an assembly for Harmony annotations and uses them to create patches</summary>
         /// <param name="assembly">The assembly</param>
-        /// 
+        ///
         public void PatchAll(Assembly assembly)
         {
             assembly.GetTypes().Do(type => ProcessorForAnnotatedClass(type)?.Patch());
@@ -153,7 +153,7 @@ namespace HarmonyLib
         ///
         public static bool HasAnyPatches(string harmonyID)
         {
-            return GetAllPatchedMethods().Select(original => GetPatchInfo(original))
+            return GetAllPatchedMethods().Select(GetPatchInfo)
                                          .Any(info => info.Owners.Contains(harmonyID));
         }
 
@@ -179,7 +179,7 @@ namespace HarmonyLib
         ///
         public static IEnumerable<MethodBase> GetAllPatchedMethods()
         {
-            return HarmonySharedState.GetPatchedMethods();
+            return GlobalPatchState.GetPatchedMethods();
         }
 
         /// <summary>Gets Harmony version for all active Harmony instances</summary>
@@ -192,7 +192,7 @@ namespace HarmonyLib
             var assemblies = new Dictionary<string, Assembly>();
             GetAllPatchedMethods().Do(method =>
             {
-                var info = HarmonySharedState.GetPatchInfo(method);
+                var info = method.GetPatchInfo();
                 info.prefixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
                 info.postfixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
                 info.transpilers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
