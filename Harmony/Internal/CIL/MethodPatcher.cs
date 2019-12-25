@@ -4,6 +4,10 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Native;
+using HarmonyLib.Internal.Patching;
+using MonoMod.Cil;
+using MonoMod.Utils;
+using MonoMod.Utils.Cil;
 
 namespace HarmonyLib.Internal.CIL
 {
@@ -18,6 +22,35 @@ namespace HarmonyLib.Internal.CIL
         public static string EXCEPTION_VAR = "__exception";
         public static string PARAM_INDEX_PREFIX = "__";
         public static string INSTANCE_FIELD_PREFIX = "___";
+
+        public static void MakePatched(MethodBase original, MethodBase source, ILContext ctx, List<MethodInfo> prefixes,
+                                       List<MethodInfo> postfixes, List<MethodInfo> transpilers,
+                                       List<MethodInfo> finalizers)
+        {
+            try
+            {
+                if(original == null)
+                    throw new ArgumentException(nameof(original));
+
+                Memory.MarkForNoInlining(original);
+
+                // Create a high-level manipulator for the method
+                var manipulator = new ILManipulator(ctx.Body, original);
+
+                // Add in all transpilers
+                foreach (var transpilerMethod in transpilers)
+                    manipulator.AddTranspiler(transpilerMethod);
+
+                // Write new manipulated code to our body
+                manipulator.WriteTo(ctx.Body);
+
+                // TODO: Add prefix, postfix, finalizer code
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
 
         public static DynamicMethod CreatePatchedMethod(MethodBase original, MethodBase source,
                                                         string harmonyInstanceID, List<MethodInfo> prefixes,

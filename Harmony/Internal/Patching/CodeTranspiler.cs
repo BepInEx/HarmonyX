@@ -5,9 +5,164 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.CIL;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
+using MonoMod.Utils;
+using MethodBody = Mono.Cecil.Cil.MethodBody;
+using OpCode = Mono.Cecil.Cil.OpCode;
+using OpCodes = Mono.Cecil.Cil.OpCodes;
+using OperandType = Mono.Cecil.Cil.OperandType;
+using SRE = System.Reflection.Emit;
 
 namespace HarmonyLib.Internal.Patching
 {
+    /// <summary>
+    /// High-level IL code manipulator for MonoMod that allows to manipulate a method as a stream of CodeInstructions.
+    /// </summary>
+    internal class ILManipulator
+    {
+        private static readonly Dictionary<short, SRE.OpCode> SREOpCodes = new Dictionary<short, SRE.OpCode>();
+
+        static ILManipulator()
+        {
+            foreach (var field in typeof(SRE.OpCodes).GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                var sreOpCode = (SRE.OpCode) field.GetValue(null);
+                SREOpCodes[sreOpCode.Value] = sreOpCode;
+            }
+        }
+
+        private IEnumerable<CodeInstruction> codeInstructions;
+        private List<MethodInfo> transpilers = new List<MethodInfo>();
+
+        /// <summary>
+        /// Initialize IL transpiler
+        /// </summary>
+        /// <param name="body">Body of the method to transpile</param>
+        /// <param name="original">Original method. Used to resolve locals and parameters</param>
+        public ILManipulator(MethodBody body, MethodBase original = null)
+        {
+            codeInstructions = ReadBody(body, original);
+        }
+
+        private List<CodeInstruction> ReadBody(MethodBody body, MethodBase original = null)
+        {
+            var locals = original.GetMethodBody()?.LocalVariables ?? new List<LocalVariableInfo>();
+            var mParams = original.GetParameters();
+            var codeInstructions = new List<CodeInstruction>(body.Instructions.Count);
+
+            CodeInstruction ReadInstruction(Instruction ins)
+            {
+                var cIns = new CodeInstruction(SREOpCodes[ins.OpCode.Value]);
+
+                switch (ins.OpCode.OperandType)
+                {
+                    case OperandType.InlineField:
+                    case OperandType.InlineMethod:
+                    case OperandType.InlineType:
+                    case OperandType.InlineTok:
+                        cIns.operand = ((MemberReference) ins.Operand).ResolveReflection();
+                        break;
+                    case OperandType.InlineArg:
+                        break;
+                    case OperandType.InlineVar:
+                    case OperandType.ShortInlineVar:
+                        var varDef = (VariableDefinition) ins.Operand;
+                        cIns.operand = locals.FirstOrDefault(l => l.LocalIndex == varDef.Index);
+                        break;
+                    case OperandType.ShortInlineArg:
+                        var pDef = (ParameterDefinition) ins.Operand;
+                        cIns.operand = mParams.First(p => p.Position == pDef.Index);
+                        break;
+                    case OperandType.InlineBrTarget:
+                    case OperandType.ShortInlineBrTarget:
+                        cIns.operand = body.Instructions.IndexOf((Instruction) ins.Operand);
+                        break;
+                    case OperandType.InlineSwitch:
+                        cIns.operand = ((Instruction[]) ins.Operand)
+                                       .Select(i => body.Instructions.IndexOf(i)).ToArray();
+                        break;
+                    default:
+                        cIns.operand = ins.Operand;
+                        break;
+                }
+
+                return cIns;
+            }
+
+            // Pass 1: Convert IL to base abstract CodeInstructions
+            codeInstructions.AddRange(body.Instructions.Select(ReadInstruction));
+
+            //Pass 2: Resolve CodeInstructions for branch parameters
+            foreach (var cIns in codeInstructions)
+                switch (cIns.opcode.OperandType)
+                {
+                    case SRE.OperandType.ShortInlineBrTarget:
+                    case SRE.OperandType.InlineBrTarget:
+                        cIns.operand = codeInstructions[(int) cIns.operand];
+                        break;
+                    case SRE.OperandType.InlineSwitch:
+                        cIns.operand = ((int[]) cIns.operand).Select(i => codeInstructions[i]).ToArray();
+                        break;
+                }
+
+            // Pass 3: Attach exception blocks to each code instruction
+            foreach (var exception in body.ExceptionHandlers)
+            {
+                var tryStart = codeInstructions[body.Instructions.IndexOf(exception.TryStart)];
+                var tryEnd = codeInstructions[body.Instructions.IndexOf(exception.TryEnd)];
+                var handlerStart = codeInstructions[body.Instructions.IndexOf(exception.HandlerStart)];
+                var handlerEnd = codeInstructions[body.Instructions.IndexOf(exception.HandlerEnd)];
+
+                tryStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginExceptionBlock));
+                handlerEnd.blocks.Add(new ExceptionBlock(ExceptionBlockType.EndExceptionBlock));
+
+                switch (exception.HandlerType)
+                {
+                    case ExceptionHandlerType.Catch:
+                        handlerStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginCatchBlock, exception.CatchType.ResolveReflection()));
+                        break;
+                    case ExceptionHandlerType.Filter:
+                        var filterStart = codeInstructions[body.Instructions.IndexOf(exception.FilterStart)];
+                        filterStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginExceptFilterBlock));
+                        break;
+                    case ExceptionHandlerType.Finally:
+                        handlerStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginFinallyBlock));
+                        break;
+                    case ExceptionHandlerType.Fault:
+                        handlerStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginFaultBlock));
+                        break;
+                }
+            }
+
+            return codeInstructions;
+        }
+
+        /// <summary>
+        /// Adds a transpiler method that edits the IL of the given method
+        /// </summary>
+        /// <param name="transpiler">Transpiler method</param>
+        /// <exception cref="NotImplementedException">Currently not implemented</exception>
+        public void AddTranspiler(MethodInfo transpiler)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Processes and emits the generated code to the provided target
+        /// </summary>
+        /// <remarks>
+        /// This cleans out all of the method and replaces it with the new definition
+        /// </remarks>
+        /// <param name="target">Target method to emit code to</param>
+        /// <exception cref="NotImplementedException"></exception>
+        public void WriteTo(MethodBody target)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     internal class CodeTranspiler
     {
         private readonly IEnumerable<CodeInstruction> codeInstructions;

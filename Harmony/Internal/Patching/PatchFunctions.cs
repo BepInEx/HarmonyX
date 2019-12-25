@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.CIL;
 using HarmonyLib.Internal.Native;
+using Mono.Cecil;
 using MonoMod.Cil;
+using FieldAttributes = Mono.Cecil.FieldAttributes;
 
 namespace HarmonyLib.Internal.Patching
 {
@@ -37,10 +40,33 @@ namespace HarmonyLib.Internal.Patching
             return il => Manipulate(original, patchInfo, il);
         }
 
+        private static void SortPatches(MethodBase original, PatchInfo patchInfo, out List<MethodInfo> prefixes,
+                                        out List<MethodInfo> postfixes, out List<MethodInfo> transpilers,
+                                        out List<MethodInfo> finalizers)
+        {
+            Patch[] prefixesArr, postfixesArr, transpilersArr, finalizersArr;
+
+            // Lock to ensure no more patches are added while we're sorting
+            lock (patchInfo)
+            {
+                prefixesArr = patchInfo.prefixes.ToArray();
+                postfixesArr = patchInfo.prefixes.ToArray();
+                transpilersArr = patchInfo.prefixes.ToArray();
+                finalizersArr = patchInfo.prefixes.ToArray();
+            }
+
+            prefixes = GetSortedPatchMethods(original, prefixesArr);
+            postfixes = GetSortedPatchMethods(original, postfixesArr);
+            transpilers = GetSortedPatchMethods(original, transpilersArr);
+            finalizers = GetSortedPatchMethods(original, finalizersArr);
+        }
+
         private static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
         {
-            Console.WriteLine($"Manipulating {original} with {patchInfo} in ctx {ctx}");
-            // TODO: Port Harmony wrapper gen into the manipulator
+            SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
+                        out var sortedFinalizers);
+
+            MethodPatcher.MakePatched(original, null, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
         }
 
         /// <summary>Creates new dynamic method with the latest patches and detours the original method</summary>
