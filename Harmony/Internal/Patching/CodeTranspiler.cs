@@ -122,7 +122,8 @@ namespace HarmonyLib.Internal.Patching
                 switch (exception.HandlerType)
                 {
                     case ExceptionHandlerType.Catch:
-                        handlerStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginCatchBlock, exception.CatchType.ResolveReflection()));
+                        handlerStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginCatchBlock,
+                                                                   exception.CatchType.ResolveReflection()));
                         break;
                     case ExceptionHandlerType.Filter:
                         var filterStart = codeInstructions[body.Instructions.IndexOf(exception.FilterStart)];
@@ -155,15 +156,14 @@ namespace HarmonyLib.Internal.Patching
         /// </summary>
         /// <param name="ctx">ILContext of the method</param>
         /// <exception cref="NotImplementedException"></exception>
-        public void Emit(ILContext ctx)
+        public void WriteTo(MethodBody body)
         {
-            var body = ctx.Body;
-
             // Clean up the body of the target method
             body.Instructions.Clear();
             body.ExceptionHandlers.Clear();
 
-            var il = new CecilILGenerator(ctx.IL);
+            var il = new CecilILGenerator(body.GetILProcessor());
+            var cil = il.GetProxy();
 
             // Step 1: Prepare labels for instructions
             foreach (var codeInstruction in codeInstructions)
@@ -205,26 +205,16 @@ namespace HarmonyLib.Internal.Patching
             //TODO: Transpiler
             var newInstructions = codeInstructions.ToList();
 
-            var endLabels = new List<Label>();
+            // We don't remove trailing `ret`s because we need to do so only if prefixes/postfixes are present
 
-            // Step 3: Remove any trailing `ret`s
-            while (true)
-            {
-                var ins = newInstructions[newInstructions.Count - 1];
-                if (ins == null || ins.opcode != SRE.OpCodes.Ret)
-                    break;
-                endLabels.AddRange(ins.labels);
-                newInstructions.RemoveAt(newInstructions.Count - 1);
-            }
-
-            // Step 4: Emit code
+            // Step 3: Emit code
 
             foreach (var ins in newInstructions)
             {
                 ins.labels.ForEach(l => il.MarkLabel(l));
 
                 // TODO: Replace Emitter with own
-                ins.blocks.ForEach(b => Emitter.MarkBlockBefore(il.GetProxy(), b, out var _));
+                ins.blocks.ForEach(b => Emitter.MarkBlockBefore(cil, b, out var _));
 
                 // We don't replace `ret`s yet because we might not need to
                 // We do that only if we add prefixes/postfixes
@@ -239,32 +229,39 @@ namespace HarmonyLib.Internal.Patching
                         il.Emit(ins.opcode);
                         break;
                     case SRE.OperandType.InlineSig:
-                        throw new NotSupportedException("Emitting opcodes with CallSites is currently not fully implemented");
+                        throw new NotSupportedException(
+                            "Emitting opcodes with CallSites is currently not fully implemented");
                     default:
-                        if(ins.operand == null)
+                        if (ins.operand == null)
                             throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
                         il.Emit(ins.opcode, ins.operand);
                         break;
                 }
+
+                ins.blocks.ForEach(b => Emitter.MarkBlockAfter(cil, b));
             }
+
+            // Step 4: Run the code through raw IL manipulators (if any)
+
+            // TODO: Manipulators
         }
 
         private static readonly Dictionary<SRE.OpCode, SRE.OpCode> shortJumps = new Dictionary<SRE.OpCode, SRE.OpCode>
         {
-            {SRE.OpCodes.Leave_S,   SRE.OpCodes.Leave},
-            {SRE.OpCodes.Brfalse_S, SRE.OpCodes.Brfalse},
-            {SRE.OpCodes.Brtrue_S,  SRE.OpCodes.Brtrue},
-            {SRE.OpCodes.Beq_S,     SRE.OpCodes.Beq},
-            {SRE.OpCodes.Bge_S,     SRE.OpCodes.Bge},
-            {SRE.OpCodes.Bgt_S,     SRE.OpCodes.Bgt},
-            {SRE.OpCodes.Ble_S,     SRE.OpCodes.Ble},
-            {SRE.OpCodes.Blt_S,     SRE.OpCodes.Blt},
-            {SRE.OpCodes.Bne_Un_S,  SRE.OpCodes.Bne_Un},
-            {SRE.OpCodes.Bge_Un_S,  SRE.OpCodes.Bge_Un},
-            {SRE.OpCodes.Bgt_Un_S,  SRE.OpCodes.Bgt_Un},
-            {SRE.OpCodes.Ble_Un_S,  SRE.OpCodes.Ble_Un},
-            {SRE.OpCodes.Br_S,      SRE.OpCodes.Br},
-            {SRE.OpCodes.Blt_Un_S,  SRE.OpCodes.Blt_Un}
+            [SRE.OpCodes.Leave_S] = SRE.OpCodes.Leave,
+            [SRE.OpCodes.Brfalse_S] = SRE.OpCodes.Brfalse,
+            [SRE.OpCodes.Brtrue_S] = SRE.OpCodes.Brtrue,
+            [SRE.OpCodes.Beq_S] = SRE.OpCodes.Beq,
+            [SRE.OpCodes.Bge_S] = SRE.OpCodes.Bge,
+            [SRE.OpCodes.Bgt_S] = SRE.OpCodes.Bgt,
+            [SRE.OpCodes.Ble_S] = SRE.OpCodes.Ble,
+            [SRE.OpCodes.Blt_S] = SRE.OpCodes.Blt,
+            [SRE.OpCodes.Bne_Un_S] = SRE.OpCodes.Bne_Un,
+            [SRE.OpCodes.Bge_Un_S] = SRE.OpCodes.Bge_Un,
+            [SRE.OpCodes.Bgt_Un_S] = SRE.OpCodes.Bgt_Un,
+            [SRE.OpCodes.Ble_Un_S] = SRE.OpCodes.Ble_Un,
+            [SRE.OpCodes.Br_S] = SRE.OpCodes.Br,
+            [SRE.OpCodes.Blt_Un_S] = SRE.OpCodes.Blt_Un
         };
     }
 

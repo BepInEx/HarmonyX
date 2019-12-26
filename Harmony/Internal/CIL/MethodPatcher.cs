@@ -42,7 +42,7 @@ namespace HarmonyLib.Internal.CIL
                     manipulator.AddTranspiler(transpilerMethod);
 
                 // Write new manipulated code to our body
-                manipulator.Emit(ctx);
+                manipulator.WriteTo(ctx.Body);
 
                 // TODO: Add prefix, postfix, finalizer code
             }
