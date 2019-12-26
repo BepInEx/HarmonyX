@@ -20,6 +20,8 @@ namespace HarmonyLib
         /// <summary>All exception block boundaries defined on this instruction</summary>
         public List<ExceptionBlock> blocks = new List<ExceptionBlock>();
 
+        internal object ilOperand;
+
         /// <summary>Creates a new CodeInstruction with a given opcode and optional operand</summary>
         /// <param name="opcode">The code</param>
         /// <param name="operand">The operand</param>
@@ -28,6 +30,7 @@ namespace HarmonyLib
         {
             this.opcode = opcode;
             this.operand = operand;
+            ilOperand = operand;
         }
 
         /// <summary>Create a full copy (including labels and exception blocks) of a CodeInstruction</summary>
@@ -37,6 +40,7 @@ namespace HarmonyLib
         {
             opcode = instruction.opcode;
             operand = instruction.operand;
+            ilOperand = instruction.ilOperand;
             labels = instruction.labels.ToArray().ToList();
             blocks = instruction.blocks.ToArray().ToList();
         }

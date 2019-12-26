@@ -9,6 +9,7 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.Utils;
+using MonoMod.Utils.Cil;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
 using OpCode = Mono.Cecil.Cil.OpCode;
 using OpCodes = Mono.Cecil.Cil.OpCodes;
@@ -62,29 +63,29 @@ namespace HarmonyLib.Internal.Patching
                     case OperandType.InlineMethod:
                     case OperandType.InlineType:
                     case OperandType.InlineTok:
-                        cIns.operand = ((MemberReference) ins.Operand).ResolveReflection();
+                        cIns.ilOperand = ((MemberReference) ins.Operand).ResolveReflection();
                         break;
                     case OperandType.InlineArg:
                         break;
                     case OperandType.InlineVar:
                     case OperandType.ShortInlineVar:
                         var varDef = (VariableDefinition) ins.Operand;
-                        cIns.operand = locals.FirstOrDefault(l => l.LocalIndex == varDef.Index);
+                        cIns.ilOperand = locals.FirstOrDefault(l => l.LocalIndex == varDef.Index);
                         break;
                     case OperandType.ShortInlineArg:
                         var pDef = (ParameterDefinition) ins.Operand;
-                        cIns.operand = mParams.First(p => p.Position == pDef.Index);
+                        cIns.ilOperand = mParams.First(p => p.Position == pDef.Index);
                         break;
                     case OperandType.InlineBrTarget:
                     case OperandType.ShortInlineBrTarget:
-                        cIns.operand = body.Instructions.IndexOf((Instruction) ins.Operand);
+                        cIns.ilOperand = body.Instructions.IndexOf((Instruction) ins.Operand);
                         break;
                     case OperandType.InlineSwitch:
-                        cIns.operand = ((Instruction[]) ins.Operand)
-                                       .Select(i => body.Instructions.IndexOf(i)).ToArray();
+                        cIns.ilOperand = ((Instruction[]) ins.Operand)
+                                         .Select(i => body.Instructions.IndexOf(i)).ToArray();
                         break;
                     default:
-                        cIns.operand = ins.Operand;
+                        cIns.ilOperand = ins.Operand;
                         break;
                 }
 
@@ -100,10 +101,10 @@ namespace HarmonyLib.Internal.Patching
                 {
                     case SRE.OperandType.ShortInlineBrTarget:
                     case SRE.OperandType.InlineBrTarget:
-                        cIns.operand = codeInstructions[(int) cIns.operand];
+                        cIns.ilOperand = codeInstructions[(int) cIns.operand];
                         break;
                     case SRE.OperandType.InlineSwitch:
-                        cIns.operand = ((int[]) cIns.operand).Select(i => codeInstructions[i]).ToArray();
+                        cIns.ilOperand = ((int[]) cIns.operand).Select(i => codeInstructions[i]).ToArray();
                         break;
                 }
 
@@ -150,17 +151,121 @@ namespace HarmonyLib.Internal.Patching
         }
 
         /// <summary>
-        /// Processes and emits the generated code to the provided target
+        /// Emits the code to the provided ILContext
         /// </summary>
-        /// <remarks>
-        /// This cleans out all of the method and replaces it with the new definition
-        /// </remarks>
-        /// <param name="target">Target method to emit code to</param>
+        /// <param name="ctx">ILContext of the method</param>
         /// <exception cref="NotImplementedException"></exception>
-        public void WriteTo(MethodBody target)
+        public void Emit(ILContext ctx)
         {
-            throw new NotImplementedException();
+            var body = ctx.Body;
+
+            // Clean up the body of the target method
+            body.Instructions.Clear();
+            body.ExceptionHandlers.Clear();
+
+            var il = new CecilILGenerator(ctx.IL);
+
+            // Step 1: Prepare labels for instructions
+            foreach (var codeInstruction in codeInstructions)
+            {
+                // Set operand to the same as the IL operand (in most cases they are the same)
+                codeInstruction.operand = codeInstruction.ilOperand;
+
+                switch (codeInstruction.opcode.OperandType)
+                {
+                    case SRE.OperandType.InlineSwitch when codeInstruction.ilOperand is CodeInstruction[] targets:
+                    {
+                        var labels = new List<Label>();
+                        foreach (var target in targets)
+                        {
+                            var label = il.DefineLabel();
+                            target.labels.Add(label);
+                            labels.Add(label);
+                        }
+
+                        codeInstruction.operand = labels.ToArray();
+                    }
+                        break;
+                    case SRE.OperandType.ShortInlineBrTarget:
+                    case SRE.OperandType.InlineBrTarget:
+                    {
+                        if (codeInstruction.operand is CodeInstruction target)
+                        {
+                            var label = il.DefineLabel();
+                            target.labels.Add(label);
+                            codeInstruction.operand = label;
+                        }
+                    }
+                        break;
+                }
+            }
+
+            // Step 2: Run the code instruction through transpilers
+
+            //TODO: Transpiler
+            var newInstructions = codeInstructions.ToList();
+
+            var endLabels = new List<Label>();
+
+            // Step 3: Remove any trailing `ret`s
+            while (true)
+            {
+                var ins = newInstructions[newInstructions.Count - 1];
+                if (ins == null || ins.opcode != SRE.OpCodes.Ret)
+                    break;
+                endLabels.AddRange(ins.labels);
+                newInstructions.RemoveAt(newInstructions.Count - 1);
+            }
+
+            // Step 4: Emit code
+
+            foreach (var ins in newInstructions)
+            {
+                ins.labels.ForEach(l => il.MarkLabel(l));
+
+                // TODO: Replace Emitter with own
+                ins.blocks.ForEach(b => Emitter.MarkBlockBefore(il.GetProxy(), b, out var _));
+
+                // We don't replace `ret`s yet because we might not need to
+                // We do that only if we add prefixes/postfixes
+
+                // Fix any short jumps if there are any
+                if (shortJumps.TryGetValue(ins.opcode, out var longJmpOpcode))
+                    ins.opcode = longJmpOpcode;
+
+                switch (ins.opcode.OperandType)
+                {
+                    case SRE.OperandType.InlineNone:
+                        il.Emit(ins.opcode);
+                        break;
+                    case SRE.OperandType.InlineSig:
+                        throw new NotSupportedException("Emitting opcodes with CallSites is currently not fully implemented");
+                    default:
+                        if(ins.operand == null)
+                            throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
+                        // TODO: Emit opcode for given type
+                        break;
+                }
+            }
         }
+
+        private static readonly Dictionary<SRE.OpCode, SRE.OpCode> shortJumps = new Dictionary<SRE.OpCode, SRE.OpCode>
+        {
+            {SRE.OpCodes.Leave_S,   SRE.OpCodes.Leave},
+            {SRE.OpCodes.Brfalse_S, SRE.OpCodes.Brfalse},
+            {SRE.OpCodes.Brtrue_S,  SRE.OpCodes.Brtrue},
+            {SRE.OpCodes.Beq_S,     SRE.OpCodes.Beq},
+            {SRE.OpCodes.Bge_S,     SRE.OpCodes.Bge},
+            {SRE.OpCodes.Bgt_S,     SRE.OpCodes.Bgt},
+            {SRE.OpCodes.Ble_S,     SRE.OpCodes.Ble},
+            {SRE.OpCodes.Blt_S,     SRE.OpCodes.Blt},
+            {SRE.OpCodes.Bne_Un_S,  SRE.OpCodes.Bne_Un},
+            {SRE.OpCodes.Bge_Un_S,  SRE.OpCodes.Bge_Un},
+            {SRE.OpCodes.Bgt_Un_S,  SRE.OpCodes.Bgt_Un},
+            {SRE.OpCodes.Ble_Un_S,  SRE.OpCodes.Ble_Un},
+            {SRE.OpCodes.Br_S,      SRE.OpCodes.Br},
+            {SRE.OpCodes.Blt_Un_S,  SRE.OpCodes.Blt_Un}
+        };
     }
 
     internal class CodeTranspiler
