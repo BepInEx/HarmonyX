@@ -243,7 +243,7 @@ namespace HarmonyLib.Internal.Patching
                     default:
                         if(ins.operand == null)
                             throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
-                        // TODO: Emit opcode for given type
+                        il.Emit(ins.opcode, ins.operand);
                         break;
                 }
             }
