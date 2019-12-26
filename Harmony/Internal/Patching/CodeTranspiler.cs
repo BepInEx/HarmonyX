@@ -7,7 +7,6 @@ using System.Reflection.Emit;
 using HarmonyLib.Internal.CIL;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using MonoMod.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
@@ -201,27 +200,20 @@ namespace HarmonyLib.Internal.Patching
             }
 
             // Step 2: Run the code instruction through transpilers
-
-            //TODO: Transpiler
+            //TODO: Transpiler that emits newInstructions
             var newInstructions = codeInstructions.ToList();
 
             // We don't remove trailing `ret`s because we need to do so only if prefixes/postfixes are present
 
             // Step 3: Emit code
-
             foreach (var ins in newInstructions)
             {
                 ins.labels.ForEach(l => il.MarkLabel(l));
-
-                // TODO: Replace Emitter with own
-                ins.blocks.ForEach(b => Emitter.MarkBlockBefore(cil, b, out var _));
+                ins.blocks.ForEach(b => il.MarkBlockBefore(b, out var _));
 
                 // We don't replace `ret`s yet because we might not need to
                 // We do that only if we add prefixes/postfixes
-
-                // Fix any short jumps if there are any
-                if (shortJumps.TryGetValue(ins.opcode, out var longJmpOpcode))
-                    ins.opcode = longJmpOpcode;
+                // We also don't need to care for long/short forms thanks to Cecil/MonoMod
 
                 switch (ins.opcode.OperandType)
                 {
@@ -238,31 +230,15 @@ namespace HarmonyLib.Internal.Patching
                         break;
                 }
 
-                ins.blocks.ForEach(b => Emitter.MarkBlockAfter(cil, b));
+                ins.blocks.ForEach(b => il.MarkBlockAfter(b));
             }
 
+            // Note: We lose all unassigned labels here along with any way to log them
+            // On the contrary, we gain better logging anyway down the line by using Cecil
+
             // Step 4: Run the code through raw IL manipulators (if any)
-
-            // TODO: Manipulators
+            // TODO: IL Manipulators
         }
-
-        private static readonly Dictionary<SRE.OpCode, SRE.OpCode> shortJumps = new Dictionary<SRE.OpCode, SRE.OpCode>
-        {
-            [SRE.OpCodes.Leave_S] = SRE.OpCodes.Leave,
-            [SRE.OpCodes.Brfalse_S] = SRE.OpCodes.Brfalse,
-            [SRE.OpCodes.Brtrue_S] = SRE.OpCodes.Brtrue,
-            [SRE.OpCodes.Beq_S] = SRE.OpCodes.Beq,
-            [SRE.OpCodes.Bge_S] = SRE.OpCodes.Bge,
-            [SRE.OpCodes.Bgt_S] = SRE.OpCodes.Bgt,
-            [SRE.OpCodes.Ble_S] = SRE.OpCodes.Ble,
-            [SRE.OpCodes.Blt_S] = SRE.OpCodes.Blt,
-            [SRE.OpCodes.Bne_Un_S] = SRE.OpCodes.Bne_Un,
-            [SRE.OpCodes.Bge_Un_S] = SRE.OpCodes.Bge_Un,
-            [SRE.OpCodes.Bgt_Un_S] = SRE.OpCodes.Bgt_Un,
-            [SRE.OpCodes.Ble_Un_S] = SRE.OpCodes.Ble_Un,
-            [SRE.OpCodes.Br_S] = SRE.OpCodes.Br,
-            [SRE.OpCodes.Blt_Un_S] = SRE.OpCodes.Blt_Un
-        };
     }
 
     internal class CodeTranspiler
