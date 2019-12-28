@@ -3,11 +3,65 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
+using OpCode = System.Reflection.Emit.OpCode;
+using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLib.Internal.Patching
 {
+    internal static class ILExtensions
+    {
+        public static VariableDefinition DeclareVariable(this ILProcessor il, Type type)
+        {
+            var varDef = new VariableDefinition(il.Import(type));
+            il.Body.Variables.Add(varDef);
+            return varDef;
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode)
+        {
+            il.InsertBefore(ins, il.Create(opcode));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, ConstructorInfo cInfo)
+        {
+            il.InsertBefore(ins, il.Create(opcode, il.Import(cInfo)));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, MethodInfo mInfo)
+        {
+            il.InsertBefore(ins, il.Create(opcode, il.Import(mInfo)));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, Type cls)
+        {
+            il.InsertBefore(ins, il.Create(opcode, il.Import(cls)));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, int arg)
+        {
+            il.InsertBefore(ins, il.Create(opcode, arg));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, FieldInfo fInfo)
+        {
+            il.InsertBefore(ins, il.Create(opcode, il.Import(fInfo)));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, VariableDefinition varDef)
+        {
+            il.InsertBefore(ins, il.Create(opcode, varDef));
+        }
+
+        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, Instruction tgtIns)
+        {
+            il.InsertBefore(ins, il.Create(opcode, tgtIns));
+        }
+    }
+
     internal static class EmitterExtensions
     {
         private static DynamicMethodDefinition emitDMD;
