@@ -144,7 +144,36 @@ namespace HarmonyLib.Internal.CIL
         /// <exception cref="NotImplementedException">Currently not implemented</exception>
         public void AddTranspiler(MethodInfo transpiler)
         {
-            throw new NotImplementedException();
+            transpilers.Add(transpiler);
+        }
+
+        private object[] GetTranpilerArguments(ILGenerator il, MethodInfo transpiler,
+                                               IEnumerable<CodeInstruction> instructions, MethodBase orignal = null)
+        {
+            var result = new List<object>();
+
+            foreach (var type in transpiler.GetParameters().Select(p => p.ParameterType))
+                if (type.IsAssignableFrom(typeof(ILGenerator)))
+                    result.Add(il);
+                else if (type.IsAssignableFrom(typeof(MethodBase)) && orignal != null)
+                    result.Add(orignal);
+                else if (type.IsAssignableFrom(typeof(IEnumerable<CodeInstruction>)))
+                    result.Add(instructions);
+
+            return result.ToArray();
+        }
+
+        private List<CodeInstruction> ApplyTranspilers(ILGenerator il, MethodBase original = null)
+        {
+            var tempInstructions = codeInstructions;
+
+            foreach (var transpiler in transpilers)
+            {
+                var args = GetTranpilerArguments(il, transpiler, tempInstructions, original);
+                tempInstructions = transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>;
+            }
+
+            return tempInstructions.ToList();
         }
 
         /// <summary>
@@ -152,9 +181,10 @@ namespace HarmonyLib.Internal.CIL
         /// Note that this cleans the existing method body (removes insturctions and exception handlers).
         /// </summary>
         /// <param name="body">Method body to write to.</param>
+        /// <param name="original">Original method that transpiler can optionally call into</param>
         /// <exception cref="NotSupportedException">One of IL opcodes contains a CallSide (e.g. calli), which is currently not fully supported.</exception>
         /// <exception cref="ArgumentNullException">One of IL opcodes with an operand contains a null operand.</exception>
-        public void WriteTo(MethodBody body)
+        public void WriteTo(MethodBody body, MethodBase original = null)
         {
             // Clean up the body of the target method
             body.Instructions.Clear();
@@ -199,8 +229,7 @@ namespace HarmonyLib.Internal.CIL
             }
 
             // Step 2: Run the code instruction through transpilers
-            //TODO: Transpiler that emits newInstructions
-            var newInstructions = codeInstructions.ToList();
+            var newInstructions = ApplyTranspilers(cil, original);
 
             // We don't remove trailing `ret`s because we need to do so only if prefixes/postfixes are present
 
