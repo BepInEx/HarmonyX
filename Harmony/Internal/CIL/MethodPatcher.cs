@@ -5,9 +5,12 @@ using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Native;
 using HarmonyLib.Internal.Patching;
+using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
+using OpCode = System.Reflection.Emit.OpCode;
+using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLib.Internal.CIL
 {
@@ -23,6 +26,41 @@ namespace HarmonyLib.Internal.CIL
         public static string PARAM_INDEX_PREFIX = "__";
         public static string INSTANCE_FIELD_PREFIX = "___";
 
+
+        private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<MethodInfo> transpilers)
+        {
+            // Create a high-level manipulator for the method
+            var manipulator = new ILManipulator(ctx.Body, original);
+
+            // Add in all transpilers
+            foreach (var transpilerMethod in transpilers)
+                manipulator.AddTranspiler(transpilerMethod);
+
+            // Write new manipulated code to our body
+            manipulator.WriteTo(ctx.Body, original);
+        }
+
+        private static Instruction MakeReturnLabel(ILContext ctx)
+        {
+            // TODO: Convert all `ret`s to a branch into a final label
+            return null;
+        }
+
+        private static void WritePostfixes(ILContext ctx, MethodBase original, List<MethodInfo> postfixes)
+        {
+
+        }
+
+        private static void WritePrefixes(ILContext ctx, MethodBase original, List<MethodInfo> postfixes)
+        {
+
+        }
+
+        private static void WriteFinalizers(ILContext ctx, MethodBase original, List<MethodInfo> postfixes)
+        {
+
+        }
+
         public static void MakePatched(MethodBase original, MethodBase source, ILContext ctx, List<MethodInfo> prefixes,
                                        List<MethodInfo> postfixes, List<MethodInfo> transpilers,
                                        List<MethodInfo> finalizers)
@@ -34,17 +72,19 @@ namespace HarmonyLib.Internal.CIL
 
                 Memory.MarkForNoInlining(original);
 
-                // Create a high-level manipulator for the method
-                var manipulator = new ILManipulator(ctx.Body, original);
+                WriteTranspiledMethod(ctx, original, transpilers);
 
-                // Add in all transpilers
-                foreach (var transpilerMethod in transpilers)
-                    manipulator.AddTranspiler(transpilerMethod);
+                var hasSpecialMethods = prefixes.Count + postfixes.Count + finalizers.Count > 0;
 
-                // Write new manipulated code to our body
-                manipulator.WriteTo(ctx.Body);
+                // If no need to wrap anything, we're basically done!
+                if (!hasSpecialMethods)
+                    return;
 
-                // TODO: Add prefix, postfix, finalizer code
+                var returnLabel = MakeReturnLabel(ctx);
+
+                WritePostfixes(ctx, original, postfixes);
+                WritePrefixes(ctx, original, prefixes);
+                WriteFinalizers(ctx, original, finalizers);
             }
             catch (Exception e)
             {
