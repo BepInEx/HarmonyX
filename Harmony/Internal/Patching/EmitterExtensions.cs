@@ -201,14 +201,12 @@ namespace HarmonyLib.Internal.Patching
             emitCodeDelegate(il, opcode, operand);
         }
 
-        public static void MarkBlockBefore(this CecilILGenerator il, ExceptionBlock block, out Label? label)
+        public static void MarkBlockBefore(this CecilILGenerator il, ExceptionBlock block)
         {
-            label = null;
-
             switch (block.blockType)
             {
                 case ExceptionBlockType.BeginExceptionBlock:
-                    label = il.BeginExceptionBlock();
+                    il.BeginExceptionBlock();
                     return;
                 case ExceptionBlockType.BeginCatchBlock:
                     il.BeginCatchBlock(block.catchType);

@@ -235,50 +235,31 @@ namespace HarmonyLib.Internal.CIL
             // We don't remove trailing `ret`s because we need to do so only if prefixes/postfixes are present
 
             // Step 3: Emit code
-            for (var index = 0; index < newInstructions.Count; index++)
+            foreach (var ins in newInstructions)
             {
-                var ins = newInstructions[index];
-                foreach (var l in ins.labels)
-                    il.MarkLabel(l);
-                foreach (var b in ins.blocks)
-                    il.MarkBlockBefore(b, out var _);
+                ins.labels.ForEach(l => il.MarkLabel(l));
+                ins.blocks.ForEach(b => il.MarkBlockBefore(b));
 
                 // We don't replace `ret`s yet because we might not need to
                 // We do that only if we add prefixes/postfixes
                 // We also don't need to care for long/short forms thanks to Cecil/MonoMod
 
-                var emitCode = true;
-                // if (ins.opcode == SRE.OpCodes.Leave || ins.opcode == SRE.OpCodes.Leave_S)
-                // {
-                //     // skip LEAVE on EndExceptionBlock
-                //     // if (ins.blocks.Any(block => block.blockType == ExceptionBlockType.EndExceptionBlock))
-                //     //     emitCode = false;
-                //
-                //     // skip LEAVE on next instruction starts a new exception handler and we are already in
-                //     // if (index < newInstructions.Count - 1)
-                //     //     if (newInstructions[index + 1]
-                //     //         .blocks.Any(block => block.blockType != ExceptionBlockType.EndExceptionBlock))
-                //     //         emitCode = false;
-                // }
+                switch (ins.opcode.OperandType)
+                {
+                    case SRE.OperandType.InlineNone:
+                        il.Emit(ins.opcode);
+                        break;
+                    case SRE.OperandType.InlineSig:
+                        throw new NotSupportedException(
+                            "Emitting opcodes with CallSites is currently not fully implemented");
+                    default:
+                        if (ins.operand == null)
+                            throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
+                        il.Emit(ins.opcode, ins.operand);
+                        break;
+                }
 
-                if (emitCode)
-                    switch (ins.opcode.OperandType)
-                    {
-                        case SRE.OperandType.InlineNone:
-                            il.Emit(ins.opcode);
-                            break;
-                        case SRE.OperandType.InlineSig:
-                            throw new NotSupportedException(
-                                "Emitting opcodes with CallSites is currently not fully implemented");
-                        default:
-                            if (ins.operand == null)
-                                throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
-                            il.Emit(ins.opcode, ins.operand);
-                            break;
-                    }
-
-                foreach (var b in ins.blocks)
-                    il.MarkBlockAfter(b);
+                ins.blocks.ForEach(b => il.MarkBlockAfter(b));
             }
 
             // Note: We lose all unassigned labels here along with any way to log them
