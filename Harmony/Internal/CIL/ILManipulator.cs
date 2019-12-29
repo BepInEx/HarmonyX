@@ -6,6 +6,7 @@ using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
@@ -74,11 +75,11 @@ namespace HarmonyLib.Internal.CIL
                         break;
                     case OperandType.InlineBrTarget:
                     case OperandType.ShortInlineBrTarget:
-                        cIns.ilOperand = body.Instructions.IndexOf((Instruction) ins.Operand);
+                        cIns.ilOperand = body.Instructions.IndexOf(((ILLabel) ins.Operand).Target);
                         break;
                     case OperandType.InlineSwitch:
-                        cIns.ilOperand = ((Instruction[]) ins.Operand)
-                                         .Select(i => body.Instructions.IndexOf(i)).ToArray();
+                        cIns.ilOperand = ((ILLabel[]) ins.Operand)
+                                         .Select(i => body.Instructions.IndexOf(i.Target)).ToArray();
                         break;
                     default:
                         cIns.ilOperand = ins.Operand;
@@ -97,10 +98,10 @@ namespace HarmonyLib.Internal.CIL
                 {
                     case SRE.OperandType.ShortInlineBrTarget:
                     case SRE.OperandType.InlineBrTarget:
-                        cIns.ilOperand = instructions[(int) cIns.operand];
+                        cIns.ilOperand = instructions[(int) cIns.ilOperand];
                         break;
                     case SRE.OperandType.InlineSwitch:
-                        cIns.ilOperand = ((int[]) cIns.operand).Select(i => instructions[i]).ToArray();
+                        cIns.ilOperand = ((int[]) cIns.ilOperand).Select(i => instructions[i]).ToArray();
                         break;
                 }
 
