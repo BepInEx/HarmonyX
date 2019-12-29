@@ -57,9 +57,53 @@ namespace HarmonyLib.Internal.CIL
             return resultIns;
         }
 
-        private static void WritePostfixes(ILContext ctx, MethodBase original, List<MethodInfo> postfixes)
+        private static void WritePostfixes(ILContext ctx, MethodBase original, Dictionary<string, VariableDefinition> variables, List<MethodInfo> postfixes)
         {
+            // Postfix layout:
+            // Make return value (if needed) into a variable
+            // If method has return value, store the current stack value into it (since the value on the stack is the return value)
+            // Call postfixes that modify return values by __return
+            // Call postfixes that modify return values by chaining
 
+            if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
+            {
+                var retVal = AccessTools.GetReturnedType(original);
+                returnValueVar =  retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+            }
+
+            // Get the last instruction (expected to be `ret`)
+            var ins = ctx.Instrs[ctx.Instrs.Count - 1];
+
+            if(returnValueVar != null)
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, returnValueVar);
+
+            foreach (var postfix in postfixes.Where(p => p.ReturnType == typeof(void)))
+            {
+                EmitCallParameter(ins, ctx, original, postfix, variables, true);
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Call, postfix);
+            }
+
+            // Load the result for the final time, the chained postfixes will handle the rest
+            if(returnValueVar != null)
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, returnValueVar);
+
+            // If postfix returns a value, it must be chainable
+            // The first param is always the return of the previous
+            foreach (var postfix in postfixes.Where(p => p.ReturnType != typeof(void)))
+            {
+                EmitCallParameter(ins, ctx, original, postfix, variables, true);
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Call, postfix);
+
+                var firstParam = postfix.GetParameters().FirstOrDefault();
+
+                if (firstParam == null || postfix.ReturnType != firstParam.ParameterType)
+                {
+                    if (firstParam != null)
+                        throw new Exception($"Return type of pass through postfix {postfix} does not match type of its first parameter");
+                    // TODO: Make the error more understandable
+                    throw new Exception($"Postfix patch {postfix} must have a \"void\" return type");
+                }
+            }
         }
 
         private static void WritePrefixes(ILContext ctx, MethodBase original, Instruction returnLabel, Dictionary<string, VariableDefinition> variables, List<MethodInfo> prefixes)
@@ -128,7 +172,7 @@ namespace HarmonyLib.Internal.CIL
                 }
 
                 WritePrefixes(ctx, original, returnLabel, variables, prefixes);
-                WritePostfixes(ctx, original, postfixes);
+                WritePostfixes(ctx, original, variables, postfixes);
                 WriteFinalizers(ctx, original, finalizers);
             }
             catch (Exception e)
