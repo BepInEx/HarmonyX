@@ -14,6 +14,66 @@ namespace HarmonyLib.Internal.Patching
 {
     internal static class ILExtensions
     {
+        public class ExceptionBlock
+        {
+            public Instruction start, skip;
+            public ExceptionHandler prev, cur;
+        }
+
+        public static ExceptionBlock BeginExceptionBlock(this ILProcessor il, Instruction start)
+        {
+            return new ExceptionBlock { start = start};
+        }
+
+        public static void EndExceptionBlock(this ILProcessor il, Instruction before, ExceptionBlock block)
+        {
+            il.EndHandler(before, block, block.cur);
+        }
+
+        public static ExceptionHandler BeginHandler(this ILProcessor il, Instruction before, ExceptionBlock block, ExceptionHandlerType handlerType)
+        {
+            var prev = (block.prev = block.cur);
+            if (prev != null)
+                il.EndHandler(before, block, prev);
+
+            var skipAllIns = il.Create(Mono.Cecil.Cil.OpCodes.Nop);
+
+            il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Leave, skipAllIns);
+
+            var handlerIns = il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Nop);
+            var next = new ExceptionHandler(0)
+            {
+                TryStart = block.start,
+                TryEnd = handlerIns,
+                HandlerType = handlerType
+            };
+            if (handlerType == ExceptionHandlerType.Filter)
+                next.FilterStart = handlerIns;
+            else
+                next.HandlerStart = handlerIns;
+
+            return next;
+        }
+
+        public static void EndHandler(this ILProcessor il, Instruction before, ExceptionBlock block, ExceptionHandler handler)
+        {
+            switch (handler.HandlerType)
+            {
+                case ExceptionHandlerType.Filter:
+                    il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Endfilter);
+                    break;
+                case ExceptionHandlerType.Finally:
+                    il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Endfinally);
+                    break;
+                default:
+                    il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Leave, block.skip);
+                    break;
+            }
+
+            il.InsertBefore(before, block.skip);
+            handler.HandlerEnd = block.skip;
+        }
+
         public static VariableDefinition DeclareVariable(this ILProcessor il, Type type)
         {
             var varDef = new VariableDefinition(il.Import(type));
@@ -21,9 +81,11 @@ namespace HarmonyLib.Internal.Patching
             return varDef;
         }
 
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode)
+        public static Instruction EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode)
         {
-            il.InsertBefore(ins, il.Create(opcode));
+            var newIns = il.Create(opcode);
+            il.InsertBefore(ins, newIns);
+            return newIns;
         }
 
         public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, ConstructorInfo cInfo)

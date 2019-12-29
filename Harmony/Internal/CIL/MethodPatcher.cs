@@ -138,9 +138,114 @@ namespace HarmonyLib.Internal.CIL
             }
         }
 
-        private static void WriteFinalizers(ILContext ctx, MethodBase original, List<MethodInfo> postfixes)
+        private static void WriteFinalizers(ILContext ctx, MethodBase original, Dictionary<string, VariableDefinition> variables, List<MethodInfo> finalizers)
         {
+            // Finalizer layout:
+            // Create __exception variable to store exception info and a skip flag
+            // Wrap the whole method into a try/catch
+            // Call finalizers at the end of method (simulate `finally`)
+            // If __exception got set, throw it
+            // Begin catch block
+            // Store exception into __exception
+            // If skip flag is set, skip finalizers
+            // Call finalizers
+            // If __exception is still set, rethrow (if new exception set, otherwise throw the new exception)
+            // End catch block
 
+            // We do this if CecilILGenerator since it's much, much easier
+
+            if (finalizers.Count == 0)
+                return;
+
+            // Create variables
+            var skipFinalizersVar = ctx.IL.DeclareVariable(typeof(bool));
+            variables[EXCEPTION_VAR] = ctx.IL.DeclareVariable(typeof(Exception));
+
+            // Start main exception block
+            var mainExceptionBlock = ctx.IL.BeginExceptionBlock(ctx.Instrs[0]);
+
+            // Grab the `ret` instruction and start putting stuff before it
+            var ins = ctx.Instrs[ctx.Instrs.Count - 1];
+
+            bool WriteFinalizerCalls(bool suppressExceptions)
+            {
+                var canRethrow = true;
+
+                foreach (var finalizer in finalizers)
+                {
+                    var startIns = ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Nop);
+
+                    EmitCallParameter(ins, ctx, original, finalizer, variables, false);
+                    ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Call, finalizer);
+
+                    if (finalizer.ReturnType != typeof(void))
+                    {
+                        ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, variables[EXCEPTION_VAR]);
+                        canRethrow = false;
+                    }
+
+                    if (suppressExceptions)
+                    {
+                        var block = ctx.IL.BeginExceptionBlock(startIns);
+                        var catchHandler = ctx.IL.BeginHandler(ins, block, ExceptionHandlerType.Catch);
+                        catchHandler.CatchType = ctx.Import(typeof(object));
+                        ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Pop);
+                        ctx.IL.EndExceptionBlock(ins, block);
+                    }
+                }
+
+                return canRethrow;
+            }
+
+            // Write finalizers inside the `try`
+            WriteFinalizerCalls(false);
+
+            // Mark finalizers as skipped so they won't rerun
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldc_I4_1);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, skipFinalizersVar);
+
+            var skipExceptionsTarget = ctx.IL.Create(Mono.Cecil.Cil.OpCodes.Nop);
+            // If __exception is not null, throw
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Brfalse, skipExceptionsTarget);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Throw);
+            ctx.IL.InsertBefore(ins, skipExceptionsTarget);
+
+            // Begin a generic `catch(object o)` here and capture exception into __exception
+            var mainHandler = ctx.IL.BeginHandler(ins, mainExceptionBlock, ExceptionHandlerType.Catch);
+            mainHandler.CatchType = ctx.Import(typeof(Exception));
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, variables[EXCEPTION_VAR]);
+
+            // Call finalizers or skip them if needed
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, skipFinalizersVar);
+            var finalizersEndTarget = ctx.IL.Create(Mono.Cecil.Cil.OpCodes.Nop);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Brtrue, finalizersEndTarget);
+
+            var rethrowPossible = WriteFinalizerCalls(true);
+
+            ctx.IL.InsertBefore(ins, finalizersEndTarget);
+
+            // Possibly rethrow if __exception is still not null (i.e. suppressed)
+            skipExceptionsTarget = ctx.IL.Create(Mono.Cecil.Cil.OpCodes.Nop);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Brfalse, skipExceptionsTarget);
+            if (rethrowPossible)
+            {
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Rethrow);
+            }
+            else
+            {
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Throw);
+            }
+
+            ctx.IL.InsertBefore(ins, skipExceptionsTarget);
+
+            // end the main exception block
+            ctx.IL.EndExceptionBlock(ins, mainExceptionBlock);
+
+            // The possible return value should still exist on the stack
         }
 
         public static void MakePatched(MethodBase original, MethodBase source, ILContext ctx, List<MethodInfo> prefixes,
@@ -173,7 +278,7 @@ namespace HarmonyLib.Internal.CIL
 
                 WritePrefixes(ctx, original, returnLabel, variables, prefixes);
                 WritePostfixes(ctx, original, variables, postfixes);
-                WriteFinalizers(ctx, original, finalizers);
+                WriteFinalizers(ctx, original, variables, finalizers);
             }
             catch (Exception e)
             {
