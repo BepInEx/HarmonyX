@@ -50,9 +50,9 @@ namespace HarmonyLib.Internal.Patching
             lock (patchInfo)
             {
                 prefixesArr = patchInfo.prefixes.ToArray();
-                postfixesArr = patchInfo.prefixes.ToArray();
-                transpilersArr = patchInfo.prefixes.ToArray();
-                finalizersArr = patchInfo.prefixes.ToArray();
+                postfixesArr = patchInfo.postfixes.ToArray();
+                transpilersArr = patchInfo.transpilers.ToArray();
+                finalizersArr = patchInfo.finalizers.ToArray();
             }
 
             prefixes = GetSortedPatchMethods(original, prefixesArr);
