@@ -71,7 +71,7 @@ namespace HarmonyLib.Internal.CIL
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
                 var retVal = AccessTools.GetReturnedType(original);
-                returnValueVar =  retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
             }
 
             // Get the last instruction (expected to be `ret`)
@@ -122,7 +122,7 @@ namespace HarmonyLib.Internal.CIL
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
                 var retVal = AccessTools.GetReturnedType(original);
-                returnValueVar =  retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
             }
 
             var ins = ctx.Instrs.First(); // Grab the instruction from the top of the method
