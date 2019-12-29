@@ -65,6 +65,9 @@ namespace HarmonyLib.Internal.CIL
             // Call postfixes that modify return values by __return
             // Call postfixes that modify return values by chaining
 
+            if (postfixes.Count == 0)
+                return;
+
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
                 var retVal = AccessTools.GetReturnedType(original);
@@ -112,6 +115,9 @@ namespace HarmonyLib.Internal.CIL
             // Make return value (if needed) into a variable
             // Call prefixes
             // If prefix returns true, load return value onto stack and branch into return label => simulates return value
+
+            if (prefixes.Count == 0)
+                return;
 
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
