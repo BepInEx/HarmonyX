@@ -209,20 +209,21 @@ namespace HarmonyLib.Internal.Patching
             {
                 case ExceptionBlockType.BeginExceptionBlock:
                     label = il.BeginExceptionBlock();
-                    break;
+                    return;
                 case ExceptionBlockType.BeginCatchBlock:
                     il.BeginCatchBlock(block.catchType);
-                    break;
+                    return;
                 case ExceptionBlockType.BeginExceptFilterBlock:
                     il.BeginExceptFilterBlock();
-                    break;
+                    return;
                 case ExceptionBlockType.BeginFaultBlock:
                     il.BeginFaultBlock();
-                    break;
+                    return;
                 case ExceptionBlockType.BeginFinallyBlock:
                     il.BeginFinallyBlock();
-                    break;
+                    return;
                 case ExceptionBlockType.EndExceptionBlock:
+                    return;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
