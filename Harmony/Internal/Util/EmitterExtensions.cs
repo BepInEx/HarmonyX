@@ -82,6 +82,13 @@ namespace HarmonyLib.Internal.Util
             return varDef;
         }
 
+        public static Type OpenRefType(this Type t)
+        {
+            if (t.IsByRef)
+                return t.GetElementType();
+            return t;
+        }
+
         public static Instruction EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode)
         {
             var newIns = il.Create(opcode);
@@ -130,7 +137,6 @@ namespace HarmonyLib.Internal.Util
         private static DynamicMethodDefinition emitDMD;
         private static MethodInfo emitDMDMethod;
         private static Action<CecilILGenerator, OpCode, object> emitCodeDelegate;
-        private static AccessTools.FieldRef<CecilILGenerator, Dictionary<LocalBuilder, VariableDefinition>> cilVars;
 
         [MethodImpl(MethodImplOptions.Synchronized)]
         static EmitterExtensions()
@@ -138,9 +144,6 @@ namespace HarmonyLib.Internal.Util
             if (emitDMD != null)
                 return;
             InitEmitterHelperDMD();
-            cilVars =
-                AccessTools
-                    .FieldRefAccess<CecilILGenerator, Dictionary<LocalBuilder, VariableDefinition>>("_Variables");
         }
 
         private static void InitEmitterHelperDMD()
@@ -240,7 +243,7 @@ namespace HarmonyLib.Internal.Util
 
         public static LocalBuilder GetLocal(this CecilILGenerator il, VariableDefinition varDef)
         {
-            var vars = cilVars(il);
+            var vars = (Dictionary<LocalBuilder, VariableDefinition>) AccessTools.Field(typeof(CecilILGenerator), "_Variables").GetValue(il);
             var loc = vars.FirstOrDefault(kv => kv.Value == varDef).Key;
             if (loc != null)
                 return loc;

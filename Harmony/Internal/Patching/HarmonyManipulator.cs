@@ -376,7 +376,7 @@ namespace HarmonyLib.Internal.Patching
                     if (nfix.DeclaringType != null && variables.ContainsKey(nfix.DeclaringType.FullName) == false)
                         foreach (var patchParam in nfix
                                                    .GetParameters().Where(patchParam => patchParam.Name == STATE_VAR))
-                            variables[nfix.DeclaringType.FullName] = ctx.IL.DeclareVariable(patchParam.ParameterType);
+                            variables[nfix.DeclaringType.FullName] = ctx.IL.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 
                 WritePrefixes(ctx, original, returnLabel, variables, prefixes);
                 WritePostfixes(ctx, original, variables, postfixes);
