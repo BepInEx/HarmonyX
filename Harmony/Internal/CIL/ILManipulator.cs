@@ -10,6 +10,8 @@ using MonoMod.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
+using OpCode = Mono.Cecil.Cil.OpCode;
+using OpCodes = Mono.Cecil.Cil.OpCodes;
 using OperandType = Mono.Cecil.Cil.OperandType;
 using SRE = System.Reflection.Emit;
 
@@ -21,6 +23,8 @@ namespace HarmonyLib.Internal.CIL
     internal class ILManipulator
     {
         private static readonly Dictionary<short, SRE.OpCode> SREOpCodes = new Dictionary<short, SRE.OpCode>();
+        private static readonly Dictionary<short, OpCode> CecilOpCodes = new Dictionary<short, OpCode>();
+
 
         static ILManipulator()
         {
@@ -28,6 +32,12 @@ namespace HarmonyLib.Internal.CIL
             {
                 var sreOpCode = (SRE.OpCode) field.GetValue(null);
                 SREOpCodes[sreOpCode.Value] = sreOpCode;
+            }
+
+            foreach (var field in typeof(OpCodes).GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                var cecilOpCode = (OpCode) field.GetValue(null);
+                CecilOpCodes[cecilOpCode.Value] = cecilOpCode;
             }
         }
 
@@ -42,6 +52,16 @@ namespace HarmonyLib.Internal.CIL
         public ILManipulator(MethodBody body, MethodBase original = null)
         {
             codeInstructions = ReadBody(body, original);
+        }
+
+        private int GetStaticIndex(ParameterInfo pInfo)
+        {
+            var isStatic = false;
+            if (pInfo.Member is MethodInfo mi)
+                isStatic = mi.IsStatic;
+            else if (pInfo.Member is ConstructorInfo ci)
+                isStatic = ci.IsStatic;
+            return isStatic ? pInfo.Position : pInfo.Position + 1;
         }
 
         private IEnumerable<CodeInstruction> ReadBody(MethodBody body, MethodBase original = null)
@@ -62,16 +82,13 @@ namespace HarmonyLib.Internal.CIL
                     case OperandType.InlineTok:
                         cIns.ilOperand = ((MemberReference) ins.Operand).ResolveReflection();
                         break;
-                    case OperandType.InlineArg:
-                        break;
                     case OperandType.InlineVar:
                     case OperandType.ShortInlineVar:
-                        var varDef = (VariableDefinition) ins.Operand;
-                        cIns.ilOperand = locals.FirstOrDefault(l => l.LocalIndex == varDef.Index);
+                        cIns.ilOperand = (VariableDefinition) ins.Operand;
                         break;
+                    case OperandType.InlineArg:
                     case OperandType.ShortInlineArg:
-                        var pDef = (ParameterDefinition) ins.Operand;
-                        cIns.ilOperand = mParams.First(p => p.Position == pDef.Index);
+                        cIns.ilOperand = ((ParameterDefinition) ins.Operand).Index;
                         break;
                     case OperandType.InlineBrTarget:
                     case OperandType.ShortInlineBrTarget:
@@ -202,6 +219,13 @@ namespace HarmonyLib.Internal.CIL
 
                 switch (codeInstruction.opcode.OperandType)
                 {
+                    case SRE.OperandType.InlineVar:
+                    case SRE.OperandType.ShortInlineVar:
+                    {
+                        if (codeInstruction.ilOperand is VariableDefinition varDef)
+                            codeInstruction.operand = il.GetLocal(varDef);
+                    }
+                        break;
                     case SRE.OperandType.InlineSwitch when codeInstruction.ilOperand is CodeInstruction[] targets:
                     {
                         var labels = new List<Label>();
@@ -244,6 +268,7 @@ namespace HarmonyLib.Internal.CIL
                 // We do that only if we add prefixes/postfixes
                 // We also don't need to care for long/short forms thanks to Cecil/MonoMod
 
+                // Temporary fix: CecilILGenerator doesn't properly handle ldarg
                 switch (ins.opcode.OperandType)
                 {
                     case SRE.OperandType.InlineNone:
@@ -255,7 +280,13 @@ namespace HarmonyLib.Internal.CIL
                     default:
                         if (ins.operand == null)
                             throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
-                        il.Emit(ins.opcode, ins.operand);
+
+                        // TODO: Remove this fix once MonoMod fixes its ILGenerator
+                        var cecilOpCode = CecilOpCodes[ins.opcode.Value];
+                        if(cecilOpCode.OperandType == OperandType.InlineArg || cecilOpCode.OperandType == OperandType.ShortInlineArg)
+                            il.IL.Emit(cecilOpCode, body.Method.Parameters[(int)ins.operand]);
+                        else
+                            il.Emit(ins.opcode, ins.operand);
                         break;
                 }
 
