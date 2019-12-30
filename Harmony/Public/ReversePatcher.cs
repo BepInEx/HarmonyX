@@ -48,10 +48,11 @@ namespace HarmonyLib
             if (original == null)
                 throw new NullReferenceException("Null method for " + instance.Id);
 
-            var transpiler = GetTranspiler(standin);
+            // var transpiler = GetTranspiler(standin);
 
             // TODO: Add ILHook to this
-            PatchFunctions.ReversePatch(standin, original, instance.Id, transpiler);
+            throw new NotImplementedException("Not ported to ILHooks yet");
+            // PatchFunctions.ReversePatch(standin, original, instance.Id, transpiler);
         }
 
         internal MethodInfo GetTranspiler(MethodInfo method)
