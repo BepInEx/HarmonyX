@@ -265,7 +265,7 @@ namespace HarmonyLib
 
                     patchInfo.RemovePatch(patch);
 
-                    ilHook.MarkApply(false).Apply();
+                    ilHook.MarkApply(true).Apply();
 
                     // TODO: Remove
                     // PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
