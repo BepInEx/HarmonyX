@@ -55,6 +55,24 @@ namespace HarmonyLib
             PrepareType();
         }
 
+        /// <summary>Creates a patch processor</summary>
+        /// <param name="instance">The Harmony instance.</param>
+        /// <param name="originals">The original methods</param>
+        /// <param name="prefix">The optional prefix.</param>
+        /// <param name="postfix">The optional postfix.</param>
+        /// <param name="transpiler">The optional transpiler.</param>
+        /// <param name="finalizer">The optional finalizer.</param>
+        [Obsolete("Use other constructors and Add* methods")]
+        public PatchProcessor(Harmony instance, List<MethodBase> originals, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null, HarmonyMethod finalizer = null)
+        {
+            this.instance = instance;
+            this.originals = originals;
+            this.prefix = prefix;
+            this.postfix = postfix;
+            this.transpiler = transpiler;
+            this.finalizer = finalizer;
+        }
+
         /// <summary>Add an original method</summary>
         /// <param name="original">The method that will be patched.</param>
         ///
@@ -205,9 +223,6 @@ namespace HarmonyLib
 
                         ilHook.MarkApply(true).Apply();
 
-                        // TODO: Remove
-                        // dynamicMethods.Add(PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id));
-
                         RunMethod<HarmonyCleanup>(original);
                     }
                 }
@@ -242,9 +257,6 @@ namespace HarmonyLib
                     }
 
                     ilHook.MarkApply(true).Apply();
-
-                    // TODO: Remove
-                    // PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
                 }
             }
 
@@ -266,9 +278,6 @@ namespace HarmonyLib
                     patchInfo.RemovePatch(patch);
 
                     ilHook.MarkApply(true).Apply();
-
-                    // TODO: Remove
-                    // PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
                 }
             }
 
