@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -22,7 +23,7 @@ namespace HarmonyLib.Internal.Patching
 
         public static ExceptionBlock BeginExceptionBlock(this ILProcessor il, Instruction start)
         {
-            return new ExceptionBlock { start = start};
+            return new ExceptionBlock { start = start };
         }
 
         public static void EndExceptionBlock(this ILProcessor il, Instruction before, ExceptionBlock block)
@@ -36,23 +37,24 @@ namespace HarmonyLib.Internal.Patching
             if (prev != null)
                 il.EndHandler(before, block, prev);
 
-            var skipAllIns = il.Create(Mono.Cecil.Cil.OpCodes.Nop);
+            block.skip = il.Create(Mono.Cecil.Cil.OpCodes.Nop);
 
-            il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Leave, skipAllIns);
+            il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Leave, block.skip);
 
             var handlerIns = il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Nop);
-            var next = new ExceptionHandler(0)
+            block.cur = new ExceptionHandler(0)
             {
                 TryStart = block.start,
                 TryEnd = handlerIns,
                 HandlerType = handlerType
             };
             if (handlerType == ExceptionHandlerType.Filter)
-                next.FilterStart = handlerIns;
+                block.cur.FilterStart = handlerIns;
             else
-                next.HandlerStart = handlerIns;
+                block.cur.HandlerStart = handlerIns;
 
-            return next;
+            il.Body.ExceptionHandlers.Add(block.cur);
+            return block.cur;
         }
 
         public static void EndHandler(this ILProcessor il, Instruction before, ExceptionBlock block, ExceptionHandler handler)
@@ -129,6 +131,7 @@ namespace HarmonyLib.Internal.Patching
         private static DynamicMethodDefinition emitDMD;
         private static MethodInfo emitDMDMethod;
         private static Action<CecilILGenerator, OpCode, object> emitCodeDelegate;
+        private static AccessTools.FieldRef<CecilILGenerator, Dictionary<LocalBuilder, VariableDefinition>> cilVars;
 
         [MethodImpl(MethodImplOptions.Synchronized)]
         static EmitterExtensions()
@@ -136,6 +139,9 @@ namespace HarmonyLib.Internal.Patching
             if (emitDMD != null)
                 return;
             InitEmitterHelperDMD();
+            cilVars =
+                AccessTools
+                    .FieldRefAccess<CecilILGenerator, Dictionary<LocalBuilder, VariableDefinition>>("_Variables");
         }
 
         private static void InitEmitterHelperDMD()
@@ -231,6 +237,18 @@ namespace HarmonyLib.Internal.Patching
         {
             if (block.blockType == ExceptionBlockType.EndExceptionBlock)
                 il.EndExceptionBlock();
+        }
+
+        public static LocalBuilder GetLocal(this CecilILGenerator il, VariableDefinition varDef)
+        {
+            var vars = cilVars(il);
+            var loc = vars.FirstOrDefault(kv => kv.Value == varDef).Key;
+            if (loc != null)
+                return loc;
+            loc = il.DeclareLocal(varDef.VariableType.ResolveReflection());
+            il.IL.Body.Variables.Remove(vars[loc]);
+            vars[loc] = varDef;
+            return loc;
         }
     }
 }
