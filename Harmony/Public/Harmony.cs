@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal;
-using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 
 namespace HarmonyLib
 {
@@ -30,6 +30,8 @@ namespace HarmonyLib
         public Harmony(string id)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentException(nameof(id) + " cannot be null or empty");
+
+            DMDPostbuildExtension.Install();
 
             if (DEBUG)
             {
