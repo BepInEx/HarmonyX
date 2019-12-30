@@ -171,8 +171,6 @@ namespace HarmonyLibTests
         [SetUp]
         public void SetUp()
         {
-            Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "mb");
-            Environment.SetEnvironmentVariable("MONOMOD_DMD_DUMP", "C:\\mmdump");
             var testMethod = TestContext.CurrentContext.Test.Name;
             var parts = testMethod.Split('_');
             var originalType = AccessTools.TypeByName("HarmonyLibTests.Assets." + parts[1]);
