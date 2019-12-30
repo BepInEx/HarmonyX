@@ -2,6 +2,7 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 using NUnit.Framework;
 
 namespace HarmonyLibTests
@@ -62,7 +63,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {0, 1, 2};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -89,7 +90,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {8, 7, 6, 5, 4, 3, 2, 1, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -112,7 +113,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {3, 2, 4, 0, 1};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -134,7 +135,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {1, 2, 3, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -159,7 +160,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {0, 2, 3, 1, 4};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -182,7 +183,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {0, 1, 2, 3, 4};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -205,7 +206,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {4, 3, 2, 1, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -227,7 +228,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {2, 1, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -249,7 +250,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {2, 1, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -276,7 +277,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {4, 3, 5, 7, 6, 2, 1, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -304,7 +305,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {4, 3, 5, 7, 6, 2, 1, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");
@@ -326,7 +327,7 @@ namespace HarmonyLibTests
             };
 
             var expectedOrder = new[] {1, 2, 0};
-            var methods = PatchFunctions.GetSortedPatchMethods(null, patchInstances);
+            var methods = patchInstances.Sort();
             for (var i = 0; i < expectedOrder.Length; i++)
                 Assert.AreSame(patches[expectedOrder[i]], methods[i],
                                $"#{i} Expected: {patches[expectedOrder[i]].FullDescription()}, Got: {methods[i].FullDescription()}");

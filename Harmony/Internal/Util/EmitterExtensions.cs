@@ -4,14 +4,13 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
 using OpCode = System.Reflection.Emit.OpCode;
 using OpCodes = System.Reflection.Emit.OpCodes;
 
-namespace HarmonyLib.Internal.Patching
+namespace HarmonyLib.Internal.Util
 {
     internal static class ILExtensions
     {

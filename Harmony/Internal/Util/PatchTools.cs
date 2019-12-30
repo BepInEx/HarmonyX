@@ -4,17 +4,10 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace HarmonyLib.Internal.Patching
+namespace HarmonyLib.Internal.Util
 {
     internal static class PatchTools
     {
-        private static readonly Dictionary<object, object> objectReferences = new Dictionary<object, object>();
-
-        internal static void RememberObject(object key, object value)
-        {
-            objectReferences[key] = value;
-        }
-
         internal static MethodInfo GetPatchMethod<T>(Type patchType, string name)
         {
             var attributeType = typeof(T).FullName;

@@ -1,10 +1,7 @@
 using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using HarmonyLib.Internal.Native;
+using MonoMod.RuntimeDetour;
 
 namespace HarmonyLibTests
 {
@@ -62,10 +59,7 @@ namespace HarmonyLibTests
             patcher.AddPostfix(postfix);
             patcher.AddTranspiler(transpiler);
 
-            var originalMethodStartPre = Memory.GetMethodStart(originalMethod, out var _);
             patcher.Patch();
-            var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out var _);
-            Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
             // unsafe
             // {
             //     var patchedCode = *(byte*) originalMethodStartPre;
@@ -108,10 +102,7 @@ namespace HarmonyLibTests
             patcher.AddPostfix(postfix);
             patcher.AddTranspiler(transpiler);
 
-            var originalMethodStartPre = Memory.GetMethodStart(originalMethod, out var _);
             patcher.Patch();
-            var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out var _);
-            Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
             // unsafe
             // {
             //     var patchedCode = *(byte*) originalMethodStartPre;
@@ -148,10 +139,7 @@ namespace HarmonyLibTests
             Assert.IsNotNull(patcher);
             patcher.AddPrefix(prefix);
 
-            var originalMethodStartPre = Memory.GetMethodStart(originalMethod, out var _);
             patcher.Patch();
-            var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out var _);
-            Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
             // unsafe
             // {
             //     var patchedCode = *(byte*) originalMethodStartPre;

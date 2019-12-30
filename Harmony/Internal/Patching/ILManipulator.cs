@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -15,15 +14,18 @@ using OpCodes = Mono.Cecil.Cil.OpCodes;
 using OperandType = Mono.Cecil.Cil.OperandType;
 using SRE = System.Reflection.Emit;
 
-namespace HarmonyLib.Internal.CIL
+namespace HarmonyLib.Internal.Patching
 {
     /// <summary>
-    /// High-level IL code manipulator for MonoMod that allows to manipulate a method as a stream of CodeInstructions.
+    ///     High-level IL code manipulator for MonoMod that allows to manipulate a method as a stream of CodeInstructions.
     /// </summary>
     internal class ILManipulator
     {
         private static readonly Dictionary<short, SRE.OpCode> SREOpCodes = new Dictionary<short, SRE.OpCode>();
         private static readonly Dictionary<short, OpCode> CecilOpCodes = new Dictionary<short, OpCode>();
+
+        private readonly IEnumerable<CodeInstruction> codeInstructions;
+        private readonly List<MethodInfo> transpilers = new List<MethodInfo>();
 
 
         static ILManipulator()
@@ -41,11 +43,8 @@ namespace HarmonyLib.Internal.CIL
             }
         }
 
-        private readonly IEnumerable<CodeInstruction> codeInstructions;
-        private List<MethodInfo> transpilers = new List<MethodInfo>();
-
         /// <summary>
-        /// Initialize IL transpiler
+        ///     Initialize IL transpiler
         /// </summary>
         /// <param name="body">Body of the method to transpile</param>
         /// <param name="original">Original method. Used to resolve locals and parameters</param>
@@ -156,7 +155,7 @@ namespace HarmonyLib.Internal.CIL
         }
 
         /// <summary>
-        /// Adds a transpiler method that edits the IL of the given method
+        ///     Adds a transpiler method that edits the IL of the given method
         /// </summary>
         /// <param name="transpiler">Transpiler method</param>
         /// <exception cref="NotImplementedException">Currently not implemented</exception>
@@ -165,13 +164,13 @@ namespace HarmonyLib.Internal.CIL
             transpilers.Add(transpiler);
         }
 
-        private object[] GetTranpilerArguments(ILGenerator il, MethodInfo transpiler,
+        private object[] GetTranpilerArguments(SRE.ILGenerator il, MethodInfo transpiler,
                                                IEnumerable<CodeInstruction> instructions, MethodBase orignal = null)
         {
             var result = new List<object>();
 
             foreach (var type in transpiler.GetParameters().Select(p => p.ParameterType))
-                if (type.IsAssignableFrom(typeof(ILGenerator)))
+                if (type.IsAssignableFrom(typeof(SRE.ILGenerator)))
                     result.Add(il);
                 else if (type.IsAssignableFrom(typeof(MethodBase)) && orignal != null)
                     result.Add(orignal);
@@ -181,7 +180,7 @@ namespace HarmonyLib.Internal.CIL
             return result.ToArray();
         }
 
-        private List<CodeInstruction> ApplyTranspilers(ILGenerator il, MethodBase original = null)
+        private List<CodeInstruction> ApplyTranspilers(SRE.ILGenerator il, MethodBase original = null)
         {
             var tempInstructions = codeInstructions;
 
@@ -195,12 +194,15 @@ namespace HarmonyLib.Internal.CIL
         }
 
         /// <summary>
-        /// Processes and writes IL to the provided method body.
-        /// Note that this cleans the existing method body (removes insturctions and exception handlers).
+        ///     Processes and writes IL to the provided method body.
+        ///     Note that this cleans the existing method body (removes insturctions and exception handlers).
         /// </summary>
         /// <param name="body">Method body to write to.</param>
         /// <param name="original">Original method that transpiler can optionally call into</param>
-        /// <exception cref="NotSupportedException">One of IL opcodes contains a CallSide (e.g. calli), which is currently not fully supported.</exception>
+        /// <exception cref="NotSupportedException">
+        ///     One of IL opcodes contains a CallSide (e.g. calli), which is currently not
+        ///     fully supported.
+        /// </exception>
         /// <exception cref="ArgumentNullException">One of IL opcodes with an operand contains a null operand.</exception>
         public void WriteTo(MethodBody body, MethodBase original = null)
         {
@@ -228,7 +230,7 @@ namespace HarmonyLib.Internal.CIL
                         break;
                     case SRE.OperandType.InlineSwitch when codeInstruction.ilOperand is CodeInstruction[] targets:
                     {
-                        var labels = new List<Label>();
+                        var labels = new List<SRE.Label>();
                         foreach (var target in targets)
                         {
                             var label = il.DefineLabel();
@@ -283,8 +285,9 @@ namespace HarmonyLib.Internal.CIL
 
                         // TODO: Remove this fix once MonoMod fixes its ILGenerator
                         var cecilOpCode = CecilOpCodes[ins.opcode.Value];
-                        if(cecilOpCode.OperandType == OperandType.InlineArg || cecilOpCode.OperandType == OperandType.ShortInlineArg)
-                            il.IL.Emit(cecilOpCode, body.Method.Parameters[(int)ins.operand]);
+                        if (cecilOpCode.OperandType == OperandType.InlineArg ||
+                            cecilOpCode.OperandType == OperandType.ShortInlineArg)
+                            il.IL.Emit(cecilOpCode, body.Method.Parameters[(int) ins.operand]);
                         else
                             il.Emit(ins.opcode, ins.operand);
                         break;
