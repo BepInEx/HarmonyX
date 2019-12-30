@@ -114,7 +114,7 @@ namespace HarmonyLib.Internal.CIL
             // Prefix layout:
             // Make return value (if needed) into a variable
             // Call prefixes
-            // If prefix returns true, load return value onto stack and branch into return label => simulates return value
+            // If method returns a value, add additional logic to allow skipping original method
 
             if (prefixes.Count == 0)
                 return;
@@ -124,6 +124,15 @@ namespace HarmonyLib.Internal.CIL
                 var retVal = AccessTools.GetReturnedType(original);
                 returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
             }
+
+            // Flag to check if the orignal method should be run (or was run)
+            // Only present if method has a return value and there are prefixes that modify control flow
+            var runOriginal = returnValueVar != null && prefixes.Any(p => p.ReturnType == typeof(bool))
+                ? ctx.IL.DeclareVariable(typeof(bool))
+                : null;
+
+            // If runOriginal flag exists, we need to add more logic to the method end
+            var postProcessTarget = runOriginal != null ? ctx.IL.Create(Mono.Cecil.Cil.OpCodes.Nop) : returnLabel;
 
             var ins = ctx.Instrs.First(); // Grab the instruction from the top of the method
             foreach (var prefix in prefixes)
@@ -136,12 +145,27 @@ namespace HarmonyLib.Internal.CIL
                     if(prefix.ReturnType != typeof(bool))
                             throw new Exception($"Prefix patch {prefix} has not \"bool\" or \"void\" return type: {prefix.ReturnType}");
 
-                    // If we skip, load the result onto the stack so as to simulate a "normal return"
-                    if(returnValueVar != null)
-                        ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, returnValueVar);
-                    ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Brfalse, returnLabel);
+                    if (runOriginal != null)
+                    {
+                        ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Dup);
+                        ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, runOriginal);
+                    }
+                    ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Brfalse, postProcessTarget);
                 }
             }
+
+            if (runOriginal == null)
+                return;
+
+            // Finally, ensure the stack is consistent when branching to `ret`:
+            // If skip original method => return value not on stack => do nothing
+            // If run original method =>  return value on stack     => pop return value from stack
+            // Finally, load return value onto stack
+
+            ins = ctx.Instrs[ctx.Instrs.Count - 1];
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, returnValueVar);
+            ctx.IL.InsertBefore(ins, postProcessTarget);
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, returnValueVar);
         }
 
         private static void WriteFinalizers(ILContext ctx, MethodBase original, Dictionary<string, VariableDefinition> variables, List<MethodInfo> finalizers)
@@ -162,6 +186,12 @@ namespace HarmonyLib.Internal.CIL
 
             if (finalizers.Count == 0)
                 return;
+
+            if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
+            {
+                var retVal = AccessTools.GetReturnedType(original);
+                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+            }
 
             // Create variables
             var skipFinalizersVar = ctx.IL.DeclareVariable(typeof(bool));
@@ -202,6 +232,10 @@ namespace HarmonyLib.Internal.CIL
 
                 return canRethrow;
             }
+
+            // First, store potential result into a variable and empty the stack
+            if (returnValueVar != null)
+                ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Stloc, returnValueVar);
 
             // Write finalizers inside the `try`
             WriteFinalizerCalls(false);
@@ -251,7 +285,8 @@ namespace HarmonyLib.Internal.CIL
             // end the main exception block
             ctx.IL.EndExceptionBlock(ins, mainExceptionBlock);
 
-            // The possible return value should still exist on the stack
+            // Push return value back to the stack
+            ctx.IL.EmitBefore(ins, Mono.Cecil.Cil.OpCodes.Ldloc, returnValueVar);
         }
 
         public static void MakePatched(MethodBase original, MethodBase source, ILContext ctx, List<MethodInfo> prefixes,
