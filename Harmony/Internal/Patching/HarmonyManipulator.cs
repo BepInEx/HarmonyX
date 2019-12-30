@@ -82,6 +82,9 @@ namespace HarmonyLib.Internal.Patching
 
         private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<MethodInfo> transpilers)
         {
+            if (transpilers.Count == 0)
+                return;
+
             // Create a high-level manipulator for the method
             var manipulator = new ILManipulator(ctx.Body, original);
 
