@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 
 namespace HarmonyLib
 {

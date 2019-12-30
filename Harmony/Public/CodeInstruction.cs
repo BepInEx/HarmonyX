@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
-using HarmonyLib.Internal.CIL;
 
 namespace HarmonyLib
 {
@@ -20,6 +20,8 @@ namespace HarmonyLib
         /// <summary>All exception block boundaries defined on this instruction</summary>
         public List<ExceptionBlock> blocks = new List<ExceptionBlock>();
 
+        internal object ilOperand;
+
         /// <summary>Creates a new CodeInstruction with a given opcode and optional operand</summary>
         /// <param name="opcode">The code</param>
         /// <param name="operand">The operand</param>
@@ -28,6 +30,7 @@ namespace HarmonyLib
         {
             this.opcode = opcode;
             this.operand = operand;
+            ilOperand = operand;
         }
 
         /// <summary>Create a full copy (including labels and exception blocks) of a CodeInstruction</summary>
@@ -37,6 +40,7 @@ namespace HarmonyLib
         {
             opcode = instruction.opcode;
             operand = instruction.operand;
+            ilOperand = instruction.ilOperand;
             labels = instruction.labels.ToArray().ToList();
             blocks = instruction.blocks.ToArray().ToList();
         }
@@ -87,9 +91,30 @@ namespace HarmonyLib
                 list.Add("EX_" + block.blockType.ToString().Replace("Block", ""));
 
             var extras = list.Count > 0 ? " [" + string.Join(", ", list.ToArray()) + "]" : "";
-            var operandStr = Emitter.FormatArgument(operand);
+            var operandStr = FormatArgument(operand);
             if (operandStr != "") operandStr = " " + operandStr;
             return opcode + operandStr + extras;
+        }
+
+        private static string FormatArgument(object argument)
+        {
+            if (argument == null) return "NULL";
+            var type = argument.GetType();
+
+            if (argument is MethodInfo method)
+                return method.FullDescription();
+
+            if (type == typeof(string))
+                return "\"" + argument + "\"";
+            if (type == typeof(Label))
+                return "Label" + ((Label) argument).GetHashCode();
+            if (type == typeof(Label[]))
+                return "Labels" + string.Join(
+                           ",", ((Label[]) argument).Select(l => l.GetHashCode().ToString()).ToArray());
+            if (type == typeof(LocalBuilder))
+                return ((LocalBuilder) argument).LocalIndex + " (" + ((LocalBuilder) argument).LocalType + ")";
+
+            return argument.ToString().Trim();
         }
     }
 }

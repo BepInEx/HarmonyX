@@ -19,7 +19,7 @@ namespace HarmonyLib
         public static bool DEBUG;
 
         /// <summary>Set to false before instantiating Harmony to prevent Harmony from patching other older instances of itself</summary>
-        public static bool SELF_PATCHING = true;
+        public static bool SELF_PATCHING = false;
 
         private static bool selfPatchingDone;
 
@@ -52,7 +52,7 @@ namespace HarmonyLib
             {
                 selfPatchingDone = true;
                 if (SELF_PATCHING)
-                    SelfPatching.PatchOldHarmonyMethods();
+                    throw new NotSupportedException("Self-Patching is not supported yet");
             }
         }
 

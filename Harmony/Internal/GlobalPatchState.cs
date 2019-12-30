@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using HarmonyLib.Internal.Patching;
 using MonoMod.RuntimeDetour;
 
-namespace HarmonyLib.Internal.Patching
+namespace HarmonyLib.Internal
 {
     internal static class GlobalPatchState
     {
@@ -17,7 +18,7 @@ namespace HarmonyLib.Internal.Patching
                 if (ILHooks.TryGetValue(methodBase, out var ilHook))
                     return ilHook;
                 return ILHooks[methodBase] = new ILHook(
-                    methodBase, PatchFunctions.CreateManipulator(methodBase, methodBase.ToPatchInfo()), new ILHookConfig
+                    methodBase, HarmonyManipulator.Create(methodBase, methodBase.ToPatchInfo()), new ILHookConfig
                     {
                         ManualApply = true // Always apply manually to prevent unneeded manipulation
                     });

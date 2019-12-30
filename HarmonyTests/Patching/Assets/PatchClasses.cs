@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using NUnit.Framework.Internal.Commands;
 
 namespace HarmonyLibTests.Assets
 {
@@ -511,12 +512,30 @@ namespace HarmonyLibTests.Assets
     public class Class11
     {
         public bool originalMethodRan = false;
+        public static bool originalMethodRanS = false;
+
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public string TestMethod(int dummy)
         {
             originalMethodRan = true;
             return "original" + dummy;
+        }
+
+        private static bool Test(ref string text, int b)
+        {
+            return true;
+        }
+
+        public static string Want(Class11 a, int b)
+        {
+            string text = null;
+            if (!Test(ref text, b))
+                goto skip;
+            originalMethodRanS = true;
+            return "original" + b;
+            skip:
+                return text;
         }
     }
 

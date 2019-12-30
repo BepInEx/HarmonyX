@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Internal;
 using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.Util;
 
@@ -205,7 +206,7 @@ namespace HarmonyLib
                         ilHook.MarkApply(true).Apply();
 
                         // TODO: Remove
-                        dynamicMethods.Add(PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id));
+                        // dynamicMethods.Add(PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id));
 
                         RunMethod<HarmonyCleanup>(original);
                     }
@@ -243,7 +244,7 @@ namespace HarmonyLib
                     ilHook.MarkApply(true).Apply();
 
                     // TODO: Remove
-                    PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
+                    // PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
                 }
             }
 
@@ -267,7 +268,7 @@ namespace HarmonyLib
                     ilHook.MarkApply(false).Apply();
 
                     // TODO: Remove
-                    PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
+                    // PatchFunctions.UpdateWrapper(original, patchInfo, instance.Id);
                 }
             }
 
