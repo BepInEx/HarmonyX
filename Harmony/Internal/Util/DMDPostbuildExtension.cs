@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using MonoMod.RuntimeDetour;
@@ -23,6 +24,11 @@ namespace HarmonyLib.Internal.Util
 
         internal static readonly Dictionary<Type, FieldInfo> fmap_mono_assembly = new Dictionary<Type, FieldInfo>();
 
+        private static readonly Dictionary<MethodBase, MethodBase> realMethodMap =
+            new Dictionary<MethodBase, MethodBase>();
+
+        private static Func<Assembly> _realGetAss;
+
         public static void Install()
         {
             if (applied)
@@ -34,7 +40,53 @@ namespace HarmonyLib.Internal.Util
                              fixup).Apply();
 #endif
             new NativeDetour(AccessTools.Method(typeof(DMDGenerator<DMDCecilGenerator>), "_Postbuild"), fixup).Apply();
+
+            new Hook(typeof(ILHook).GetNestedType("Context", BindingFlags.NonPublic).GetMethod("Refresh"),
+                     typeof(DMDPostbuildExtension).GetMethod(nameof(OnILChainRefresh))).Apply();
+
+            var nat = new NativeDetour(typeof(Assembly).GetMethod(nameof(Assembly.GetExecutingAssembly)),
+                                       typeof(DMDPostbuildExtension).GetMethod(nameof(GetAssemblyFix)));
+            nat.Apply();
+            _realGetAss = nat.GenerateTrampoline<Func<Assembly>>();
+
+            new Hook(typeof(StackFrame).GetMethod(nameof(StackFrame.GetMethod)),
+                     typeof(DMDPostbuildExtension).GetMethod(nameof(GetMethodFix))).Apply();
+
             applied = true;
+        }
+
+        // Fix StackFrame's GetMethod to map patched method to unpatched one instead
+        public static MethodBase GetMethodFix(Func<StackFrame, MethodBase> orig, StackFrame self)
+        {
+            var m = orig(self);
+            if (m == null)
+                return null;
+            lock (realMethodMap)
+            {
+                return realMethodMap.TryGetValue(m, out var real) ? real : m;
+            }
+        }
+
+        // We need to force GetExecutingAssembly make use of stack trace
+        // This is to fix cases where calling assembly is actually the patch
+        // This solves issues with code where it uses the method to get current filepath etc
+        public static Assembly GetAssemblyFix()
+        {
+            return new StackFrame(1).GetMethod()?.Module.Assembly ?? _realGetAss();
+        }
+
+        // Helper to save the detour info after patch is complete
+        public static void OnILChainRefresh(Action<object> orig, object self)
+        {
+            orig(self);
+
+            if (!(AccessTools.Field(self.GetType(), "Detour").GetValue(self) is Detour detour))
+                return;
+
+            lock (realMethodMap)
+            {
+                realMethodMap[detour.Target] = detour.Method;
+            }
         }
 
         public static unsafe MethodInfo FixupAccessOldMono(MethodInfo mi)
@@ -45,14 +97,8 @@ namespace HarmonyLib.Internal.Util
             if (_IsMono)
                 if (!(mi is DynamicMethod) && mi.DeclaringType != null)
                 {
-                    // Mono doesn't know about IgnoresAccessChecksToAttribute,
-                    // but it lets some assemblies have unrestricted access.
-
                     if (_IsOldMonoSRE)
                     {
-                        // If you're reading this:
-                        // You really should've chosen the SRE backend instead...
-
                         var module = mi?.Module;
                         if (module == null)
                             return mi;
@@ -61,7 +107,6 @@ namespace HarmonyLib.Internal.Util
                         if (asmType == null)
                             return mi;
 
-                        // _mono_assembly has changed places between Mono versions.
                         FieldInfo f_mono_assembly;
                         lock (fmap_mono_assembly)
                         {
@@ -122,24 +167,14 @@ namespace HarmonyLib.Internal.Util
                     }
                     else
                     {
-                        // https://github.com/mono/mono/blob/df846bcbc9706e325f3b5dca4d09530b80e9db83/mono/metadata/metadata-internals.h#L207
-                        // https://github.com/mono/mono/blob/1af992a5ffa46e20dd61a64b6dcecef0edb5c459/mono/metadata/appdomain.c#L1286
-                        // https://github.com/mono/mono/blob/beb81d3deb068f03efa72be986c96f9c3ab66275/mono/metadata/class.c#L5748
-                        // https://github.com/mono/mono/blob/83fc1456dbbd3a789c68fe0f3875820c901b1bd6/mcs/class/corlib/System.Reflection/Assembly.cs#L96
-                        // https://github.com/mono/mono/blob/cf69b4725976e51416bfdff22f3e1834006af00a/mcs/class/corlib/System.Reflection/RuntimeAssembly.cs#L59
-                        // https://github.com/mono/mono/blob/cf69b4725976e51416bfdff22f3e1834006af00a/mcs/class/corlib/System.Reflection.Emit/AssemblyBuilder.cs#L247
-
-                        // get_Assembly is virtual in some versions of Mono (notably older ones and the infamous Unity fork).
-                        // ?. results in a call instead of callvirt to skip a redundant nullcheck, which breaks this on ^...
                         var module = mi?.Module;
                         if (module == null)
                             return mi;
-                        var asm = module.Assembly; // Let's hope that this doesn't get optimized into a call.
+                        var asm = module.Assembly;
                         var asmType = asm?.GetType();
                         if (asmType == null)
                             return mi;
 
-                        // _mono_assembly has changed places between Mono versions.
                         FieldInfo f_mono_assembly;
                         lock (fmap_mono_assembly)
                         {
