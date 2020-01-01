@@ -24,6 +24,8 @@ namespace HarmonyLib.Internal.Util
 
         internal static readonly Dictionary<Type, FieldInfo> fmap_mono_assembly = new Dictionary<Type, FieldInfo>();
 
+        private static FieldInfo AssemblyCacheField = AccessTools.Field(typeof(ReflectionHelper), "AssemblyCache");
+
         private static readonly Dictionary<MethodBase, MethodBase> realMethodMap =
             new Dictionary<MethodBase, MethodBase>();
 
@@ -97,33 +99,53 @@ namespace HarmonyLib.Internal.Util
             if (_IsMono)
                 if (!(mi is DynamicMethod) && mi.DeclaringType != null)
                 {
-                    if (_IsOldMonoSRE)
-                    {
-                        var module = mi?.Module;
-                        if (module == null)
-                            return mi;
-                        var asm = module.Assembly; // Let's hope that this doesn't get optimized into a call.
-                        var asmType = asm?.GetType();
-                        if (asmType == null)
-                            return mi;
+                    var module = mi?.Module;
+                    if (module == null)
+                        return mi;
+                    var asm = module.Assembly; // Let's hope that this doesn't get optimized into a call.
+                    var asmType = asm?.GetType();
+                    if (asmType == null)
+                        return mi;
 
-                        FieldInfo f_mono_assembly;
-                        lock (fmap_mono_assembly)
+                    FieldInfo f_mono_assembly;
+                    lock (fmap_mono_assembly)
+                    {
+                        if (!fmap_mono_assembly.TryGetValue(asmType, out f_mono_assembly))
                         {
-                            if (!fmap_mono_assembly.TryGetValue(asmType, out f_mono_assembly))
-                            {
-                                f_mono_assembly = asmType.GetField("_mono_assembly",
-                                                                   BindingFlags.NonPublic | BindingFlags.Public |
-                                                                   BindingFlags.Instance);
-                                fmap_mono_assembly[asmType] = f_mono_assembly;
-                            }
+                            f_mono_assembly =
+                                asmType.GetField("_mono_assembly",
+                                                 BindingFlags.NonPublic | BindingFlags.Public |
+                                                 BindingFlags.Instance) ??
+                                asmType.GetField("dynamic_assembly",
+                                                 BindingFlags.NonPublic | BindingFlags.Public |
+                                                 BindingFlags.Instance);
+
+                            fmap_mono_assembly[asmType] = f_mono_assembly;
+                        }
+                    }
+
+                    if (f_mono_assembly == null)
+                        return mi;
+
+                    // Assembly builders are special: marking them with corlib_internal will hide them from AppDomain.GetAssemblies() result
+                    // We fix MonoMod by adding them to the cache manually
+                    var assCache = AssemblyCacheField.GetValue(null) as Dictionary<string, Assembly>;
+
+                    // Force parsing of AssemblyName to go through managed side instead of a possible icall
+                    var assName = new AssemblyName(asm.FullName);
+                    if(assCache != null && asmType.FullName == "System.Reflection.Emit.AssemblyBuilder")
+                        lock (assCache)
+                        {
+                            assCache[assName.FullName] = asm;
+                            assCache[assName.Name] = asm;
                         }
 
-                        if (f_mono_assembly == null)
-                            return mi;
+                    var asmPtrO = f_mono_assembly.GetValue(asm);
 
-                        var asmPtr = (IntPtr) f_mono_assembly.GetValue(asm);
-                        var offs =
+                    var offs = 0;
+
+                    if (_IsOldMonoSRE)
+                        offs =
                             // ref_count (4 + padding)
                             IntPtr.Size +
                             // basedir
@@ -160,38 +182,8 @@ namespace HarmonyLib.Internal.Util
                             1 +
                             // dynamic
                             1;
-                        var corlibInternalPtr = (byte*) ((long) asmPtr + offs);
-                        *corlibInternalPtr = 1;
-
-                        return mi;
-                    }
-                    else
-                    {
-                        var module = mi?.Module;
-                        if (module == null)
-                            return mi;
-                        var asm = module.Assembly;
-                        var asmType = asm?.GetType();
-                        if (asmType == null)
-                            return mi;
-
-                        FieldInfo f_mono_assembly;
-                        lock (fmap_mono_assembly)
-                        {
-                            if (!fmap_mono_assembly.TryGetValue(asmType, out f_mono_assembly))
-                            {
-                                f_mono_assembly = asmType.GetField("_mono_assembly",
-                                                                   BindingFlags.NonPublic | BindingFlags.Public |
-                                                                   BindingFlags.Instance);
-                                fmap_mono_assembly[asmType] = f_mono_assembly;
-                            }
-                        }
-
-                        if (f_mono_assembly == null)
-                            return mi;
-
-                        var asmPtr = (IntPtr) f_mono_assembly.GetValue(asm);
-                        var offs =
+                    else if (_IsNewMonoSRE)
+                        offs =
                             // ref_count (4 + padding)
                             IntPtr.Size +
                             // basedir
@@ -232,9 +224,21 @@ namespace HarmonyLib.Internal.Util
                             1 +
                             // dynamic
                             1;
-                        var corlibInternalPtr = (byte*) ((long) asmPtr + offs);
-                        *corlibInternalPtr = 1;
-                    }
+
+                    if (offs == 0)
+                        return mi;
+
+                    byte* corlibInternalPtr = null;
+
+                    if (asmPtrO is IntPtr asmIPtr)
+                        corlibInternalPtr = (byte*) ((long) asmIPtr + offs);
+                    else if (asmPtrO is UIntPtr asmUPtr)
+                        corlibInternalPtr = (byte*) ((long) asmUPtr + offs);
+
+                    if (corlibInternalPtr == null)
+                        return mi;
+
+                    *corlibInternalPtr = 1;
                 }
 
             return mi;
