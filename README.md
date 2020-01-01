@@ -10,6 +10,9 @@
 
 ***
 
+> **NOTE**
+> The library is still WIP, see [current roadmap](https://github.com/BepInEx/HarmonyX/issues/2) for more details.
+
 ## About
 
 **HarmonyX** is a fork of [Harmony 2](https://github.com/pardeike/Harmony) that specializes on support for games and game modding frameworks.
