@@ -33,6 +33,10 @@
   <ItemGroup>
     <None Include="..\LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="..\LICENSE.Harmony" Pack="true" PackagePath="" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <Optimize>false</Optimize>
