@@ -57,7 +57,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MonoMod.RuntimeDetour" Version="19.12.4.1" />
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="20.1.1.4" />
   </ItemGroup>
 
 </Project>
