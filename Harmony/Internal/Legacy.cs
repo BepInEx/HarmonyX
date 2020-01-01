@@ -24,7 +24,7 @@ namespace HarmonyLib
         }
 
         [Obsolete("Exists for legacy support", true)]
-        public static void UpdatePatchInfo()
+        public static void UpdatePatchInfo(MethodBase methodBase, PatchInfo patchInfo)
         {
             // skip
         }
