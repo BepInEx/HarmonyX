@@ -103,5 +103,34 @@ namespace HarmonyLibTests
             Assert.AreEqual(10, result.a);
             Assert.AreEqual(20, result.b);
         }
+
+        [Test]
+        public void TestMethod8Prefix()
+        {
+            var originalClass = typeof(Class8Prefix);
+            Assert.IsNotNull(originalClass);
+            var originalMethod = originalClass.GetMethod("Method8");
+            Assert.IsNotNull(originalMethod);
+
+            var patchClass = typeof(Class8PrefixPatch);
+            var prefix = patchClass.GetMethod("Prefix");
+            Assert.IsNotNull(prefix);
+
+            var instance = new Harmony("test");
+            Assert.IsNotNull(instance);
+
+            var patcher = new PatchProcessor(instance, originalMethod);
+            Assert.IsNotNull(patcher);
+            patcher.AddPrefix(prefix);
+            Assert.IsNotNull(patcher);
+
+            patcher.Patch();
+
+            var result = Class8Prefix.Method8("patched");
+
+            Assert.IsFalse(Class8Prefix.mainRun);
+            Assert.AreEqual(10, result.a);
+            Assert.AreEqual(20, result.b);
+        }
     }
 }
