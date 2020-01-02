@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using MonoMod.Utils;
 
 namespace HarmonyLib.Internal.Util
@@ -137,7 +138,16 @@ namespace HarmonyLib.Internal.Util
                             throw new ArgumentOutOfRangeException();
                     }
 
+                var operand = ins.Operand;
+
+                if (operand is ILLabel label)
+                    ins.Operand = label.Target;
+                else if (operand is ILLabel[] labels)
+                    ins.Operand = labels.Select(l => l.Target).ToArray();
+
                 WriteLine(ins.ToString());
+
+                ins.Operand = operand;
             }
 
             return sb.ToString();
