@@ -12,126 +12,6 @@ using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLib.Internal.Util
 {
-    internal static class ILExtensions
-    {
-        public class ExceptionBlock
-        {
-            public Instruction start, skip;
-            public ExceptionHandler prev, cur;
-        }
-
-        public static ExceptionBlock BeginExceptionBlock(this ILProcessor il, Instruction start)
-        {
-            return new ExceptionBlock { start = start };
-        }
-
-        public static void EndExceptionBlock(this ILProcessor il, Instruction before, ExceptionBlock block)
-        {
-            il.EndHandler(before, block, block.cur);
-        }
-
-        public static ExceptionHandler BeginHandler(this ILProcessor il, Instruction before, ExceptionBlock block, ExceptionHandlerType handlerType)
-        {
-            var prev = (block.prev = block.cur);
-            if (prev != null)
-                il.EndHandler(before, block, prev);
-
-            block.skip = il.Create(Mono.Cecil.Cil.OpCodes.Nop);
-
-            il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Leave, block.skip);
-
-            var handlerIns = il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Nop);
-            block.cur = new ExceptionHandler(0)
-            {
-                TryStart = block.start,
-                TryEnd = handlerIns,
-                HandlerType = handlerType
-            };
-            if (handlerType == ExceptionHandlerType.Filter)
-                block.cur.FilterStart = handlerIns;
-            else
-                block.cur.HandlerStart = handlerIns;
-
-            il.Body.ExceptionHandlers.Add(block.cur);
-            return block.cur;
-        }
-
-        public static void EndHandler(this ILProcessor il, Instruction before, ExceptionBlock block, ExceptionHandler handler)
-        {
-            switch (handler.HandlerType)
-            {
-                case ExceptionHandlerType.Filter:
-                    il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Endfilter);
-                    break;
-                case ExceptionHandlerType.Finally:
-                    il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Endfinally);
-                    break;
-                default:
-                    il.EmitBefore(before, Mono.Cecil.Cil.OpCodes.Leave, block.skip);
-                    break;
-            }
-
-            il.InsertBefore(before, block.skip);
-            handler.HandlerEnd = block.skip;
-        }
-
-        public static VariableDefinition DeclareVariable(this ILProcessor il, Type type)
-        {
-            var varDef = new VariableDefinition(il.Import(type));
-            il.Body.Variables.Add(varDef);
-            return varDef;
-        }
-
-        public static Type OpenRefType(this Type t)
-        {
-            if (t.IsByRef)
-                return t.GetElementType();
-            return t;
-        }
-
-        public static Instruction EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode)
-        {
-            var newIns = il.Create(opcode);
-            il.InsertBefore(ins, newIns);
-            return newIns;
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, ConstructorInfo cInfo)
-        {
-            il.InsertBefore(ins, il.Create(opcode, il.Import(cInfo)));
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, MethodInfo mInfo)
-        {
-            il.InsertBefore(ins, il.Create(opcode, il.Import(mInfo)));
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, Type cls)
-        {
-            il.InsertBefore(ins, il.Create(opcode, il.Import(cls)));
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, int arg)
-        {
-            il.InsertBefore(ins, il.Create(opcode, arg));
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, FieldInfo fInfo)
-        {
-            il.InsertBefore(ins, il.Create(opcode, il.Import(fInfo)));
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, VariableDefinition varDef)
-        {
-            il.InsertBefore(ins, il.Create(opcode, varDef));
-        }
-
-        public static void EmitBefore(this ILProcessor il, Instruction ins, Mono.Cecil.Cil.OpCode opcode, Instruction tgtIns)
-        {
-            il.InsertBefore(ins, il.Create(opcode, tgtIns));
-        }
-    }
-
     internal static class EmitterExtensions
     {
         private static DynamicMethodDefinition emitDMD;
@@ -144,6 +24,13 @@ namespace HarmonyLib.Internal.Util
             if (emitDMD != null)
                 return;
             InitEmitterHelperDMD();
+        }
+
+        public static Type OpenRefType(this Type t)
+        {
+            if (t.IsByRef)
+                return t.GetElementType();
+            return t;
         }
 
         private static void InitEmitterHelperDMD()
@@ -201,7 +88,9 @@ namespace HarmonyLib.Internal.Util
             il.Emit(OpCodes.Ret);
 
             emitDMDMethod = emitDMD.Generate();
-            emitCodeDelegate = (Action<CecilILGenerator, OpCode, object>) emitDMDMethod.CreateDelegate<Action<CecilILGenerator, OpCode, object>>();
+            emitCodeDelegate =
+                (Action<CecilILGenerator, OpCode, object>) emitDMDMethod
+                    .CreateDelegate<Action<CecilILGenerator, OpCode, object>>();
         }
 
         public static void Emit(this CecilILGenerator il, OpCode opcode, object operand)
@@ -243,7 +132,9 @@ namespace HarmonyLib.Internal.Util
 
         public static LocalBuilder GetLocal(this CecilILGenerator il, VariableDefinition varDef)
         {
-            var vars = (Dictionary<LocalBuilder, VariableDefinition>) AccessTools.Field(typeof(CecilILGenerator), "_Variables").GetValue(il);
+            var vars = (Dictionary<LocalBuilder, VariableDefinition>) AccessTools
+                                                                      .Field(typeof(CecilILGenerator), "_Variables")
+                                                                      .GetValue(il);
             var loc = vars.FirstOrDefault(kv => kv.Value == varDef).Key;
             if (loc != null)
                 return loc;

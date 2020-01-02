@@ -96,23 +96,29 @@ namespace HarmonyLib.Internal.Patching
             manipulator.WriteTo(ctx.Body, original);
         }
 
-        private static Instruction MakeReturnLabel(ILContext ctx)
+        private static ILEmitter.Label MakeReturnLabel(ILEmitter il)
         {
-            var resultIns = ctx.IL.Create(OpCodes.Nop);
+            // We replace all `ret`s with a simple branch to force potential execution of post-original code
 
-            foreach (var ins in ctx.Instrs.Where(ins => ins.MatchRet()))
+            // Create a helper label as well
+            // We mark the label as not emitted so that potential postfix code can mark it
+            var resultLabel = il.DeclareLabel();
+            resultLabel.emitted = false;
+            resultLabel.instruction = Instruction.Create(OpCodes.Ret);
+
+            foreach (var ins in il.IL.Body.Instructions.Where(ins => ins.MatchRet()))
             {
                 ins.OpCode = OpCodes.Br;
-                ins.Operand = resultIns;
+                ins.Operand = resultLabel.instruction;
+                resultLabel.targets.Add(ins);
             }
 
-            ctx.IL.Append(resultIns);
-            ctx.IL.Emit(OpCodes.Ret);
-
-            return resultIns;
+            // Already append `ret` for other code to use as emitBefore point
+            il.IL.Append(resultLabel.instruction);
+            return resultLabel;
         }
 
-        private static void WritePostfixes(ILContext ctx, MethodBase original,
+        private static void WritePostfixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
                                            Dictionary<string, VariableDefinition> variables, List<MethodInfo> postfixes)
         {
             // Postfix layout:
@@ -124,34 +130,37 @@ namespace HarmonyLib.Internal.Patching
             if (postfixes.Count == 0)
                 return;
 
+            // Get the last instruction (expected to be `ret`)
+            il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
+
+            // Mark the original method return label here
+            il.MarkLabel(returnLabel);
+
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
                 var retVal = AccessTools.GetReturnedType(original);
-                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
             }
 
-            // Get the last instruction (expected to be `ret`)
-            var ins = ctx.Instrs[ctx.Instrs.Count - 1];
-
             if (returnValueVar != null)
-                ctx.IL.EmitBefore(ins, OpCodes.Stloc, returnValueVar);
+                il.Emit(OpCodes.Stloc, returnValueVar);
 
             foreach (var postfix in postfixes.Where(p => p.ReturnType == typeof(void)))
             {
-                EmitCallParameter(ins, ctx, original, postfix, variables, true);
-                ctx.IL.EmitBefore(ins, OpCodes.Call, postfix);
+                EmitCallParameter(il, original, postfix, variables, true);
+                il.Emit(OpCodes.Call, postfix);
             }
 
             // Load the result for the final time, the chained postfixes will handle the rest
             if (returnValueVar != null)
-                ctx.IL.EmitBefore(ins, OpCodes.Ldloc, returnValueVar);
+                il.Emit(OpCodes.Ldloc, returnValueVar);
 
             // If postfix returns a value, it must be chainable
             // The first param is always the return of the previous
             foreach (var postfix in postfixes.Where(p => p.ReturnType != typeof(void)))
             {
-                EmitCallParameter(ins, ctx, original, postfix, variables, true);
-                ctx.IL.EmitBefore(ins, OpCodes.Call, postfix);
+                EmitCallParameter(il, original, postfix, variables, true);
+                il.Emit(OpCodes.Call, postfix);
 
                 var firstParam = postfix.GetParameters().FirstOrDefault();
 
@@ -166,7 +175,7 @@ namespace HarmonyLib.Internal.Patching
             }
         }
 
-        private static void WritePrefixes(ILContext ctx, MethodBase original, Instruction returnLabel,
+        private static void WritePrefixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
                                           Dictionary<string, VariableDefinition> variables, List<MethodInfo> prefixes)
         {
             // Prefix layout:
@@ -177,26 +186,28 @@ namespace HarmonyLib.Internal.Patching
             if (prefixes.Count == 0)
                 return;
 
+            // Start emitting at the start
+            il.emitBefore = il.IL.Body.Instructions[0];
+
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
                 var retVal = AccessTools.GetReturnedType(original);
-                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
             }
 
             // Flag to check if the orignal method should be run (or was run)
             // Only present if method has a return value and there are prefixes that modify control flow
             var runOriginal = returnValueVar != null && prefixes.Any(p => p.ReturnType == typeof(bool))
-                ? ctx.IL.DeclareVariable(typeof(bool))
+                ? il.DeclareVariable(typeof(bool))
                 : null;
 
             // If runOriginal flag exists, we need to add more logic to the method end
-            var postProcessTarget = runOriginal != null ? ctx.IL.Create(OpCodes.Nop) : returnLabel;
+            var postProcessTarget = returnValueVar != null ? il.DeclareLabel() : returnLabel;
 
-            var ins = ctx.Instrs.First(); // Grab the instruction from the top of the method
             foreach (var prefix in prefixes)
             {
-                EmitCallParameter(ins, ctx, original, prefix, variables, false);
-                ctx.IL.EmitBefore(ins, OpCodes.Call, prefix);
+                EmitCallParameter(il, original, prefix, variables, false);
+                il.Emit(OpCodes.Call, prefix);
 
                 if (!AccessTools.IsVoid(prefix.ReturnType))
                 {
@@ -206,29 +217,24 @@ namespace HarmonyLib.Internal.Patching
 
                     if (runOriginal != null)
                     {
-                        ctx.IL.EmitBefore(ins, OpCodes.Dup);
-                        ctx.IL.EmitBefore(ins, OpCodes.Stloc, runOriginal);
+                        il.Emit(OpCodes.Dup);
+                        il.Emit(OpCodes.Stloc, runOriginal);
                     }
 
-                    ctx.IL.EmitBefore(ins, OpCodes.Brfalse, postProcessTarget);
+                    il.Emit(OpCodes.Brfalse, postProcessTarget);
                 }
             }
 
             if (runOriginal == null)
                 return;
 
-            // Finally, ensure the stack is consistent when branching to `ret`:
-            // If skip original method => return value not on stack => do nothing
-            // If run original method =>  return value on stack     => pop return value from stack
-            // Finally, load return value onto stack
-
-            ins = ctx.Instrs[ctx.Instrs.Count - 1];
-            ctx.IL.EmitBefore(ins, OpCodes.Stloc, returnValueVar);
-            ctx.IL.InsertBefore(ins, postProcessTarget);
-            ctx.IL.EmitBefore(ins, OpCodes.Ldloc, returnValueVar);
+            // Finally, load return value onto stack at the end
+            il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
+            il.MarkLabel(postProcessTarget);
+            il.Emit(OpCodes.Ldloc, returnValueVar);
         }
 
-        private static void WriteFinalizers(ILContext ctx, MethodBase original,
+        private static void WriteFinalizers(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
                                             Dictionary<string, VariableDefinition> variables,
                                             List<MethodInfo> finalizers)
         {
@@ -244,26 +250,26 @@ namespace HarmonyLib.Internal.Patching
             // If __exception is still set, rethrow (if new exception set, otherwise throw the new exception)
             // End catch block
 
-            // We do this if CecilILGenerator since it's much, much easier
-
             if (finalizers.Count == 0)
                 return;
+
+            il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
+
+            // Mark the original method return label here if it hasn't been yet
+            il.MarkLabel(returnLabel);
 
             if (!variables.TryGetValue(RESULT_VAR, out var returnValueVar))
             {
                 var retVal = AccessTools.GetReturnedType(original);
-                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : ctx.IL.DeclareVariable(retVal);
+                returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
             }
 
-            // Create variables
-            var skipFinalizersVar = ctx.IL.DeclareVariable(typeof(bool));
-            variables[EXCEPTION_VAR] = ctx.IL.DeclareVariable(typeof(Exception));
+            // Create variables to hold custom exception
+            var skipFinalizersVar = il.DeclareVariable(typeof(bool));
+            variables[EXCEPTION_VAR] = il.DeclareVariable(typeof(Exception));
 
             // Start main exception block
-            var mainExceptionBlock = ctx.IL.BeginExceptionBlock(ctx.Instrs[0]);
-
-            // Grab the `ret` instruction and start putting stuff before it
-            var ins = ctx.Instrs[ctx.Instrs.Count - 1];
+            var mainBlock = il.BeginExceptionBlock(il.DeclareLabelFor(il.IL.Body.Instructions[0]));
 
             bool WriteFinalizerCalls(bool suppressExceptions)
             {
@@ -271,24 +277,25 @@ namespace HarmonyLib.Internal.Patching
 
                 foreach (var finalizer in finalizers)
                 {
-                    var startIns = ctx.IL.EmitBefore(ins, OpCodes.Nop);
+                    var start = il.DeclareLabel();
+                    il.MarkLabel(start);
 
-                    EmitCallParameter(ins, ctx, original, finalizer, variables, false);
-                    ctx.IL.EmitBefore(ins, OpCodes.Call, finalizer);
+                    EmitCallParameter(il, original, finalizer, variables, false);
+                    il.Emit(OpCodes.Call, finalizer);
 
                     if (finalizer.ReturnType != typeof(void))
                     {
-                        ctx.IL.EmitBefore(ins, OpCodes.Stloc, variables[EXCEPTION_VAR]);
+                        il.Emit(OpCodes.Stloc, variables[EXCEPTION_VAR]);
                         canRethrow = false;
                     }
 
                     if (suppressExceptions)
                     {
-                        var block = ctx.IL.BeginExceptionBlock(startIns);
-                        var catchHandler = ctx.IL.BeginHandler(ins, block, ExceptionHandlerType.Catch);
-                        catchHandler.CatchType = ctx.Import(typeof(object));
-                        ctx.IL.EmitBefore(ins, OpCodes.Pop);
-                        ctx.IL.EndExceptionBlock(ins, block);
+                        var exBlock = il.BeginExceptionBlock(start);
+
+                        il.BeginHandler(exBlock, ExceptionHandlerType.Catch, typeof(object));
+                        il.Emit(OpCodes.Pop);
+                        il.EndExceptionBlock(exBlock);
                     }
                 }
 
@@ -297,58 +304,55 @@ namespace HarmonyLib.Internal.Patching
 
             // First, store potential result into a variable and empty the stack
             if (returnValueVar != null)
-                ctx.IL.EmitBefore(ins, OpCodes.Stloc, returnValueVar);
+                il.Emit(OpCodes.Stloc, returnValueVar);
 
             // Write finalizers inside the `try`
             WriteFinalizerCalls(false);
 
             // Mark finalizers as skipped so they won't rerun
-            ctx.IL.EmitBefore(ins, OpCodes.Ldc_I4_1);
-            ctx.IL.EmitBefore(ins, OpCodes.Stloc, skipFinalizersVar);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Stloc, skipFinalizersVar);
 
-            var skipExceptionsTarget = ctx.IL.Create(OpCodes.Nop);
             // If __exception is not null, throw
-            ctx.IL.EmitBefore(ins, OpCodes.Ldloc, variables[EXCEPTION_VAR]);
-            ctx.IL.EmitBefore(ins, OpCodes.Brfalse, skipExceptionsTarget);
-            ctx.IL.EmitBefore(ins, OpCodes.Ldloc, variables[EXCEPTION_VAR]);
-            ctx.IL.EmitBefore(ins, OpCodes.Throw);
-            ctx.IL.InsertBefore(ins, skipExceptionsTarget);
+            var skipLabel = il.DeclareLabel();
+            il.Emit(OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+            il.Emit(OpCodes.Brfalse, skipLabel);
+            il.Emit(OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+            il.Emit(OpCodes.Throw);
+            il.MarkLabel(skipLabel);
 
-            // Begin a generic `catch(object o)` here and capture exception into __exception
-            var mainHandler = ctx.IL.BeginHandler(ins, mainExceptionBlock, ExceptionHandlerType.Catch);
-            mainHandler.CatchType = ctx.Import(typeof(Exception));
-            ctx.IL.EmitBefore(ins, OpCodes.Stloc, variables[EXCEPTION_VAR]);
+            // Begin a generic `catch(Exception o)` here and capture exception into __exception
+            il.BeginHandler(mainBlock, ExceptionHandlerType.Catch, typeof(Exception));
+            il.Emit(OpCodes.Stloc, variables[EXCEPTION_VAR]);
 
             // Call finalizers or skip them if needed
-            ctx.IL.EmitBefore(ins, OpCodes.Ldloc, skipFinalizersVar);
-            var finalizersEndTarget = ctx.IL.Create(OpCodes.Nop);
-            ctx.IL.EmitBefore(ins, OpCodes.Brtrue, finalizersEndTarget);
+            il.Emit(OpCodes.Ldloc, skipFinalizersVar);
+            var postFinalizersLabel = il.DeclareLabel();
+            il.Emit(OpCodes.Brtrue, postFinalizersLabel);
 
             var rethrowPossible = WriteFinalizerCalls(true);
 
-            ctx.IL.InsertBefore(ins, finalizersEndTarget);
+            il.MarkLabel(postFinalizersLabel);
 
             // Possibly rethrow if __exception is still not null (i.e. suppressed)
-            skipExceptionsTarget = ctx.IL.Create(OpCodes.Nop);
-            ctx.IL.EmitBefore(ins, OpCodes.Ldloc, variables[EXCEPTION_VAR]);
-            ctx.IL.EmitBefore(ins, OpCodes.Brfalse, skipExceptionsTarget);
+            skipLabel = il.DeclareLabel();
+            il.Emit(OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+            il.Emit(OpCodes.Brfalse, skipLabel);
             if (rethrowPossible)
             {
-                ctx.IL.EmitBefore(ins, OpCodes.Rethrow);
+                il.Emit(OpCodes.Rethrow);
             }
             else
             {
-                ctx.IL.EmitBefore(ins, OpCodes.Ldloc, variables[EXCEPTION_VAR]);
-                ctx.IL.EmitBefore(ins, OpCodes.Throw);
+                il.Emit(OpCodes.Ldloc, variables[EXCEPTION_VAR]);
+                il.Emit(OpCodes.Throw);
             }
 
-            ctx.IL.InsertBefore(ins, skipExceptionsTarget);
+            il.MarkLabel(skipLabel);
+            il.EndExceptionBlock(mainBlock);
 
-            // end the main exception block
-            ctx.IL.EndExceptionBlock(ins, mainExceptionBlock);
-
-            // Push return value back to the stack
-            ctx.IL.EmitBefore(ins, OpCodes.Ldloc, returnValueVar);
+            if (returnValueVar != null)
+                il.Emit(OpCodes.Ldloc, returnValueVar);
         }
 
         private static void MakePatched(MethodBase original, MethodBase source, ILContext ctx,
@@ -368,7 +372,8 @@ namespace HarmonyLib.Internal.Patching
                 if (prefixes.Count + postfixes.Count + finalizers.Count == 0)
                     return;
 
-                var returnLabel = MakeReturnLabel(ctx);
+                var il = new ILEmitter(ctx.IL);
+                var returnLabel = MakeReturnLabel(il);
                 var variables = new Dictionary<string, VariableDefinition>();
 
                 // Collect state variables
@@ -376,11 +381,16 @@ namespace HarmonyLib.Internal.Patching
                     if (nfix.DeclaringType != null && variables.ContainsKey(nfix.DeclaringType.FullName) == false)
                         foreach (var patchParam in nfix
                                                    .GetParameters().Where(patchParam => patchParam.Name == STATE_VAR))
-                            variables[nfix.DeclaringType.FullName] = ctx.IL.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
+                            variables[nfix.DeclaringType.FullName] =
+                                il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 
-                WritePrefixes(ctx, original, returnLabel, variables, prefixes);
-                WritePostfixes(ctx, original, variables, postfixes);
-                WriteFinalizers(ctx, original, variables, finalizers);
+                WritePrefixes(il, original, returnLabel, variables, prefixes);
+                WritePostfixes(il, original, returnLabel, variables, postfixes);
+                WriteFinalizers(il, original, returnLabel, variables, finalizers);
+
+                // Mark return label in case it hasn't been marked yet and close open labels to return
+                il.MarkLabel(returnLabel);
+                il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
             }
             catch (Exception e)
             {
@@ -388,12 +398,10 @@ namespace HarmonyLib.Internal.Patching
             }
         }
 
-        private static void EmitCallParameter(Instruction before, ILContext ctx, MethodBase original, MethodInfo patch,
+        private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
                                               Dictionary<string, VariableDefinition> variables,
                                               bool allowFirsParamPassthrough)
         {
-            var il = ctx.IL;
-
             var isInstance = original.IsStatic == false;
             var originalParameters = original.GetParameters();
             var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
@@ -410,19 +418,19 @@ namespace HarmonyLib.Internal.Patching
                 {
                     if (original is ConstructorInfo constructorInfo)
                     {
-                        il.EmitBefore(before, OpCodes.Ldtoken, constructorInfo);
-                        il.EmitBefore(before, OpCodes.Call, getMethodMethod);
+                        il.Emit(OpCodes.Ldtoken, constructorInfo);
+                        il.Emit(OpCodes.Call, getMethodMethod);
                         continue;
                     }
 
                     if (original is MethodInfo methodInfo)
                     {
-                        il.EmitBefore(before, OpCodes.Ldtoken, methodInfo);
-                        il.EmitBefore(before, OpCodes.Call, getMethodMethod);
+                        il.Emit(OpCodes.Ldtoken, methodInfo);
+                        il.Emit(OpCodes.Call, getMethodMethod);
                         continue;
                     }
 
-                    il.EmitBefore(before, OpCodes.Ldnull);
+                    il.Emit(OpCodes.Ldnull);
                     continue;
                 }
 
@@ -430,22 +438,22 @@ namespace HarmonyLib.Internal.Patching
                 {
                     if (original.IsStatic)
                     {
-                        il.EmitBefore(before, OpCodes.Ldnull);
+                        il.Emit(OpCodes.Ldnull);
                     }
                     else
                     {
                         var instanceIsRef = AccessTools.IsStruct(original.DeclaringType);
                         var parameterIsRef = patchParam.ParameterType.IsByRef;
                         if (instanceIsRef == parameterIsRef)
-                            il.EmitBefore(before, OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Ldarg_0);
                         if (instanceIsRef && parameterIsRef == false)
                         {
-                            il.EmitBefore(before, OpCodes.Ldarg_0);
-                            il.EmitBefore(before, OpCodes.Ldobj, original.DeclaringType);
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Ldobj, original.DeclaringType);
                         }
 
                         if (instanceIsRef == false && parameterIsRef)
-                            il.EmitBefore(before, OpCodes.Ldarga, 0);
+                            il.Emit(OpCodes.Ldarga, 0);
                     }
 
                     continue;
@@ -472,14 +480,12 @@ namespace HarmonyLib.Internal.Patching
 
                     if (fieldInfo.IsStatic)
                     {
-                        il.EmitBefore(before, patchParam.ParameterType.IsByRef ? OpCodes.Ldsflda : OpCodes.Ldsfld,
-                                      fieldInfo);
+                        il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldsflda : OpCodes.Ldsfld, fieldInfo);
                     }
                     else
                     {
-                        il.EmitBefore(before, OpCodes.Ldarg_0);
-                        il.EmitBefore(before, patchParam.ParameterType.IsByRef ? OpCodes.Ldflda : OpCodes.Ldfld,
-                                      fieldInfo);
+                        il.Emit(OpCodes.Ldarg_0);
+                        il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldflda : OpCodes.Ldfld, fieldInfo);
                     }
 
                     continue;
@@ -489,10 +495,9 @@ namespace HarmonyLib.Internal.Patching
                 if (patchParam.Name == STATE_VAR)
                 {
                     if (variables.TryGetValue(patch.DeclaringType.FullName, out var stateVar))
-                        il.EmitBefore(before, patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc,
-                                      stateVar);
+                        il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, stateVar);
                     else
-                        il.EmitBefore(before, OpCodes.Ldnull);
+                        il.Emit(OpCodes.Ldnull);
                     continue;
                 }
 
@@ -509,16 +514,14 @@ namespace HarmonyLib.Internal.Patching
                         throw new Exception("Cannot assign method return type " + returnType.FullName + " to " +
                                             RESULT_VAR + " type " + resultType.FullName + " for method " +
                                             original.FullDescription());
-                    il.EmitBefore(before, patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc,
-                                  variables[RESULT_VAR]);
+                    il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, variables[RESULT_VAR]);
                     continue;
                 }
 
                 // any other declared variables
                 if (variables.TryGetValue(patchParam.Name, out var localBuilder))
                 {
-                    il.EmitBefore(before, patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc,
-                                  localBuilder);
+                    il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, localBuilder);
                     continue;
                 }
 
@@ -554,20 +557,20 @@ namespace HarmonyLib.Internal.Patching
                 // Case 1 + 4
                 if (originalIsNormal == patchIsNormal)
                 {
-                    il.EmitBefore(before, OpCodes.Ldarg, patchArgIndex);
+                    il.Emit(OpCodes.Ldarg, patchArgIndex);
                     continue;
                 }
 
                 // Case 2
                 if (originalIsNormal && patchIsNormal == false)
                 {
-                    il.EmitBefore(before, OpCodes.Ldarga, patchArgIndex);
+                    il.Emit(OpCodes.Ldarga, patchArgIndex);
                     continue;
                 }
 
                 // Case 3
-                il.EmitBefore(before, OpCodes.Ldarg, patchArgIndex);
-                il.EmitBefore(before, GetIndOpcode(originalParameters[idx].ParameterType));
+                il.Emit(OpCodes.Ldarg, patchArgIndex);
+                il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
             }
         }
 
