@@ -351,6 +351,28 @@ namespace HarmonyLibTests.Assets
         }
     }
 
+    public class Class8Prefix
+    {
+        public static bool mainRun = false;
+
+        public static TestStruct Method8(string test)
+        {
+            Console.WriteLine("Method8: " + test);
+            mainRun = true;
+            return new TestStruct() {a = 1, b = 2};
+        }
+    }
+
+    public class Class8PrefixPatch
+    {
+        public static bool Prefix(ref TestStruct __result)
+        {
+            Console.WriteLine("Class8Patch Prefix");
+            __result = new TestStruct() {a = 10, b = 20};
+            return false;
+        }
+    }
+
     public class Class8Patch
     {
         public static void Postfix(ref TestStruct __result)
