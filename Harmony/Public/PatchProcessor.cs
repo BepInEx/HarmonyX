@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal;
+using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 
 namespace HarmonyLib
@@ -25,6 +26,12 @@ namespace HarmonyLib
         private HarmonyMethod postfix;
         private HarmonyMethod transpiler;
         private HarmonyMethod finalizer;
+
+        static PatchProcessor()
+        {
+            StackTraceFixes.Install();
+            VisibilityCheckFixes.Install();
+        }
 
         /// <summary>Creates an empty patch processor</summary>
         /// <param name="instance">The Harmony instance</param>
