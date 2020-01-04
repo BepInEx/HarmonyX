@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
+using HarmonyLib.Internal.RuntimeFixes;
+using MonoMod.Utils;
 
 namespace HarmonyLib
 {
@@ -19,6 +21,11 @@ namespace HarmonyLib
 
         /// <summary>Shortcut to simplify the use of reflections and make it work for any access level but only within the current type</summary>
         public static BindingFlags allDeclared = all | BindingFlags.DeclaredOnly;
+
+        static AccessTools()
+        {
+            DynamicMethodByRefReturnFix.Install();
+        }
 
         /// <summary>Gets a type by name. Prefers a full name with namespace but falls back to the first type matching the name otherwise</summary>
         /// <param name="name">The name</param>
@@ -791,16 +798,7 @@ namespace HarmonyLib
                 if (fieldInfo.DeclaringType == null || !fieldInfo.DeclaringType.IsAssignableFrom(typeof(T)))
                     throw new MissingFieldException(typeof(T).Name, fieldInfo.Name);
 
-            var s_name = "__refget_" + typeof(T).Name + "_fi_" + fieldInfo.Name;
-
-            // workaround for using ref-return with DynamicMethod:
-            // a.) initialize with dummy return value
-            var dm = new DynamicMethod(s_name, typeof(U), new[] {typeof(T)}, typeof(T), true);
-
-            // b.) replace with desired 'ByRef' return value
-            var trv = Traverse.Create(dm);
-            trv.Field("returnType").SetValue(typeof(U).MakeByRefType());
-            trv.Field("m_returnType").SetValue(typeof(U).MakeByRefType());
+            var dm = new DynamicMethodDefinition($"__refget_{typeof(T).Name}_fi_{fieldInfo.Name}", typeof(U).MakeByRefType(), new []{ typeof(T) });
 
             var il = dm.GetILGenerator();
 
@@ -815,7 +813,7 @@ namespace HarmonyLib
             }
 
             il.Emit(OpCodes.Ret);
-            return (FieldRef<T, U>) dm.CreateDelegate(typeof(FieldRef<T, U>));
+            return (FieldRef<T, U>) dm.Generate().CreateDelegate<FieldRef<T, U>>();
         }
 
         /// <summary>Creates a field reference for a specific instance</summary>
