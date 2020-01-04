@@ -47,10 +47,9 @@ namespace HarmonyLib.Internal.Patching
         ///     Initialize IL transpiler
         /// </summary>
         /// <param name="body">Body of the method to transpile</param>
-        /// <param name="original">Original method. Used to resolve locals and parameters</param>
-        public ILManipulator(MethodBody body, MethodBase original = null)
+        public ILManipulator(MethodBody body)
         {
-            codeInstructions = ReadBody(body, original);
+            codeInstructions = ReadBody(body);
         }
 
         private int GetStaticIndex(ParameterInfo pInfo)
@@ -63,10 +62,8 @@ namespace HarmonyLib.Internal.Patching
             return isStatic ? pInfo.Position : pInfo.Position + 1;
         }
 
-        private IEnumerable<CodeInstruction> ReadBody(MethodBody body, MethodBase original = null)
+        private IEnumerable<CodeInstruction> ReadBody(MethodBody body)
         {
-            var locals = original.GetMethodBody()?.LocalVariables ?? new List<LocalVariableInfo>();
-            var mParams = original.GetParameters();
             var instructions = new List<CodeInstruction>(body.Instructions.Count);
 
             CodeInstruction ReadInstruction(Instruction ins)
