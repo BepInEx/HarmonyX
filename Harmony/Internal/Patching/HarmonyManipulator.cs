@@ -86,7 +86,7 @@ namespace HarmonyLib.Internal.Patching
                 return;
 
             // Create a high-level manipulator for the method
-            var manipulator = new ILManipulator(ctx.Body, original);
+            var manipulator = new ILManipulator(ctx.Body);
 
             // Add in all transpilers
             foreach (var transpilerMethod in transpilers)
@@ -370,7 +370,10 @@ namespace HarmonyLib.Internal.Patching
 
                 // If no need to wrap anything, we're basically done!
                 if (prefixes.Count + postfixes.Count + finalizers.Count == 0)
+                {
+                    Console.WriteLine(ctx.Body.ToILDasmString());
                     return;
+                }
 
                 var il = new ILEmitter(ctx.IL);
                 var returnLabel = MakeReturnLabel(il);
@@ -391,6 +394,8 @@ namespace HarmonyLib.Internal.Patching
                 // Mark return label in case it hasn't been marked yet and close open labels to return
                 il.MarkLabel(returnLabel);
                 il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
+
+                Console.WriteLine(il.IL.Body.ToILDasmString());
             }
             catch (Exception e)
             {
