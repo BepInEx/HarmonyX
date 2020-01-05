@@ -6,6 +6,8 @@ using System.Reflection.Emit;
 using HarmonyLib.Internal;
 using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
+using HarmonyLib.Tools;
+using MonoMod.Utils;
 
 namespace HarmonyLib
 {
@@ -202,6 +204,8 @@ namespace HarmonyLib
         ///
         public List<DynamicMethod> Patch()
         {
+            Logger.Log(Logger.LogChannel.Info, () => $"Patching {instance.Id}");
+
             lock (locker)
             {
                 var dynamicMethods = new List<DynamicMethod>();
@@ -210,7 +214,12 @@ namespace HarmonyLib
                     if (original == null)
                         throw new NullReferenceException($"Null method for {instance.Id}");
 
+                    Logger.Log(Logger.LogChannel.Info, () => $"Patching {original.GetID()}");
+
                     var individualPrepareResult = RunMethod<HarmonyPrepare, bool>(true, original);
+
+                    Logger.Log(Logger.LogChannel.Info, () => $"HarmonyPrepare result: {individualPrepareResult}");
+
                     if (individualPrepareResult)
                     {
                         var patchInfo = original.ToPatchInfo();

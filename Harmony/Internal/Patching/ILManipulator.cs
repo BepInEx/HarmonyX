@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib.Internal.Util;
+using HarmonyLib.Tools;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -184,6 +185,8 @@ namespace HarmonyLib.Internal.Patching
             foreach (var transpiler in transpilers)
             {
                 var args = GetTranpilerArguments(il, transpiler, tempInstructions, original);
+
+                Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.GetID()}");
                 tempInstructions = transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>;
             }
 

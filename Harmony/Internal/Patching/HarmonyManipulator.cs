@@ -4,9 +4,12 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using System.Text;
 using HarmonyLib.Internal.Util;
+using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.Utils;
 using OpCode = Mono.Cecil.Cil.OpCode;
 using OpCodes = Mono.Cecil.Cil.OpCodes;
 
@@ -63,6 +66,29 @@ namespace HarmonyLib.Internal.Patching
             SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
                         out var sortedFinalizers);
 
+            Logger.Log(Logger.LogChannel.Info, () =>
+            {
+                var sb = new StringBuilder();
+
+                sb.AppendLine($"Patching {original.GetID()} with {sortedPrefixes.Count} prefixes, {sortedPostfixes.Count} postfixes, {sortedTranspilers.Count} transpilers, {sortedFinalizers.Count} finalizers");
+
+                void Print(List<MethodInfo> list, string type)
+                {
+                    if (list.Count == 0)
+                        return;
+                    sb.AppendLine($"{list.Count} {type}:");
+                    foreach (var fix in list)
+                        sb.AppendLine($"* {fix.GetID()}");
+                }
+
+                Print(sortedPrefixes, "prefixes");
+                Print(sortedPostfixes, "postfixes");
+                Print(sortedTranspilers, "transpilers");
+                Print(sortedFinalizers, "finalizers");
+
+                return sb.ToString();
+            });
+
             MakePatched(original, null, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
         }
 
@@ -84,6 +110,8 @@ namespace HarmonyLib.Internal.Patching
         {
             if (transpilers.Count == 0)
                 return;
+
+            Logger.Log(Logger.LogChannel.Info, () => $"Transpiling {original.GetID()}");
 
             // Create a high-level manipulator for the method
             var manipulator = new ILManipulator(ctx.Body);
@@ -130,6 +158,8 @@ namespace HarmonyLib.Internal.Patching
             if (postfixes.Count == 0)
                 return;
 
+            Logger.Log(Logger.LogChannel.Info, () => "Writing postfixes");
+
             // Get the last instruction (expected to be `ret`)
             il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
 
@@ -170,7 +200,7 @@ namespace HarmonyLib.Internal.Patching
                         throw new Exception(
                             $"Return type of pass through postfix {postfix} does not match type of its first parameter");
                     // TODO: Make the error more understandable
-                    throw new Exception($"Postfix patch {postfix} must have a \"void\" return type");
+                    throw new Exception($"Postfix patch {postfix} must have `void` as return type");
                 }
             }
         }
@@ -185,6 +215,8 @@ namespace HarmonyLib.Internal.Patching
 
             if (prefixes.Count == 0)
                 return;
+
+            Logger.Log(Logger.LogChannel.Info, () => "Writing prefixes");
 
             // Start emitting at the start
             il.emitBefore = il.IL.Body.Instructions[0];
@@ -213,7 +245,7 @@ namespace HarmonyLib.Internal.Patching
                 {
                     if (prefix.ReturnType != typeof(bool))
                         throw new Exception(
-                            $"Prefix patch {prefix} has not \"bool\" or \"void\" return type: {prefix.ReturnType}");
+                            $"Prefix patch {prefix} has return type {prefix.ReturnType}, but only `bool` or `void` are permitted");
 
                     if (runOriginal != null)
                     {
@@ -252,6 +284,8 @@ namespace HarmonyLib.Internal.Patching
 
             if (finalizers.Count == 0)
                 return;
+
+            Logger.Log(Logger.LogChannel.Info, () => "Writing finalizers");
 
             il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
 
@@ -364,6 +398,8 @@ namespace HarmonyLib.Internal.Patching
                 if (original == null)
                     throw new ArgumentException(nameof(original));
 
+                Logger.Log(Logger.LogChannel.Info, () => $"Running ILHook manipulator on {original.GetID()}");
+
                 MarkForNoInlining(original);
 
                 WriteTranspiledMethod(ctx, original, transpilers);
@@ -371,7 +407,7 @@ namespace HarmonyLib.Internal.Patching
                 // If no need to wrap anything, we're basically done!
                 if (prefixes.Count + postfixes.Count + finalizers.Count == 0)
                 {
-                    Console.WriteLine(ctx.Body.ToILDasmString());
+                    Logger.Log(Logger.LogChannel.IL, () => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
                     return;
                 }
 
@@ -395,11 +431,11 @@ namespace HarmonyLib.Internal.Patching
                 il.MarkLabel(returnLabel);
                 il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
 
-                Console.WriteLine(il.IL.Body.ToILDasmString());
+                Logger.Log(Logger.LogChannel.IL, () => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Logger.Log(Logger.LogChannel.Error, () => $"Failed to patch {original.GetID()}: {e}");
             }
         }
 
