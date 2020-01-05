@@ -71,8 +71,8 @@ namespace HarmonyLib
         {
             var result = AccessTools.Method(type, name, parameters);
             if (result == null)
-                throw new ArgumentException("Cannot not find method for type " + type + " and name " + name +
-                                            " and parameters " + parameters?.Description());
+                throw new ArgumentException(
+                    $"Cannot not find method for type {type} and name {name} and parameters {parameters?.Description()}");
             ImportMethod(result);
         }
 
@@ -113,8 +113,8 @@ namespace HarmonyLib
         {
             var result = "HarmonyMethod[";
             var trv = Traverse.Create(this);
-            HarmonyFields().ForEach(f => { result += f + '=' + trv.Field(f).GetValue(); });
-            return result + "]";
+            HarmonyFields().ForEach(f => { result += $"{f}{'='}{trv.Field(f).GetValue()}"; });
+            return $"{result}]";
         }
     }
 

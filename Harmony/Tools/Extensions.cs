@@ -29,7 +29,7 @@ namespace HarmonyLib
         public static string Description(this Type[] parameters)
         {
             if (parameters == null) return "NULL";
-            return "(" + parameters.Join(p => p.FullDescription()) + ")";
+            return $"({parameters.Join(p => p.FullDescription())})";
         }
 
         /// <summary>A full description of a type</summary>
@@ -71,8 +71,8 @@ namespace HarmonyLib
             if (method == null) return "null";
             var parameters = method.GetParameters().Select(p => p.ParameterType).ToArray();
             var returnType = AccessTools.GetReturnedType(method);
-            return returnType.FullDescription() + " " + method.DeclaringType.FullDescription() + "." + method.Name +
-                   parameters.Description();
+            return
+                $"{returnType.FullDescription()} {method.DeclaringType.FullDescription()}.{method.Name}{parameters.Description()}";
         }
 
         /// <summary>A helper converting parameter infos to types</summary>

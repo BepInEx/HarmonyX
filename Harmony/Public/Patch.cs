@@ -206,8 +206,8 @@ namespace HarmonyLib
         public Patch(MethodInfo patch, int index, string owner, int priority, string[] before, string[] after)
         {
             if (patch is DynamicMethod)
-                throw new Exception("Cannot directly reference dynamic method \"" + patch.FullDescription() +
-                                    "\" in Harmony. Use a factory method instead that will return the dynamic method.");
+                throw new Exception(
+                    $"Cannot directly reference dynamic method \"{patch.FullDescription()}\" in Harmony. Use a factory method instead that will return the dynamic method.");
 
             this.index = index;
             this.owner = owner;

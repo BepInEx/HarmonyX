@@ -25,8 +25,8 @@ namespace HarmonyLib
 
         static FileLog()
         {
-            logPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + Path.DirectorySeparatorChar +
-                      "harmony.log.txt";
+            logPath =
+                $"{Environment.GetFolderPath(Environment.SpecialFolder.Desktop)}{Path.DirectorySeparatorChar}harmony.log.txt";
         }
 
         private static string IndentString()
@@ -129,8 +129,8 @@ namespace HarmonyLib
         {
             lock (logPath)
             {
-                var path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + Path.DirectorySeparatorChar +
-                           "harmony.log.txt";
+                var path =
+                    $"{Environment.GetFolderPath(Environment.SpecialFolder.Desktop)}{Path.DirectorySeparatorChar}harmony.log.txt";
                 File.Delete(path);
             }
         }
@@ -148,7 +148,7 @@ namespace HarmonyLib
                 for (var i = 1; i <= len; i++)
                 {
                     if (s == "") s = "#  ";
-                    s = s + (*p).ToString("X2") + " ";
+                    s = $"{s}{(*p):X2} ";
                     if (i > 1 || len == 1)
                     {
                         if (i % 8 == 0 || i == len)
@@ -174,7 +174,7 @@ namespace HarmonyLib
 #pragma warning restore XS0001
                 for (var i = 0; i < hash.Length; i++)
                     sBuilder.Append(hash[i].ToString("X2"));
-                Log("HASH: " + sBuilder);
+                Log($"HASH: {sBuilder}");
             }
         }
     }

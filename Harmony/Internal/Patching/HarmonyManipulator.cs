@@ -473,14 +473,14 @@ namespace HarmonyLib.Internal.Patching
                         fieldInfo = AccessTools.DeclaredField(original.DeclaringType, int.Parse(fieldName));
                         if (fieldInfo == null)
                             throw new ArgumentException(
-                                "No field found at given index in class " + original.DeclaringType.FullName, fieldName);
+                                $"No field found at given index in class {original.DeclaringType.FullName}", fieldName);
                     }
                     else
                     {
                         fieldInfo = AccessTools.DeclaredField(original.DeclaringType, fieldName);
                         if (fieldInfo == null)
                             throw new ArgumentException(
-                                "No such field defined in class " + original.DeclaringType.FullName, fieldName);
+                                $"No such field defined in class {original.DeclaringType.FullName}", fieldName);
                     }
 
                     if (fieldInfo.IsStatic)
@@ -511,14 +511,13 @@ namespace HarmonyLib.Internal.Patching
                 {
                     var returnType = AccessTools.GetReturnedType(original);
                     if (returnType == typeof(void))
-                        throw new Exception("Cannot get result from void method " + original.FullDescription());
+                        throw new Exception($"Cannot get result from void method {original.FullDescription()}");
                     var resultType = patchParam.ParameterType;
                     if (resultType.IsByRef)
                         resultType = resultType.GetElementType();
                     if (resultType.IsAssignableFrom(returnType) == false)
-                        throw new Exception("Cannot assign method return type " + returnType.FullName + " to " +
-                                            RESULT_VAR + " type " + resultType.FullName + " for method " +
-                                            original.FullDescription());
+                        throw new Exception(
+                            $"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName} for method {original.FullDescription()}");
                     il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, variables[RESULT_VAR]);
                     continue;
                 }
@@ -535,16 +534,16 @@ namespace HarmonyLib.Internal.Patching
                 {
                     var val = patchParam.Name.Substring(PARAM_INDEX_PREFIX.Length);
                     if (!int.TryParse(val, out idx))
-                        throw new Exception("Parameter " + patchParam.Name + " does not contain a valid index");
+                        throw new Exception($"Parameter {patchParam.Name} does not contain a valid index");
                     if (idx < 0 || idx >= originalParameters.Length)
-                        throw new Exception("No parameter found at index " + idx);
+                        throw new Exception($"No parameter found at index {idx}");
                 }
                 else
                 {
                     idx = GetArgumentIndex(patch, originalParameterNames, patchParam);
                     if (idx == -1)
-                        throw new Exception("Parameter \"" + patchParam.Name + "\" not found in method " +
-                                            original.FullDescription());
+                        throw new Exception(
+                            $"Parameter \"{patchParam.Name}\" not found in method {original.FullDescription()}");
                 }
 
                 //   original -> patch     opcode

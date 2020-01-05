@@ -95,22 +95,22 @@ namespace HarmonyLib
         {
             var result = "[";
             if (name != null)
-                result += name + ": ";
+                result += $"{name}: ";
             if (opcodes.Count > 0)
-                result += "opcodes=" + opcodes.Join() + " ";
+                result += $"opcodes={opcodes.Join()} ";
             if (operands.Count > 0)
-                result += "operands=" + operands.Join() + " ";
+                result += $"operands={operands.Join()} ";
             if (labels.Count > 0)
-                result += "labels=" + labels.Join() + " ";
+                result += $"labels={labels.Join()} ";
             if (blocks.Count > 0)
-                result += "blocks=" + blocks.Join() + " ";
+                result += $"blocks={blocks.Join()} ";
             if (jumpsFrom.Count > 0)
-                result += "jumpsFrom=" + jumpsFrom.Join() + " ";
+                result += $"jumpsFrom={jumpsFrom.Join()} ";
             if (jumpsTo.Count > 0)
-                result += "jumpsTo=" + jumpsTo.Join() + " ";
+                result += $"jumpsTo={jumpsTo.Join()} ";
             if (predicate != null)
                 result += "predicate=yes ";
-            return result.TrimEnd() + "]";
+            return $"{result.TrimEnd()}]";
         }
     }
 
@@ -296,7 +296,7 @@ namespace HarmonyLib
         {
             if (IsValid) return false;
             var err = lastError ?? "Unexpected code";
-            logger(err + " in " + method);
+            logger($"{err} in {method}");
             return true;
         }
 
@@ -592,7 +592,7 @@ namespace HarmonyLib
             FixStart();
             while (IsValid && predicate(Instruction) == false)
                 Pos += direction;
-            lastError = IsInvalid ? "Cannot find " + predicate : null;
+            lastError = IsInvalid ? $"Cannot find {predicate}" : null;
             return this;
         }
 
@@ -632,7 +632,7 @@ namespace HarmonyLib
                 Pos += direction;
             }
 
-            lastError = IsInvalid ? "Cannot find " + matches.Join() : null;
+            lastError = IsInvalid ? $"Cannot find {matches.Join()}" : null;
             return this;
         }
 

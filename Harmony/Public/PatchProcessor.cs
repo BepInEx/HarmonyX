@@ -208,7 +208,7 @@ namespace HarmonyLib
                 foreach (var original in originals)
                 {
                     if (original == null)
-                        throw new NullReferenceException("Null method for " + instance.Id);
+                        throw new NullReferenceException($"Null method for {instance.Id}");
 
                     var individualPrepareResult = RunMethod<HarmonyPrepare, bool>(true, original);
                     if (individualPrepareResult)
@@ -341,13 +341,12 @@ namespace HarmonyLib
                     if (original == null)
                     {
                         var info = "(";
-                        info += "declaringType=" + containerAttributes.declaringType + ", ";
-                        info += "methodName =" + containerAttributes.methodName + ", ";
-                        info += "methodType=" + originalMethodType + ", ";
-                        info += "argumentTypes=" + containerAttributes.argumentTypes.Description();
+                        info += $"declaringType={containerAttributes.declaringType}, ";
+                        info += $"methodName ={containerAttributes.methodName}, ";
+                        info += $"methodType={originalMethodType}, ";
+                        info += $"argumentTypes={containerAttributes.argumentTypes.Description()}";
                         info += ")";
-                        throw new ArgumentException("No target method specified for class " + container.FullName + " " +
-                                                    info);
+                        throw new ArgumentException($"No target method specified for class {container.FullName} {info}");
                     }
 
                     originals.Add(original);
@@ -368,7 +367,7 @@ namespace HarmonyLib
             if (prefixMethod != null)
             {
                 if (prefixMethod.IsStatic == false)
-                    throw new ArgumentException("Patch method " + prefixMethod.FullDescription() + " must be static");
+                    throw new ArgumentException($"Patch method {prefixMethod.FullDescription()} must be static");
 
                 var prefixAttributes = HarmonyMethodExtensions.GetFromMethod(prefixMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(prefixAttributes)).CopyTo(prefix);
@@ -377,7 +376,7 @@ namespace HarmonyLib
             if (postfixMethod != null)
             {
                 if (postfixMethod.IsStatic == false)
-                    throw new ArgumentException("Patch method " + postfixMethod.FullDescription() + " must be static");
+                    throw new ArgumentException($"Patch method {postfixMethod.FullDescription()} must be static");
 
                 var postfixAttributes = HarmonyMethodExtensions.GetFromMethod(postfixMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(postfixAttributes)).CopyTo(postfix);
@@ -386,8 +385,7 @@ namespace HarmonyLib
             if (transpilerMethod != null)
             {
                 if (transpilerMethod.IsStatic == false)
-                    throw new ArgumentException(
-                        "Patch method " + transpilerMethod.FullDescription() + " must be static");
+                    throw new ArgumentException($"Patch method {transpilerMethod.FullDescription()} must be static");
 
                 var transpilerAttributes = HarmonyMethodExtensions.GetFromMethod(transpilerMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(transpilerAttributes)).CopyTo(transpiler);
@@ -396,8 +394,7 @@ namespace HarmonyLib
             if (finalizerMethod != null)
             {
                 if (finalizerMethod.IsStatic == false)
-                    throw new ArgumentException("Patch method " + finalizerMethod.FullDescription() +
-                                                " must be static");
+                    throw new ArgumentException($"Patch method {finalizerMethod.FullDescription()} must be static");
 
                 var finalizerAttributes = HarmonyMethodExtensions.GetFromMethod(finalizerMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(finalizerAttributes)).CopyTo(finalizer);

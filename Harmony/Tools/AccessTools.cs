@@ -41,7 +41,7 @@ namespace HarmonyLib
                 type = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                                 .FirstOrDefault(x => x.Name == name);
             if (type == null && Harmony.DEBUG)
-                FileLog.Log("AccessTools.TypeByName: Could not find type named " + name);
+                FileLog.Log($"AccessTools.TypeByName: Could not find type named {name}");
             return type;
         }
 
@@ -111,7 +111,7 @@ namespace HarmonyLib
 
             var field = type.GetField(name, allDeclared);
             if (field == null && Harmony.DEBUG)
-                FileLog.Log("AccessTools.DeclaredField: Could not find field for type " + type + " and name " + name);
+                FileLog.Log($"AccessTools.DeclaredField: Could not find field for type {type} and name {name}");
             return field;
         }
 
@@ -138,7 +138,7 @@ namespace HarmonyLib
 
             var field = FindIncludingBaseTypes(type, t => t.GetField(name, all));
             if (field == null && Harmony.DEBUG)
-                FileLog.Log("AccessTools.Field: Could not find field for type " + type + " and name " + name);
+                FileLog.Log($"AccessTools.Field: Could not find field for type {type} and name {name}");
             return field;
         }
 
@@ -158,7 +158,7 @@ namespace HarmonyLib
 
             var field = GetDeclaredFields(type).ElementAtOrDefault(idx);
             if (field == null && Harmony.DEBUG)
-                FileLog.Log("AccessTools.DeclaredField: Could not find field for type " + type + " and idx " + idx);
+                FileLog.Log($"AccessTools.DeclaredField: Could not find field for type {type} and idx {idx}");
             return field;
         }
 
@@ -185,8 +185,7 @@ namespace HarmonyLib
 
             var property = type.GetProperty(name, allDeclared);
             if (property == null && Harmony.DEBUG)
-                FileLog.Log("AccessTools.DeclaredProperty: Could not find property for type " + type + " and name " +
-                            name);
+                FileLog.Log($"AccessTools.DeclaredProperty: Could not find property for type {type} and name {name}");
             return property;
         }
 
@@ -233,7 +232,7 @@ namespace HarmonyLib
 
             var property = FindIncludingBaseTypes(type, t => t.GetProperty(name, all));
             if (property == null && Harmony.DEBUG)
-                FileLog.Log("AccessTools.Property: Could not find property for type " + type + " and name " + name);
+                FileLog.Log($"AccessTools.Property: Could not find property for type {type} and name {name}");
             return property;
         }
 
@@ -292,8 +291,8 @@ namespace HarmonyLib
             if (result == null)
             {
                 if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredMethod: Could not find method for type " + type + " and name " +
-                                name + " and parameters " + parameters?.Description());
+                    FileLog.Log(
+                        $"AccessTools.DeclaredMethod: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
                 return null;
             }
 
@@ -336,7 +335,7 @@ namespace HarmonyLib
                     result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all, null, new Type[0], modifiers));
 
                     if (result == null)
-                        throw new AmbiguousMatchException($"Ambiguous match in Harmony patch for {type}:{name}." + ex);
+                        throw new AmbiguousMatchException($"Ambiguous match in Harmony patch for {type}:{name}.{ex}");
                 }
             else
                 result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all, null, parameters, modifiers));
@@ -344,8 +343,8 @@ namespace HarmonyLib
             if (result == null)
             {
                 if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Method: Could not find method for type " + type + " and name " + name +
-                                " and parameters " + parameters?.Description());
+                    FileLog.Log(
+                        $"AccessTools.Method: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
                 return null;
             }
 
@@ -852,8 +851,8 @@ namespace HarmonyLib
         {
             var fields = string.Join(",", GetFieldNames(type).ToArray());
             var properties = string.Join(",", GetPropertyNames(type).ToArray());
-            throw new MissingMemberException(string.Join(",", names) + "; available fields: " + fields +
-                                             "; available properties: " + properties);
+            throw new MissingMemberException(
+                $"{string.Join(",", names)}; available fields: {fields}; available properties: {properties}");
         }
 
         /// <summary>Gets default value for a specific type</summary>
@@ -949,7 +948,7 @@ namespace HarmonyLib
                     foreach (var element in source as IEnumerable)
                     {
                         var iStr = (i++).ToString();
-                        var path = pathRoot.Length > 0 ? pathRoot + "." + iStr : iStr;
+                        var path = pathRoot.Length > 0 ? $"{pathRoot}.{iStr}" : iStr;
                         var newElement = MakeDeepCopy(element, newElementType, processor, path);
                         addInvoker(addableResult, new object[] {newElement});
                     }
@@ -970,7 +969,7 @@ namespace HarmonyLib
                 for (var i = 0; i < length; i++)
                 {
                     var iStr = i.ToString();
-                    var path = pathRoot.Length > 0 ? pathRoot + "." + iStr : iStr;
+                    var path = pathRoot.Length > 0 ? $"{pathRoot}.{iStr}" : iStr;
                     arrayResult[i] = MakeDeepCopy(originalArray[i], elementType, processor, path);
                 }
 
@@ -984,7 +983,7 @@ namespace HarmonyLib
             var result = CreateInstance(resultType);
             Traverse.IterateFields(source, result, (name, src, dst) =>
             {
-                var path = pathRoot.Length > 0 ? pathRoot + "." + name : name;
+                var path = pathRoot.Length > 0 ? $"{pathRoot}.{name}" : name;
                 var value = processor != null ? processor(path, src, dst) : src.GetValue();
                 dst.SetValue(MakeDeepCopy(value, dst.GetValueType(), processor, path));
             });

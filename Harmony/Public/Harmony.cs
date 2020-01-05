@@ -30,7 +30,7 @@ namespace HarmonyLib
         ///
         public Harmony(string id)
         {
-            if (string.IsNullOrEmpty(id)) throw new ArgumentException(nameof(id) + " cannot be null or empty");
+            if (string.IsNullOrEmpty(id)) throw new ArgumentException($"{nameof(id)} cannot be null or empty");
 
             if (DEBUG)
             {
@@ -38,13 +38,13 @@ namespace HarmonyLib
                 var version = assembly.GetName().Version;
                 var location = assembly.Location;
                 if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
-                FileLog.Log("### Harmony id=" + id + ", version=" + version + ", location=" + location);
+                FileLog.Log($"### Harmony id={id}, version={version}, location={location}");
                 var callingMethod = AccessTools.GetOutsideCaller();
                 var callingAssembly = callingMethod.DeclaringType.Assembly;
                 location = callingAssembly.Location;
                 if (string.IsNullOrEmpty(location)) location = new Uri(callingAssembly.CodeBase).LocalPath;
-                FileLog.Log("### Started from " + callingMethod.FullDescription() + ", location " + location);
-                FileLog.Log("### At " + DateTime.Now.ToString("yyyy-MM-dd hh.mm.ss"));
+                FileLog.Log($"### Started from {callingMethod.FullDescription()}, location {location}");
+                FileLog.Log($"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
             }
 
             Id = id;

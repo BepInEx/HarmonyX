@@ -21,16 +21,6 @@ namespace HarmonyLib.Internal.Util
             return method;
         }
 
-        internal static AssemblyBuilder DefineDynamicAssembly(string name)
-        {
-            var assemblyName = new AssemblyName(name);
-#if NETCOREAPP3_0 || NETSTANDARD2_1
-			return AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
-#else
-            return AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
-#endif
-        }
-
         internal static void GetPatches(Type patchType, out MethodInfo prefix, out MethodInfo postfix,
                                         out MethodInfo transpiler, out MethodInfo finalizer)
         {

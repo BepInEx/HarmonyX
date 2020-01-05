@@ -86,13 +86,13 @@ namespace HarmonyLib
         {
             var list = new List<string>();
             foreach (var label in labels)
-                list.Add("Label" + label.GetHashCode());
+                list.Add($"Label{label.GetHashCode()}");
             foreach (var block in blocks)
-                list.Add("EX_" + block.blockType.ToString().Replace("Block", ""));
+                list.Add($"EX_{block.blockType.ToString().Replace("Block", "")}");
 
-            var extras = list.Count > 0 ? " [" + string.Join(", ", list.ToArray()) + "]" : "";
+            var extras = list.Count > 0 ? $" [{string.Join(", ", list.ToArray())}]" : "";
             var operandStr = FormatArgument(operand);
-            if (operandStr != "") operandStr = " " + operandStr;
+            if (operandStr != "") operandStr = $" {operandStr}";
             return opcode + operandStr + extras;
         }
 
@@ -105,14 +105,14 @@ namespace HarmonyLib
                 return method.FullDescription();
 
             if (type == typeof(string))
-                return "\"" + argument + "\"";
+                return $"\"{argument}\"";
             if (type == typeof(Label))
-                return "Label" + ((Label) argument).GetHashCode();
+                return $"Label{((Label) argument).GetHashCode()}";
             if (type == typeof(Label[]))
-                return "Labels" + string.Join(
-                           ",", ((Label[]) argument).Select(l => l.GetHashCode().ToString()).ToArray());
+                return
+                    $"Labels{string.Join(",", ((Label[]) argument).Select(l => l.GetHashCode().ToString()).ToArray())}";
             if (type == typeof(LocalBuilder))
-                return ((LocalBuilder) argument).LocalIndex + " (" + ((LocalBuilder) argument).LocalType + ")";
+                return $"{((LocalBuilder) argument).LocalIndex} ({((LocalBuilder) argument).LocalType})";
 
             return argument.ToString().Trim();
         }
