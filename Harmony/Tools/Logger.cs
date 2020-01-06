@@ -134,5 +134,11 @@ namespace HarmonyLib.Tools
             if ((channel & ChannelFilter) != LogChannel.None)
                 MessageReceived?.Invoke(null, new LogEventArgs { LogChannel = channel, Message = message() });
         }
+
+        internal static void LogText(LogChannel channel, string message)
+        {
+            if ((channel & ChannelFilter) != LogChannel.None)
+                MessageReceived?.Invoke(null, new LogEventArgs { LogChannel = channel, Message = message });
+        }
     }
 }

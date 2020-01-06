@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Tools;
 
 namespace HarmonyLib
 {
@@ -67,8 +68,9 @@ namespace HarmonyLib
         public static IEnumerable<CodeInstruction> DebugLogger(this IEnumerable<CodeInstruction> instructions,
                                                                string text)
         {
+            yield return new CodeInstruction(OpCodes.Ldc_I4, (int)Logger.LogChannel.Info);
             yield return new CodeInstruction(OpCodes.Ldstr, text);
-            yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(FileLog), nameof(FileLog.Log)));
+            yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Logger), nameof(Logger.LogText)));
             foreach (var instruction in instructions) yield return instruction;
         }
 

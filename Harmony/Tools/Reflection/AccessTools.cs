@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using HarmonyLib.Internal.RuntimeFixes;
+using HarmonyLib.Tools;
 using MonoMod.Utils;
 
 namespace HarmonyLib
@@ -40,8 +41,8 @@ namespace HarmonyLib
             if (type == null)
                 type = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                                 .FirstOrDefault(x => x.Name == name);
-            if (type == null && Harmony.DEBUG)
-                FileLog.Log($"AccessTools.TypeByName: Could not find type named {name}");
+            if (type == null)
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.TypeByName: Could not find type named {name}");
             return type;
         }
 
@@ -97,21 +98,19 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredField: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredField: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredField: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredField: name is null");
                 return null;
             }
 
             var field = type.GetField(name, allDeclared);
-            if (field == null && Harmony.DEBUG)
-                FileLog.Log($"AccessTools.DeclaredField: Could not find field for type {type} and name {name}");
+            if (field == null)
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredField: Could not find field for type {type} and name {name}");
             return field;
         }
 
@@ -124,21 +123,19 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Field: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Field: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Field: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Field: name is null");
                 return null;
             }
 
             var field = FindIncludingBaseTypes(type, t => t.GetField(name, all));
-            if (field == null && Harmony.DEBUG)
-                FileLog.Log($"AccessTools.Field: Could not find field for type {type} and name {name}");
+            if (field == null)
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.Field: Could not find field for type {type} and name {name}");
             return field;
         }
 
@@ -151,14 +148,13 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredField: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredField: type is null");
                 return null;
             }
 
             var field = GetDeclaredFields(type).ElementAtOrDefault(idx);
-            if (field == null && Harmony.DEBUG)
-                FileLog.Log($"AccessTools.DeclaredField: Could not find field for type {type} and idx {idx}");
+            if (field == null)
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredField: Could not find field for type {type} and idx {idx}");
             return field;
         }
 
@@ -171,21 +167,19 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredProperty: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredProperty: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredProperty: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredProperty: name is null");
                 return null;
             }
 
             var property = type.GetProperty(name, allDeclared);
             if (property == null && Harmony.DEBUG)
-                FileLog.Log($"AccessTools.DeclaredProperty: Could not find property for type {type} and name {name}");
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredProperty: Could not find property for type {type} and name {name}");
             return property;
         }
 
@@ -218,21 +212,19 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Property: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Property: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Property: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Property: name is null");
                 return null;
             }
 
             var property = FindIncludingBaseTypes(type, t => t.GetProperty(name, all));
-            if (property == null && Harmony.DEBUG)
-                FileLog.Log($"AccessTools.Property: Could not find property for type {type} and name {name}");
+            if (property == null)
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.Property: Could not find property for type {type} and name {name}");
             return property;
         }
 
@@ -268,15 +260,13 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredMethod: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredMethod: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredMethod: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredMethod: name is null");
                 return null;
             }
 
@@ -290,9 +280,7 @@ namespace HarmonyLib
 
             if (result == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log(
-                        $"AccessTools.DeclaredMethod: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredMethod: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
                 return null;
             }
 
@@ -311,15 +299,13 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Method: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Method: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Method: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Method: name is null");
                 return null;
             }
 
@@ -342,9 +328,7 @@ namespace HarmonyLib
 
             if (result == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log(
-                        $"AccessTools.Method: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
+                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.Method: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
                 return null;
             }
 
@@ -362,8 +346,7 @@ namespace HarmonyLib
         {
             if (typeColonMethodname == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Method: typeColonMethodname is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Method: typeColonMethodname is null");
                 return null;
             }
 
@@ -384,8 +367,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetMethodNames: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetMethodNames: type is null");
                 return new List<string>();
             }
 
@@ -400,8 +382,7 @@ namespace HarmonyLib
         {
             if (instance == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetMethodNames: instance is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetMethodNames: instance is null");
                 return new List<string>();
             }
 
@@ -416,8 +397,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetFieldNames: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetFieldNames: type is null");
                 return new List<string>();
             }
 
@@ -432,8 +412,7 @@ namespace HarmonyLib
         {
             if (instance == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetFieldNames: instance is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetFieldNames: instance is null");
                 return new List<string>();
             }
 
@@ -448,8 +427,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetPropertyNames: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetPropertyNames: type is null");
                 return new List<string>();
             }
 
@@ -464,8 +442,7 @@ namespace HarmonyLib
         {
             if (instance == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetPropertyNames: instance is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetPropertyNames: instance is null");
                 return new List<string>();
             }
 
@@ -503,8 +480,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.DeclaredConstructor: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.DeclaredConstructor: type is null");
                 return null;
             }
 
@@ -521,8 +497,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.ConstructorInfo: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.ConstructorInfo: type is null");
                 return null;
             }
 
@@ -539,8 +514,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetDeclaredConstructors: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetDeclaredConstructors: type is null");
                 return null;
             }
 
@@ -555,8 +529,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetDeclaredMethods: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetDeclaredMethods: type is null");
                 return null;
             }
 
@@ -571,8 +544,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetDeclaredProperties: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetDeclaredProperties: type is null");
                 return null;
             }
 
@@ -587,8 +559,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetDeclaredFields: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetDeclaredFields: type is null");
                 return null;
             }
 
@@ -603,8 +574,7 @@ namespace HarmonyLib
         {
             if (methodOrConstructor == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetReturnedType: methodOrConstructor is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetReturnedType: methodOrConstructor is null");
                 return null;
             }
 
@@ -621,15 +591,13 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Inner: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Inner: type is null");
                 return null;
             }
 
             if (name == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.Inner: name is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.Inner: name is null");
                 return null;
             }
 
@@ -645,19 +613,17 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstInner: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstInner: type is null");
                 return null;
             }
 
             if (predicate == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstInner: predicate is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstInner: predicate is null");
                 return null;
             }
 
-            return type.GetNestedTypes(all).FirstOrDefault(subType => predicate(subType));
+            return type.GetNestedTypes(all).FirstOrDefault(predicate);
         }
 
         /// <summary>Given a type, returns the first method matching a predicate</summary>
@@ -669,19 +635,17 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstMethod: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstMethod: type is null");
                 return null;
             }
 
             if (predicate == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstMethod: predicate is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstMethod: predicate is null");
                 return null;
             }
 
-            return type.GetMethods(allDeclared).FirstOrDefault(method => predicate(method));
+            return type.GetMethods(allDeclared).FirstOrDefault(predicate);
         }
 
         /// <summary>Given a type, returns the first constructor matching a predicate</summary>
@@ -693,19 +657,17 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstConstructor: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstConstructor: type is null");
                 return null;
             }
 
             if (predicate == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstConstructor: predicate is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstConstructor: predicate is null");
                 return null;
             }
 
-            return type.GetConstructors(allDeclared).FirstOrDefault(constructor => predicate(constructor));
+            return type.GetConstructors(allDeclared).FirstOrDefault(predicate);
         }
 
         /// <summary>Given a type, returns the first property matching a predicate</summary>
@@ -717,19 +679,17 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstProperty: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstProperty: type is null");
                 return null;
             }
 
             if (predicate == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.FirstProperty: predicate is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.FirstProperty: predicate is null");
                 return null;
             }
 
-            return type.GetProperties(allDeclared).FirstOrDefault(property => predicate(property));
+            return type.GetProperties(allDeclared).FirstOrDefault(predicate);
         }
 
         /// <summary>Returns an array containing the type of each object in the given array</summary>
@@ -863,8 +823,7 @@ namespace HarmonyLib
         {
             if (type == null)
             {
-                if (Harmony.DEBUG)
-                    FileLog.Log("AccessTools.GetDefaultValue: type is null");
+                Logger.Log(Logger.LogChannel.Warn, () => "AccessTools.GetDefaultValue: type is null");
                 return null;
             }
 
@@ -938,7 +897,7 @@ namespace HarmonyLib
 
             if (type.IsGenericType && resultType.IsGenericType)
             {
-                var addOperation = FirstMethod(resultType, m => m.Name == "Add" && m.GetParameters().Count() == 1);
+                var addOperation = FirstMethod(resultType, m => m.Name == "Add" && m.GetParameters().Length == 1);
                 if (addOperation != null)
                 {
                     var addableResult = Activator.CreateInstance(resultType);
