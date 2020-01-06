@@ -7,6 +7,8 @@ using System.Reflection.Emit;
 using HarmonyLib.Internal;
 using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
+using HarmonyLib.Tools;
+using MonoMod.Utils;
 
 namespace HarmonyLib
 {
@@ -37,14 +39,21 @@ namespace HarmonyLib
                 var assembly = typeof(Harmony).Assembly;
                 var version = assembly.GetName().Version;
                 var location = assembly.Location;
-                if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
-                FileLog.Log($"### Harmony id={id}, version={version}, location={location}");
+
+                if (string.IsNullOrEmpty(location))
+                    location = new Uri(assembly.CodeBase).LocalPath;
+
+                Logger.Log(Logger.LogChannel.Info, () => $"### Harmony id={id}, version={version}, location={location}");
+
                 var callingMethod = AccessTools.GetOutsideCaller();
                 var callingAssembly = callingMethod.DeclaringType.Assembly;
+
                 location = callingAssembly.Location;
-                if (string.IsNullOrEmpty(location)) location = new Uri(callingAssembly.CodeBase).LocalPath;
-                FileLog.Log($"### Started from {callingMethod.FullDescription()}, location {location}");
-                FileLog.Log($"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
+                if (string.IsNullOrEmpty(location))
+                    location = new Uri(callingAssembly.CodeBase).LocalPath;
+
+                Logger.Log(Logger.LogChannel.Info, () => $"### Started from {callingMethod.GetID()}, location {location}");
+                Logger.Log(Logger.LogChannel.Info, () => $"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
             }
 
             Id = id;

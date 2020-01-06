@@ -1,10 +1,13 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib.Internal.Patching;
 
-namespace HarmonyLib.Internal.Util
+namespace HarmonyLib
 {
-    internal static class PatchSortExtensions
+    /// <summary>
+    /// Extensions for patch sorting
+    /// </summary>
+    public static class PatchSortExtensions
     {
         /// <summary>Gets sorted patch methods</summary>
         /// <param name="original">The original method</param>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,7 @@ using MonoMod.Utils;
 
 namespace HarmonyLib.Internal.Util
 {
-    public static class MethodBodyLogExtensions
+    internal static class MethodBodyLogExtensions
     {
         /// <summary>
         ///     Write method body to a ILDasm -like representation
@@ -16,7 +16,7 @@ namespace HarmonyLib.Internal.Util
         /// <param name="mb">Method body to write</param>
         /// <returns>String representation of the method body (locals and instruction)</returns>
         /// <exception cref="ArgumentOutOfRangeException">Unexpected exception block type</exception>
-        internal static string ToILDasmString(this MethodBody mb)
+        public static string ToILDasmString(this MethodBody mb)
         {
             var sb = new StringBuilder();
 

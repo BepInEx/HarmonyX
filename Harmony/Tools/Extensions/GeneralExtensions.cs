@@ -15,10 +15,12 @@ namespace HarmonyLib
         /// <param name="delimiter">An optional delimiter</param>
         /// <returns>The values joined into a string</returns>
         ///
-        public static string Join<T>(this IEnumerable<T> enumeration, Func<T, string> converter = null,
+        public static string Join<T>(this IEnumerable<T> enumeration,
+                                     Func<T, string> converter = null,
                                      string delimiter = ", ")
         {
-            if (converter == null) converter = t => t.ToString();
+            if (converter == null)
+                converter = t => t.ToString();
             return enumeration.Aggregate("", (prev, curr) => prev + (prev != "" ? delimiter : "") + converter(curr));
         }
 
@@ -28,7 +30,8 @@ namespace HarmonyLib
         ///
         public static string Description(this Type[] parameters)
         {
-            if (parameters == null) return "NULL";
+            if (parameters == null)
+                return "NULL";
             return $"({parameters.Join(p => p.FullDescription())})";
         }
 
@@ -42,7 +45,8 @@ namespace HarmonyLib
                 return "null";
 
             var ns = type.Namespace;
-            if (string.IsNullOrEmpty(ns) == false) ns += ".";
+            if (string.IsNullOrEmpty(ns) == false)
+                ns += ".";
             var result = ns + type.Name;
 
             if (type.IsGenericType)
@@ -68,7 +72,8 @@ namespace HarmonyLib
         ///
         public static string FullDescription(this MethodBase method)
         {
-            if (method == null) return "null";
+            if (method == null)
+                return "null";
             var parameters = method.GetParameters().Select(p => p.ParameterType).ToArray();
             var returnType = AccessTools.GetReturnedType(method);
             return
@@ -110,71 +115,8 @@ namespace HarmonyLib
             object result;
             if (dictionary.TryGetValue(key, out result))
                 if (result is T)
-                    return (T) result;
+                    return (T)result;
             return default;
-        }
-    }
-
-    /// <summary>General extensions for collections</summary>
-    public static class CollectionExtensions
-    {
-        /// <summary>A simple way to execute code for every element in a collection</summary>
-        /// <typeparam name="T">The inner type of the collection</typeparam>
-        /// <param name="sequence">The collection</param>
-        /// <param name="action">The action to execute</param>
-        ///
-        public static void Do<T>(this IEnumerable<T> sequence, Action<T> action)
-        {
-            if (sequence == null) return;
-            var enumerator = sequence.GetEnumerator();
-            while (enumerator.MoveNext()) action(enumerator.Current);
-        }
-
-        /// <summary>A simple way to execute code for elements in a collection matching a condition</summary>
-        /// <typeparam name="T">The inner type of the collection</typeparam>
-        /// <param name="sequence">The collection</param>
-        /// <param name="condition">The predicate</param>
-        /// <param name="action">The action to execute</param>
-        ///
-        public static void DoIf<T>(this IEnumerable<T> sequence, Func<T, bool> condition, Action<T> action)
-        {
-            sequence.Where(condition).Do(action);
-        }
-
-        /// <summary>A helper to add an item to a collection</summary>
-        /// <typeparam name="T">The inner type of the collection</typeparam>
-        /// <param name="sequence">The collection</param>
-        /// <param name="item">The item to add</param>
-        /// <returns>The collection containing the item</returns>
-        /// 
-        /// Note: this was called 'Add' before but that led to unwanted side effect
-        ///       See https://github.com/pardeike/Harmony/issues/147
-        ///
-        public static IEnumerable<T> AddItem<T>(this IEnumerable<T> sequence, T item)
-        {
-            return (sequence ?? Enumerable.Empty<T>()).Concat(new[] {item});
-        }
-
-        /// <summary>A helper to add an item to an array</summary>
-        /// <typeparam name="T">The inner type of the collection</typeparam>
-        /// <param name="sequence">The array</param>
-        /// <param name="item">The item to add</param>
-        /// <returns>The array containing the item</returns>
-        ///
-        public static T[] AddToArray<T>(this T[] sequence, T item)
-        {
-            return AddItem(sequence, item).ToArray();
-        }
-
-        /// <summary>A helper to add items to an array</summary>
-        /// <typeparam name="T">The inner type of the collection</typeparam>
-        /// <param name="sequence">The array</param>
-        /// <param name="items">The items to add</param>
-        /// <returns>The array containing the items</returns>
-        ///
-        public static T[] AddRangeToArray<T>(this T[] sequence, T[] items)
-        {
-            return (sequence ?? Enumerable.Empty<T>()).Concat(items).ToArray();
         }
     }
 }

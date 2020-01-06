@@ -296,7 +296,7 @@ namespace HarmonyLib
             if (containerAttributes.methodType == null)
                 containerAttributes.methodType = MethodType.Normal;
 
-            var reversePatchMethods = PatchTools.GetReversePatches(container);
+            var reversePatchMethods = GetReversePatches(container);
             foreach (var reversePatchMethod in reversePatchMethods)
             {
                 var originalMethod = GetReverseOriginal(reversePatchMethod);
@@ -345,7 +345,7 @@ namespace HarmonyLib
                 }
             }
 
-            PatchTools.GetPatches(container, out var prefixMethod, out var postfixMethod, out var transpilerMethod,
+            GetPatches(container, out var prefixMethod, out var postfixMethod, out var transpilerMethod,
                                   out var finalizerMethod);
             if (prefix != null)
                 prefix.method = prefixMethod;
@@ -465,7 +465,7 @@ namespace HarmonyLib
                 return defaultIfNotExisting;
 
             var methodName = typeof(S).Name.Replace("Harmony", "");
-            var method = PatchTools.GetPatchMethod<S>(container, methodName);
+            var method = GetPatchMethod<S>(container, methodName);
             if (method != null)
             {
                 if (typeof(T).IsAssignableFrom(method.ReturnType))
@@ -486,13 +486,42 @@ namespace HarmonyLib
                 return;
 
             var methodName = typeof(S).Name.Replace("Harmony", "");
-            var method = PatchTools.GetPatchMethod<S>(container, methodName);
+            var method = GetPatchMethod<S>(container, methodName);
             if (method != null)
             {
                 var input = (parameters ?? new object[0]).Union(new object[] { instance }).ToArray();
                 var actualParameters = AccessTools.ActualParameters(method, input);
                 method.Invoke(null, actualParameters);
             }
+        }
+
+        private List<MethodInfo> GetReversePatches(Type patchType)
+        {
+            var attr = typeof(HarmonyReversePatch).FullName;
+            return patchType.GetMethods(AccessTools.all)
+                            .Where(m => m.GetCustomAttributes(true).Any(a => a.GetType().FullName == attr)).ToList();
+        }
+
+        private MethodInfo GetPatchMethod<T>(Type patchType, string name)
+        {
+            var attributeType = typeof(T).FullName;
+            var method = patchType.GetMethods(AccessTools.all)
+                                  .FirstOrDefault(m => m.GetCustomAttributes(true)
+                                                        .Any(a => a.GetType().FullName == attributeType));
+            if (method == null)
+                // not-found is common and normal case, don't use AccessTools which will generate not-found warnings
+                method = patchType.GetMethod(name, AccessTools.all);
+
+            return method;
+        }
+
+        private void GetPatches(Type patchType, out MethodInfo prefix, out MethodInfo postfix,
+                                        out MethodInfo transpiler, out MethodInfo finalizer)
+        {
+            prefix = GetPatchMethod<HarmonyPrefix>(patchType, "Prefix");
+            postfix = GetPatchMethod<HarmonyPostfix>(patchType, "Postfix");
+            transpiler = GetPatchMethod<HarmonyTranspiler>(patchType, "Transpiler");
+            finalizer = GetPatchMethod<HarmonyFinalizer>(patchType, "Finalizer");
         }
     }
 }
