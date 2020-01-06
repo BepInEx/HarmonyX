@@ -27,7 +27,10 @@ namespace HarmonyLib.Internal
 
         public static PatchInfo GetPatchInfo(this MethodBase methodBase)
         {
-            return PatchInfos.GetValueSafe(methodBase);
+            lock (PatchInfos)
+            {
+                return PatchInfos.GetValueSafe(methodBase);
+            }
         }
 
         public static PatchInfo ToPatchInfo(this MethodBase methodBase)
@@ -43,7 +46,10 @@ namespace HarmonyLib.Internal
 
         public static IEnumerable<MethodBase> GetPatchedMethods()
         {
-            return PatchInfos.Keys.AsEnumerable();
+            lock (PatchInfos)
+            {
+                return PatchInfos.Keys.ToList();
+            }
         }
     }
 }

@@ -206,11 +206,11 @@ namespace HarmonyLib
             var assemblies = new Dictionary<string, Assembly>();
             GetAllPatchedMethods().Do(method =>
             {
-                var info = method.GetPatchInfo();
-                info.prefixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-                info.postfixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-                info.transpilers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-                info.finalizers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
+                var info = GetPatchInfo(method);
+                info.Prefixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
+                info.Postfixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
+                info.Transpilers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
+                info.Finalizers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
             });
 
             var result = new Dictionary<string, Version>();

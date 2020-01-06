@@ -14,10 +14,6 @@ namespace HarmonyLib
     /// <summary>A patch processor</summary>
     public class PatchProcessor
     {
-
-        // TODO: Remove
-        private static readonly object locker = new object();
-
         private readonly Harmony instance;
 
         private readonly Type container;
@@ -71,7 +67,12 @@ namespace HarmonyLib
         /// <param name="transpiler">The optional transpiler.</param>
         /// <param name="finalizer">The optional finalizer.</param>
         [Obsolete("Use other constructors and Add* methods")]
-        public PatchProcessor(Harmony instance, List<MethodBase> originals, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null, HarmonyMethod finalizer = null)
+        public PatchProcessor(Harmony instance,
+                              List<MethodBase> originals,
+                              HarmonyMethod prefix = null,
+                              HarmonyMethod postfix = null,
+                              HarmonyMethod transpiler = null,
+                              HarmonyMethod finalizer = null)
         {
             this.instance = instance;
             this.originals = originals;
@@ -179,25 +180,18 @@ namespace HarmonyLib
         ///
         public static Patches GetPatchInfo(MethodBase method)
         {
-            lock (locker)
-            {
-                var patchInfo = method.GetPatchInfo();
-                if (patchInfo == null) return null;
+            var patchInfo = method.GetPatchInfo();
+            if (patchInfo == null)
+                return null;
+            lock (patchInfo)
                 return new Patches(patchInfo.prefixes, patchInfo.postfixes, patchInfo.transpilers,
                                    patchInfo.finalizers);
-            }
         }
 
         /// <summary>Gets all patched original methods</summary>
         /// <returns>All patched original methods</returns>
         ///
-        public static IEnumerable<MethodBase> AllPatchedMethods()
-        {
-            lock (locker)
-            {
-                return GlobalPatchState.GetPatchedMethods();
-            }
-        }
+        public static IEnumerable<MethodBase> AllPatchedMethods() { return GlobalPatchState.GetPatchedMethods(); }
 
         /// <summary>Applies the patch</summary>
         /// <returns>A list of all created dynamic methods</returns>
@@ -206,44 +200,41 @@ namespace HarmonyLib
         {
             Logger.Log(Logger.LogChannel.Info, () => $"Patching {instance.Id}");
 
-            lock (locker)
+            var dynamicMethods = new List<DynamicMethod>();
+            foreach (var original in originals)
             {
-                var dynamicMethods = new List<DynamicMethod>();
-                foreach (var original in originals)
+                if (original == null)
+                    throw new NullReferenceException($"Null method for {instance.Id}");
+
+                Logger.Log(Logger.LogChannel.Info, () => $"Patching {original.GetID()}");
+
+                var individualPrepareResult = RunMethod<HarmonyPrepare, bool>(true, original);
+
+                Logger.Log(Logger.LogChannel.Info, () => $"HarmonyPrepare result: {individualPrepareResult}");
+
+                if (individualPrepareResult)
                 {
-                    if (original == null)
-                        throw new NullReferenceException($"Null method for {instance.Id}");
+                    var patchInfo = original.ToPatchInfo();
+                    var ilHook = original.GetILHook();
 
-                    Logger.Log(Logger.LogChannel.Info, () => $"Patching {original.GetID()}");
-
-                    var individualPrepareResult = RunMethod<HarmonyPrepare, bool>(true, original);
-
-                    Logger.Log(Logger.LogChannel.Info, () => $"HarmonyPrepare result: {individualPrepareResult}");
-
-                    if (individualPrepareResult)
+                    // Lock patch info so we can assign the patches all at once
+                    lock (patchInfo)
                     {
-                        var patchInfo = original.ToPatchInfo();
-                        var ilHook = original.GetILHook();
-
-                        // Lock patch info so we can assign the patches all at once
-                        lock (patchInfo)
-                        {
-                            patchInfo.AddPrefix(instance.Id, prefix);
-                            patchInfo.AddPostfix(instance.Id, postfix);
-                            patchInfo.AddTranspiler(instance.Id, transpiler);
-                            patchInfo.AddFinalizer(instance.Id, finalizer);
-                        }
-
-                        // TODO: Add batching by calling Refresh when needed
-
-                        ilHook.MarkApply(true).Apply();
-
-                        RunMethod<HarmonyCleanup>(original);
+                        patchInfo.AddPrefix(instance.Id, prefix);
+                        patchInfo.AddPostfix(instance.Id, postfix);
+                        patchInfo.AddTranspiler(instance.Id, transpiler);
+                        patchInfo.AddFinalizer(instance.Id, finalizer);
                     }
-                }
 
-                return dynamicMethods;
+                    // TODO: Add batching by calling Refresh when needed
+
+                    ilHook.MarkApply(true).Apply();
+
+                    RunMethod<HarmonyCleanup>(original);
+                }
             }
+
+            return dynamicMethods;
         }
 
         /// <summary>Unpatches patches of a given type and/or Harmony ID</summary>
@@ -252,27 +243,24 @@ namespace HarmonyLib
         ///
         public PatchProcessor Unpatch(HarmonyPatchType type, string harmonyID)
         {
-            lock (locker)
+            foreach (var original in originals)
             {
-                foreach (var original in originals)
+                var patchInfo = original.ToPatchInfo();
+                var ilHook = original.GetILHook();
+
+                lock (patchInfo)
                 {
-                    var patchInfo = original.ToPatchInfo();
-                    var ilHook = original.GetILHook();
-
-                    lock (patchInfo)
-                    {
-                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Prefix)
-                            patchInfo.RemovePrefix(harmonyID);
-                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Postfix)
-                            patchInfo.RemovePostfix(harmonyID);
-                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Transpiler)
-                            patchInfo.RemoveTranspiler(harmonyID);
-                        if (type == HarmonyPatchType.All || type == HarmonyPatchType.Finalizer)
-                            patchInfo.RemoveFinalizer(harmonyID);
-                    }
-
-                    ilHook.MarkApply(true).Apply();
+                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Prefix)
+                        patchInfo.RemovePrefix(harmonyID);
+                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Postfix)
+                        patchInfo.RemovePostfix(harmonyID);
+                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Transpiler)
+                        patchInfo.RemoveTranspiler(harmonyID);
+                    if (type == HarmonyPatchType.All || type == HarmonyPatchType.Finalizer)
+                        patchInfo.RemoveFinalizer(harmonyID);
                 }
+
+                ilHook.MarkApply(true).Apply();
             }
 
             return this;
@@ -283,17 +271,14 @@ namespace HarmonyLib
         ///
         public PatchProcessor Unpatch(MethodInfo patch)
         {
-            lock (locker)
+            foreach (var original in originals)
             {
-                foreach (var original in originals)
-                {
-                    var patchInfo = original.ToPatchInfo();
-                    var ilHook = original.GetILHook();
+                var patchInfo = original.ToPatchInfo();
+                var ilHook = original.GetILHook();
 
-                    patchInfo.RemovePatch(patch);
+                patchInfo.RemovePatch(patch);
 
-                    ilHook.MarkApply(true).Apply();
-                }
+                ilHook.MarkApply(true).Apply();
             }
 
             return this;
@@ -342,10 +327,7 @@ namespace HarmonyLib
                 }
                 else
                 {
-                    var original = RunMethod<HarmonyTargetMethod, MethodBase>(null);
-
-                    if (original == null)
-                        original = GetOriginalMethod();
+                    var original = RunMethod<HarmonyTargetMethod, MethodBase>(null) ?? GetOriginalMethod();
 
                     if (original == null)
                     {
@@ -355,7 +337,8 @@ namespace HarmonyLib
                         info += $"methodType={originalMethodType}, ";
                         info += $"argumentTypes={containerAttributes.argumentTypes.Description()}";
                         info += ")";
-                        throw new ArgumentException($"No target method specified for class {container.FullName} {info}");
+                        throw new ArgumentException(
+                            $"No target method specified for class {container.FullName} {info}");
                     }
 
                     originals.Add(original);
@@ -413,7 +396,8 @@ namespace HarmonyLib
         private MethodBase GetOriginalMethod()
         {
             var attr = containerAttributes;
-            if (attr.declaringType == null) return null;
+            if (attr.declaringType == null)
+                return null;
 
             switch (attr.methodType)
             {
@@ -436,8 +420,7 @@ namespace HarmonyLib
                     return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
 
                 case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attr.declaringType)
-                                      .FirstOrDefault(c => c.IsStatic);
+                    return AccessTools.GetDeclaredConstructors(attr.declaringType).FirstOrDefault(c => c.IsStatic);
             }
 
             return null;
@@ -446,7 +429,8 @@ namespace HarmonyLib
         private MethodBase GetReverseOriginal(MethodInfo standin)
         {
             var attr = containerAttributes.Merge(new HarmonyMethod(standin));
-            if (attr.declaringType == null) return null;
+            if (attr.declaringType == null)
+                return null;
 
             switch (attr.methodType)
             {
@@ -469,8 +453,7 @@ namespace HarmonyLib
                     return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
 
                 case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attr.declaringType)
-                                      .FirstOrDefault(c => c.IsStatic);
+                    return AccessTools.GetDeclaredConstructors(attr.declaringType).FirstOrDefault(c => c.IsStatic);
             }
 
             return null;
@@ -486,9 +469,9 @@ namespace HarmonyLib
             if (method != null)
             {
                 if (typeof(T).IsAssignableFrom(method.ReturnType))
-                    return (T) method.Invoke(null, Type.EmptyTypes);
+                    return (T)method.Invoke(null, Type.EmptyTypes);
 
-                var input = (parameters ?? new object[0]).Union(new object[] {instance}).ToArray();
+                var input = (parameters ?? new object[0]).Union(new object[] { instance }).ToArray();
                 var actualParameters = AccessTools.ActualParameters(method, input);
                 method.Invoke(null, actualParameters);
                 return defaultIfNotExisting;
@@ -506,7 +489,7 @@ namespace HarmonyLib
             var method = PatchTools.GetPatchMethod<S>(container, methodName);
             if (method != null)
             {
-                var input = (parameters ?? new object[0]).Union(new object[] {instance}).ToArray();
+                var input = (parameters ?? new object[0]).Union(new object[] { instance }).ToArray();
                 var actualParameters = AccessTools.ActualParameters(method, input);
                 method.Invoke(null, actualParameters);
             }
