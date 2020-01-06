@@ -108,6 +108,17 @@ namespace HarmonyLib
             return processor.Patch().FirstOrDefault();
         }
 
+        /// <summary>
+        /// Creates a new reverse patch instance that allows to copy the IL of original method into another one.
+        /// </summary>
+        /// <param name="original">Original method to copy IL from.</param>
+        /// <param name="standin">Method to copy IL to.</param>
+        /// <returns>Reverse patcher instance that you can apply.</returns>
+        public ReversePatcher CreateReversePatcher(MethodBase original, MethodInfo standin)
+        {
+            return new ReversePatcher(this, original, standin);
+        }
+
         /// <summary>Unpatches methods</summary>
         /// <param name="harmonyID">The optional Harmony ID to restrict unpatching to a specific instance</param>
         ///

@@ -11,21 +11,6 @@ using OpCodes = Mono.Cecil.Cil.OpCodes;
 
 namespace HarmonyLib
 {
-    internal static class ReversePatcherExtensions
-    {
-        /// <summary>Creates an empty reverse patcher</summary>
-        /// <param name="instance">The Harmony instance</param>
-        /// <param name="original">The original method</param>
-        /// <param name="standin">The stand-in method</param>
-        ///
-        public static ReversePatcher CreateReversePatcher(this Harmony instance, MethodBase original,
-                                                          MethodInfo standin)
-        {
-            return new ReversePatcher(instance, original, standin);
-        }
-    }
-
-
     /// <summary>A reverse patcher</summary>
     public class ReversePatcher
     {
@@ -80,7 +65,7 @@ namespace HarmonyLib
             if (original == null)
                 throw new NullReferenceException($"Null method for {instance.Id}");
 
-            // TODO: Wrapped type (to we even need it?)
+            // TODO: Wrapped type (do we even need it?)
             ilHook.Apply();
         }
 
