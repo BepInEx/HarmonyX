@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using HarmonyLib.Internal;
+using HarmonyLib.Tools;
 
 namespace HarmonyLib
 {
@@ -145,8 +147,13 @@ namespace HarmonyLib
                                                        CultureInfo.CurrentCulture);
             if (_method != null)
                 return _method.Invoke(_root, _params);
-            if (_root == null && _type != null) return _type;
-            return _root;
+            if (_root != null)
+                return _root;
+            if (_type != null)
+                return _type;
+
+            Logger.Log(Logger.LogChannel.Warn, () => "Traverse.GetValue was called while not pointing at an existing Field, Property, Method or Type. null will be returned.\n" + new StackTrace());
+            return null;
         }
 
         /// <summary>Gets the current value</summary>
@@ -191,11 +198,12 @@ namespace HarmonyLib
         {
             if (_info is FieldInfo)
                 ((FieldInfo) _info).SetValue(_root, value, AccessTools.all, null, CultureInfo.CurrentCulture);
-            if (_info is PropertyInfo)
-                ((PropertyInfo) _info).SetValue(_root, value, AccessTools.all, null, _params,
-                                                CultureInfo.CurrentCulture);
-            if (_method != null)
+            else if (_info is PropertyInfo)
+                ((PropertyInfo) _info).SetValue(_root, value, AccessTools.all, null, _params, CultureInfo.CurrentCulture);
+            else if (_method != null)
                 throw new Exception($"cannot set value of method {_method.FullDescription()}");
+            else
+                Logger.Log(Logger.LogChannel.Warn, () => "Traverse.SetValue was called while not pointing at an existing Field or Property. The call will have no effect.\n" + new StackTrace());
             return this;
         }
 
@@ -240,8 +248,12 @@ namespace HarmonyLib
             var resolved = Resolve();
             if (resolved._type == null) return new Traverse();
             var info = Cache.GetFieldInfo(resolved._type, name);
-            if (info == null) return new Traverse();
-            if (info.IsStatic == false && resolved._root == null) return new Traverse();
+            if (info == null || info.IsStatic == false && resolved._root == null)
+            {
+                Logger.Log(Logger.LogChannel.Warn, () => $"Could not find field named {name} on {resolved._type.FullDescription()}");
+                return new Traverse();
+            }
+
             return new Traverse(resolved._root, info, null);
         }
 
@@ -275,7 +287,12 @@ namespace HarmonyLib
             var resolved = Resolve();
             if (resolved._type == null) return new Traverse();
             var info = Cache.GetPropertyInfo(resolved._type, name);
-            if (info == null) return new Traverse();
+            if (info == null)
+            {
+                Logger.Log(Logger.LogChannel.Warn, () => $"Could not find property named {name} on {resolved._type.FullDescription()}");
+                return new Traverse();
+            }
+
             if (info.GetAccessors(true).First().IsStatic == false && resolved._root == null) return new Traverse();
             return new Traverse(resolved._root, info, index);
         }
@@ -312,7 +329,12 @@ namespace HarmonyLib
             if (resolved._type == null) return new Traverse();
             var types = AccessTools.GetTypes(arguments);
             var method = Cache.GetMethodInfo(resolved._type, name, types);
-            if (method == null) return new Traverse();
+            if (method == null)
+            {
+                Logger.Log(Logger.LogChannel.Warn, () => $"Could not find method named {name} with {arguments.Length} arguments on {resolved._type.FullDescription()}");
+                return new Traverse();
+            }
+
             return new Traverse(resolved._root, (MethodInfo) method, arguments);
         }
 
@@ -328,7 +350,12 @@ namespace HarmonyLib
             var resolved = Resolve();
             if (resolved._type == null) return new Traverse();
             var method = Cache.GetMethodInfo(resolved._type, name, paramTypes);
-            if (method == null) return new Traverse();
+            if (method == null)
+            {
+                Logger.Log(Logger.LogChannel.Warn, () => $"Could not find method named {name} with {paramTypes.Length} parameters on {resolved._type.FullDescription()}");
+                return new Traverse();
+            }
+
             return new Traverse(resolved._root, (MethodInfo) method, arguments);
         }
 
@@ -341,7 +368,7 @@ namespace HarmonyLib
             return AccessTools.GetMethodNames(resolved._type);
         }
 
-        /// <summary>Checks if the current traverse instance is for a field</summary>
+        /// <summary>Checks if the current traverse instance is for a field or a property</summary>
         /// <returns>True if its a field</returns>
         ///
         public bool FieldExists()
@@ -363,6 +390,14 @@ namespace HarmonyLib
         public bool TypeExists()
         {
             return _type != null;
+        }
+
+        /// <summary>Checks if the current traverse instance contains any information</summary>
+        /// <returns>True if the traverse contains any information</returns>
+        /// 
+        public bool IsEmpty()
+        {
+            return !FieldExists() && !MethodExists() && !TypeExists() && _root == null;
         }
 
         /// <summary>Iterates over all fields of the current type and executes a traverse action</summary>
@@ -442,6 +477,7 @@ namespace HarmonyLib
         ///
         public override string ToString()
         {
+            if (IsEmpty()) return "[Empty]";
             var value = _method ?? GetValue();
             return value?.ToString();
         }
