@@ -233,5 +233,149 @@ namespace HarmonyLib
             });
             return result;
         }
+
+        /// <summary>
+		/// Applies all patches specified in the type.
+		/// </summary>
+		/// <param name="type">The type to scan.</param>
+		public void PatchAll(Type type)
+        {
+            foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                var patchAttributeMethods = HarmonyMethodExtensions.GetFromMethod(method);
+                if (patchAttributeMethods != null && patchAttributeMethods.Any())
+                {
+                    var attributes = method.GetCustomAttributes(true);
+
+                    var combinedInfo = HarmonyMethod.Merge(patchAttributeMethods);
+
+                    if (attributes.Any(x => x is ParameterByRefAttribute))
+                    {
+                        var byRefAttribute = (ParameterByRefAttribute)attributes.First(x => x is ParameterByRefAttribute);
+
+                        foreach (var index in byRefAttribute.ParameterIndices)
+                        {
+                            combinedInfo.argumentTypes[index] = combinedInfo.argumentTypes[index].MakeByRefType();
+                        }
+                    }
+
+                    HarmonyMethod prefix = null;
+                    HarmonyMethod transpiler = null;
+                    HarmonyMethod postfix = null;
+
+                    if (attributes.Any(x => x is HarmonyPrefix))
+                        prefix = new HarmonyMethod(method);
+
+                    if (attributes.Any(x => x is HarmonyTranspiler))
+                        transpiler = new HarmonyMethod(method);
+
+                    if (attributes.Any(x => x is HarmonyPostfix))
+                        postfix = new HarmonyMethod(method);
+
+
+                    var completeMethods = patchAttributeMethods.Where(x => x.declaringType != null && x.methodName != null).ToList();
+
+                    if (patchAttributeMethods.All(x => x.declaringType != combinedInfo.declaringType && x.methodName != combinedInfo.methodName))
+                        completeMethods.Add(combinedInfo);
+
+                    var originalMethods = new List<MethodBase>();
+
+                    foreach (var methodToPatch in completeMethods)
+                    {
+                        if (!methodToPatch.methodType.HasValue)
+                            methodToPatch.methodType = MethodType.Normal;
+
+                        var originalMethod = GetOriginalMethod(methodToPatch);
+
+                        if (originalMethod == null)
+                            throw new ArgumentException($"Null method for attribute: \n" +
+                                                        $"Type={methodToPatch.declaringType.FullName ?? "<null>"}\n" +
+                                                        $"Name={methodToPatch.methodName ?? "<null>"}\n" +
+                                                        $"MethodType={(methodToPatch.methodType.HasValue ? methodToPatch.methodType.Value.ToString() : "<null>")}\n" +
+                                                        $"Args={(methodToPatch.argumentTypes == null ? "<null>" : string.Join(",", methodToPatch.argumentTypes.Select(x => x.FullName).ToArray()))}");
+
+                        originalMethods.Add(originalMethod);
+                    }
+
+                    var processor = new PatchProcessor(this, originalMethods, prefix, postfix, transpiler);
+                    processor.Patch();
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Creates a new Harmony instance and applies all patches specified in the type.
+        /// </summary>
+        /// <param name="type">The type to scan for patches.</param>
+        /// <param name="harmonyInstanceId">The ID for the Harmony instance to create, which will be used.</param>
+        public static Harmony CreateAndPatchAll(Type type, string harmonyInstanceId = null)
+        {
+            var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
+            harmony.PatchAll(type);
+            return harmony;
+        }
+        
+        /// <summary>
+        /// Applies all patches specified in the assembly.
+        /// </summary>
+        /// <param name="assembly">The assembly to scan.</param>
+        /// <param name="harmonyInstanceId">The ID for the Harmony instance to create, which will be used.</param>
+        public static Harmony CreateAndPatchAll(Assembly assembly, string harmonyInstanceId = null)
+        {
+            var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
+            harmony.PatchAll(assembly);
+            return harmony;
+        }
+
+        private static MethodBase GetOriginalMethod(HarmonyMethod attribute)
+        {
+            if (attribute.declaringType == null)
+                return null;
+
+            switch (attribute.methodType)
+            {
+                case MethodType.Normal:
+                    if (attribute.methodName == null)
+                        return null;
+                    return AccessTools.DeclaredMethod(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
+
+                case MethodType.Getter:
+                    if (attribute.methodName == null)
+                        return null;
+                    return AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName)
+                                      .GetGetMethod(true);
+
+                case MethodType.Setter:
+                    if (attribute.methodName == null)
+                        return null;
+                    return AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName)
+                                      .GetSetMethod(true);
+
+                case MethodType.Constructor:
+                    return AccessTools.GetDeclaredConstructors(attribute.declaringType)
+                                      .FirstOrDefault((ConstructorInfo c) =>
+                                      {
+                                          if (c.IsStatic)
+                                          {
+                                              return false;
+                                          }
+                                          var parameters = c.GetParameters();
+                                          if (attribute.argumentTypes == null && parameters.Length == 0)
+                                          {
+                                              return true;
+                                          }
+                                          return parameters
+                                              .Select((p) => p.ParameterType)
+                                              .SequenceEqual(attribute.argumentTypes);
+                                      });
+
+                case MethodType.StaticConstructor:
+                    return AccessTools.GetDeclaredConstructors(attribute.declaringType)
+                                      .FirstOrDefault(c => c.IsStatic);
+            }
+
+            return null;
+        }
     }
 }
