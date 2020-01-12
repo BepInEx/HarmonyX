@@ -78,7 +78,8 @@ namespace HarmonyLibTests
             var trv = Traverse.Create(null);
 
             Assert.IsNotNull(trv);
-            Assert.IsNull(trv.ToString());
+            // The ToString calls in original Harmony would return null. To make things easier to debug [Empty] or other values are now returned instead
+            //Assert.IsNull(trv.ToString());
 
             // field access
 
@@ -86,7 +87,7 @@ namespace HarmonyLibTests
             Assert.IsNotNull(ftrv);
 
             Assert.IsNull(ftrv.GetValue());
-            Assert.IsNull(ftrv.ToString());
+            //Assert.IsNull(ftrv.ToString());
             Assert.AreEqual(0, ftrv.GetValue<int>());
             Assert.AreSame(ftrv, ftrv.SetValue(123));
 
@@ -96,7 +97,7 @@ namespace HarmonyLibTests
             Assert.IsNotNull(ptrv);
 
             Assert.IsNull(ptrv.GetValue());
-            Assert.IsNull(ptrv.ToString());
+            //Assert.IsNull(ptrv.ToString());
             Assert.IsNull(ptrv.GetValue<string>());
             Assert.AreSame(ptrv, ptrv.SetValue("test"));
 
@@ -106,7 +107,7 @@ namespace HarmonyLibTests
             Assert.IsNotNull(mtrv);
 
             Assert.IsNull(mtrv.GetValue());
-            Assert.IsNull(mtrv.ToString());
+            //Assert.IsNull(mtrv.ToString());
             Assert.AreEqual(0, mtrv.GetValue<float>());
             Assert.AreSame(mtrv, mtrv.SetValue(null));
         }
