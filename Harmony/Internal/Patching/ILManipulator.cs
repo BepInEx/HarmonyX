@@ -213,6 +213,13 @@ namespace HarmonyLib.Internal.Patching
             var il = new CecilILGenerator(body.GetILProcessor());
             var cil = il.GetProxy();
 
+            // Define an "empty" label
+            // In Harmony, the first label can point to the end of the method
+            // Apparently, some transpilers naively call new Label() to define a label and thus end up
+            // using the first label without knowing it
+            // By defining the first label we'll ensure label count is correct
+            il.DefineLabel();
+
             // Step 1: Prepare labels for instructions
             foreach (var codeInstruction in codeInstructions)
             {
