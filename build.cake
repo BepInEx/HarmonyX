@@ -53,7 +53,6 @@ Task("Test")
 
 Task("Publish")
     .IsDependentOn("Build")
-    .WithCriteria(() =>
     .Does(() => 
 {
     var version = FindRegexMatchGroupInFile("./Harmony/Harmony.csproj", @"<Version>(.*)<\/Version>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
