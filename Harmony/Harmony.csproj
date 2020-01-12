@@ -20,7 +20,6 @@
     <FileVersion>2.0.0.0</FileVersion>
     <PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <LogFile>obj/docfx-$(TargetFramework).log</LogFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>7.3</LangVersion>
     <RootNamespace>HarmonyLib</RootNamespace>
