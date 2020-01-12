@@ -1,0 +1,22 @@
+name: Build
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run build script
+      env:
+        NUGET_KEY: ${{ secrets.NUGET_KEY }}
+      run: ./build.ps1 -Target Build -ScriptArgs "-nugetKey=""${env:NUGET_KEY}"""
+    - name: Get target file
+      id: getfilename
+      shell: bash
+      run: echo "::set-output name=file::$(ls ./Harmony/bin/Release/HarmonyX*.nupkg)"
+    - uses: actions/upload-artifact@v1
+      with:
+        path: ${{ steps.getfilename.outputs.file }}
