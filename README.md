@@ -2,6 +2,8 @@
 	<img src="./logo.png" alt="HarmonyX Logo" height="128" />
 </p>
 
+![Nuget](https://img.shields.io/nuget/dt/HarmonyX?style=for-the-badge)
+
 ***
 
 <p align="center">
