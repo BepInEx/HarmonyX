@@ -11,9 +11,10 @@ jobs:
     - uses: actions/checkout@v1
     - name: Make repo pushable
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_USER: ${{ secrets.GITHUB_USER }}
+        GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
       shell: bash
-      run: git remote set-url --push origin https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
+      run: git remote set-url --push origin https://$GITHUB_USER:$GITHUB_PAT@github.com/$GITHUB_REPOSITORY.git
     - name: Run build script
       env:
         NUGET_KEY: ${{ secrets.NUGET_KEY }}
