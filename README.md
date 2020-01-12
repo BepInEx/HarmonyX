@@ -23,6 +23,7 @@ Important aspects of HarmonyX include:
 * Better platform and OS support: x86, x64, ARM
 * Active developer support
 * Patching feature parity with Harmony
+* New patch types with power of MonoMod: patches for native methods, IL manipulators (WIP, see above)
 * Fixes, changes and optimizations for game modding
 
 HarmonyX is powered by [MonoMod](https://github.com/MonoMod) and its runtime patching tools.
