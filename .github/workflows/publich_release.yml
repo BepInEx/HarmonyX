@@ -16,10 +16,11 @@ jobs:
       id: get_version
       shell: bash
       run: |
-        echo Current branch: ${GITHUB_REF##*/}
-        echo ::set-output name=version_num::${GITHUB_REF##*/}
+        tag=${GITHUB_REF##*/}
+        echo Current branch: ${tag:1}
+        echo ::set-output name=version_num::${tag:1}
     - name: Run build script
-      run: .\build.ps1
+      run: ./build.ps1 -Target Build
       shell: powershell
     - name: Create Release
       id:  create_release
