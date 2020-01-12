@@ -60,7 +60,7 @@ namespace HarmonyLib
 #pragma warning disable RECS0017
                 if (result != null) return result;
 #pragma warning restore RECS0017
-                if (type == typeof(object)) return default;
+                if (type == typeof(object)) return default(T);
                 type = type.BaseType;
             }
         }
@@ -725,7 +725,7 @@ namespace HarmonyLib
         /// <param name="obj">The runtime instance to access the field (leave empty for static fields)</param>
         /// <returns>The value of the field (or an assignable object)</returns>
         ///
-        public delegate ref U FieldRef<T, U>(T obj = default);
+        public delegate ref U FieldRef<T, U>(T obj = default(T));
 
         /// <summary>Creates a field reference</summary>
         /// <typeparam name="T">The class the field is defined in</typeparam>
