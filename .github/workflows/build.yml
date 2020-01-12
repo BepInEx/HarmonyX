@@ -12,7 +12,7 @@ jobs:
     - name: Run build script
       env:
         NUGET_KEY: ${{ secrets.NUGET_KEY }}
-      run: ./build.ps1 -Target Build -ScriptArgs "-nugetKey=""${env:NUGET_KEY}"""
+      run: ./build.ps1 -Target Publish -ScriptArgs "-nugetKey=""${env:NUGET_KEY}"""
     - name: Get target file
       id: getfilename
       shell: bash
