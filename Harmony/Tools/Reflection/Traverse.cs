@@ -163,7 +163,7 @@ namespace HarmonyLib
         public T GetValue<T>()
         {
             var value = GetValue();
-            if (value == null) return default;
+            if (value == null) return default(T);
             return (T) value;
         }
 
