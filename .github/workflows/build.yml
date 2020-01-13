@@ -3,8 +3,13 @@ name: Build
 on: [push]
 
 jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run test
+      run: ./build.ps1 -Target Test
   build:
-
     runs-on: windows-latest
 
     steps:
