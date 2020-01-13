@@ -394,8 +394,15 @@ namespace HarmonyLib
             }
         }
 
+        /// <summary>
+        /// Get the member specified by the <paramref name="attribute"/>. Throws if the member was not found.
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown if the member described in the <paramref name="attribute"/> couldn't be found.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="attribute"/> is <see langword="null"/></exception>
         internal static MethodBase GetOriginalMethod(HarmonyMethod attribute)
         {
+            if (attribute == null) throw new ArgumentNullException(nameof(attribute));
+
             ArgumentException MakeException(string reason)
             {
                 return new ArgumentException($"{(attribute.method?.ToString() ?? "Unknown patch")} - {reason}");
