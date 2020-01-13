@@ -285,7 +285,7 @@ namespace HarmonyLib
                         if (!methodToPatch.methodType.HasValue)
                             methodToPatch.methodType = MethodType.Normal;
 
-                        var originalMethod = GetOriginalMethod(methodToPatch);
+                        var originalMethod = PatchProcessor.GetOriginalMethod(methodToPatch);
 
                         if (originalMethod == null)
                             throw new ArgumentException($"Null method for attribute: \n" +
@@ -326,56 +326,6 @@ namespace HarmonyLib
             var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
             harmony.PatchAll(assembly);
             return harmony;
-        }
-
-        private static MethodBase GetOriginalMethod(HarmonyMethod attribute)
-        {
-            if (attribute.declaringType == null)
-                return null;
-
-            switch (attribute.methodType)
-            {
-                case MethodType.Normal:
-                    if (attribute.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredMethod(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
-
-                case MethodType.Getter:
-                    if (attribute.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName)
-                                      .GetGetMethod(true);
-
-                case MethodType.Setter:
-                    if (attribute.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName)
-                                      .GetSetMethod(true);
-
-                case MethodType.Constructor:
-                    return AccessTools.GetDeclaredConstructors(attribute.declaringType)
-                                      .FirstOrDefault((ConstructorInfo c) =>
-                                      {
-                                          if (c.IsStatic)
-                                          {
-                                              return false;
-                                          }
-                                          var parameters = c.GetParameters();
-                                          if (attribute.argumentTypes == null && parameters.Length == 0)
-                                          {
-                                              return true;
-                                          }
-                                          return parameters
-                                              .Select((p) => p.ParameterType)
-                                              .SequenceEqual(attribute.argumentTypes);
-                                      });
-
-                case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attribute.declaringType)
-                                      .FirstOrDefault(c => c.IsStatic);
-            }
-
-            return null;
         }
     }
 }
