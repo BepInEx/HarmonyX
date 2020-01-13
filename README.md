@@ -2,7 +2,11 @@
 	<img src="./logo.png" alt="HarmonyX Logo" height="128" />
 </p>
 
-![Nuget](https://img.shields.io/nuget/dt/HarmonyX?label=NuGet&style=for-the-badge)
+<p align="center">
+	<a href="https://www.nuget.org/packages/HarmonyX/">
+		<img src="https://img.shields.io/nuget/dt/HarmonyX?label=NuGet&style=for-the-badge" alt="NuGet" />
+	</a>
+</p>
 
 ***
 
