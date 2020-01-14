@@ -101,7 +101,7 @@ namespace HarmonyLib
             T result;
             if (dictionary.TryGetValue(key, out result))
                 return result;
-            return default;
+            return default (T);
         }
 
         /// <summary>A helper to access a value via key from a dictionary with extra casting</summary>
@@ -116,7 +116,7 @@ namespace HarmonyLib
             if (dictionary.TryGetValue(key, out result))
                 if (result is T)
                     return (T)result;
-            return default;
+            return default (T);
         }
     }
 }

@@ -27,7 +27,17 @@ namespace HarmonyLib.Internal.Util
             prev.Offset = 0;
             foreach (var ins in instrs.Skip(1))
             {
+                var operand = prev.Operand;
+
+                if (operand is ILLabel label)
+                    prev.Operand = label.Target;
+                else if (operand is ILLabel[] labels)
+                    prev.Operand = labels.Select(l => l.Target).ToArray();
+
                 ins.Offset = prev.Offset + prev.GetSize();
+
+                prev.Operand = operand;
+
                 prev = ins;
             }
 

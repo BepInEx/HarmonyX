@@ -15,9 +15,9 @@ namespace HarmonyLibTests
         {
             var type = typeof(AccessToolsClass);
 
-            Assert.IsNull(AccessTools.DeclaredField(null, null));
-            Assert.IsNull(AccessTools.DeclaredField(type, null));
-            Assert.IsNull(AccessTools.DeclaredField(null, "field"));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.DeclaredField(null, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.DeclaredField(type, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.DeclaredField(null, "field"));
             Assert.IsNull(AccessTools.DeclaredField(type, "unknown"));
 
             var field = AccessTools.DeclaredField(type, "field");
@@ -43,9 +43,9 @@ namespace HarmonyLibTests
         {
             var type = typeof(AccessToolsClass);
 
-            Assert.IsNull(AccessTools.Property(null, null));
-            Assert.IsNull(AccessTools.Property(type, null));
-            Assert.IsNull(AccessTools.Property(null, "Property"));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Property(null, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Property(type, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Property(null, "Property"));
             Assert.IsNull(AccessTools.Property(type, "unknown"));
 
             var prop = AccessTools.Property(type, "Property");
@@ -71,9 +71,9 @@ namespace HarmonyLibTests
         {
             var type = typeof(AccessToolsClass);
 
-            Assert.IsNull(AccessTools.Method(null));
-            Assert.IsNull(AccessTools.Method(type, null));
-            Assert.IsNull(AccessTools.Method(null, "Method"));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Method(null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Method(type, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Method(null, "Method"));
             Assert.IsNull(AccessTools.Method(type, "unknown"));
 
             var m1 = AccessTools.Method(type, "Method");
@@ -89,7 +89,7 @@ namespace HarmonyLibTests
             var m3 = AccessTools.Method(type, "Method", new Type[] { });
             Assert.IsNotNull(m3);
 
-            var m4 = AccessTools.Method(type, "SetField", new Type[] {typeof(string)});
+            var m4 = AccessTools.Method(type, "SetField", new Type[] { typeof(string) });
             Assert.IsNotNull(m4);
         }
 
@@ -110,9 +110,9 @@ namespace HarmonyLibTests
         {
             var type = typeof(AccessToolsClass);
 
-            Assert.IsNull(AccessTools.Inner(null, null));
-            Assert.IsNull(AccessTools.Inner(type, null));
-            Assert.IsNull(AccessTools.Inner(null, "Inner"));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Inner(null, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Inner(type, null));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.Inner(null, "Inner"));
             Assert.IsNull(AccessTools.Inner(type, "unknown"));
 
             var cls = AccessTools.Inner(type, "Inner");
@@ -129,7 +129,7 @@ namespace HarmonyLibTests
             Assert.AreEqual(0, empty.Length);
 
             // TODO: typeof(null) is ambiguous and resolves for now to <object>. is this a problem?
-            var types = AccessTools.GetTypes(new object[] {"hi", 123, null, new Test_AccessTools()});
+            var types = AccessTools.GetTypes(new object[] { "hi", 123, null, new Test_AccessTools() });
             Assert.IsNotNull(types);
             Assert.AreEqual(4, types.Length);
             Assert.AreEqual(typeof(string), types[0]);
@@ -141,8 +141,8 @@ namespace HarmonyLibTests
         [Test]
         public void AccessTools_GetDefaultValue()
         {
-            Assert.AreEqual(null, AccessTools.GetDefaultValue(null));
-            Assert.AreEqual((float) 0, AccessTools.GetDefaultValue(typeof(float)));
+            Assert.Throws<ArgumentNullException>(() => AccessTools.GetDefaultValue(null));
+            Assert.AreEqual((float)0, AccessTools.GetDefaultValue(typeof(float)));
             Assert.AreEqual(null, AccessTools.GetDefaultValue(typeof(string)));
             Assert.AreEqual(BindingFlags.Default, AccessTools.GetDefaultValue(typeof(BindingFlags)));
             Assert.AreEqual(null, AccessTools.GetDefaultValue(typeof(IEnumerable<bool>)));
@@ -152,7 +152,7 @@ namespace HarmonyLibTests
         [Test]
         public void AccessTools_TypeExtension_Description()
         {
-            var types = new Type[] {typeof(string), typeof(int), null, typeof(void), typeof(Test_AccessTools)};
+            var types = new Type[] { typeof(string), typeof(int), null, typeof(void), typeof(Test_AccessTools) };
             Assert.AreEqual("(System.String, System.Int32, null, System.Void, HarmonyLibTests.Test_AccessTools)",
                             types.Description());
         }

@@ -296,10 +296,12 @@ namespace HarmonyLib
             if (containerAttributes.methodType == null)
                 containerAttributes.methodType = MethodType.Normal;
 
-            var reversePatchMethods = GetReversePatches(container);
+            var reversePatchAttr = typeof(HarmonyReversePatch).FullName;
+            var reversePatchMethods = container.GetMethods(AccessTools.all).Where(m => m.GetCustomAttributes(true).Any(a => a.GetType().FullName == reversePatchAttr)).ToList();
             foreach (var reversePatchMethod in reversePatchMethods)
             {
-                var originalMethod = GetReverseOriginal(reversePatchMethod);
+                var attr = containerAttributes.Merge(new HarmonyMethod(reversePatchMethod));
+                var originalMethod = GetOriginalMethod(attr);
                 var reversePatcher = instance.CreateReversePatcher(originalMethod, reversePatchMethod);
                 reversePatcher.Patch();
             }
@@ -312,8 +314,7 @@ namespace HarmonyLib
             }
             else
             {
-                var isPatchAll = container.GetCustomAttributes(true)
-                                          .Any(a => a.GetType().FullName == typeof(HarmonyPatchAll).FullName);
+                var isPatchAll = container.GetCustomAttributes(true).Any(a => a.GetType().FullName == typeof(HarmonyPatchAll).FullName);
                 if (isPatchAll)
                 {
                     var type = containerAttributes.declaringType;
@@ -327,7 +328,7 @@ namespace HarmonyLib
                 }
                 else
                 {
-                    var original = RunMethod<HarmonyTargetMethod, MethodBase>(null) ?? GetOriginalMethod();
+                    var original = RunMethod<HarmonyTargetMethod, MethodBase>(null) ?? GetOriginalMethod(containerAttributes);
 
                     if (original == null)
                     {
@@ -393,67 +394,126 @@ namespace HarmonyLib
             }
         }
 
-        private MethodBase GetOriginalMethod()
+        /// <summary>
+        /// Get the member specified by the <paramref name="attribute"/>. Throws if the member was not found.
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown if the member described in the <paramref name="attribute"/> couldn't be found.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="attribute"/> is <see langword="null"/></exception>
+        internal static MethodBase GetOriginalMethod(HarmonyMethod attribute)
         {
-            var attr = containerAttributes;
-            if (attr.declaringType == null)
-                return null;
+            if (attribute == null) throw new ArgumentNullException(nameof(attribute));
 
-            switch (attr.methodType)
+            ArgumentException MakeException(string reason)
             {
-                case MethodType.Normal:
-                    if (attr.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredMethod(attr.declaringType, attr.methodName, attr.argumentTypes);
-
-                case MethodType.Getter:
-                    if (attr.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetGetMethod(true);
-
-                case MethodType.Setter:
-                    if (attr.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetSetMethod(true);
-
-                case MethodType.Constructor:
-                    return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
-
-                case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attr.declaringType).FirstOrDefault(c => c.IsStatic);
+                return new ArgumentException($"{(attribute.method?.ToString() ?? "Unknown patch")} - {reason}");
             }
 
-            return null;
-        }
+            if (attribute.declaringType == null)
+                throw MakeException("declaringType cannot be null");
 
-        private MethodBase GetReverseOriginal(MethodInfo standin)
-        {
-            var attr = containerAttributes.Merge(new HarmonyMethod(standin));
-            if (attr.declaringType == null)
-                return null;
-
-            switch (attr.methodType)
+            switch (attribute.methodType)
             {
                 case MethodType.Normal:
-                    if (attr.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredMethod(attr.declaringType, attr.methodName, attr.argumentTypes);
+                    {
+                        if (string.IsNullOrEmpty(attribute.methodName))
+                            throw MakeException("methodName can't be empty");
+
+                        if (attribute.methodName == ".ctor")
+                        {
+                            Logger.LogText(Logger.LogChannel.Warn, "MethodType.Constructor should be used instead of setting methodName to .ctor");
+                            goto case MethodType.Constructor;
+                        }
+                        if (attribute.methodName == ".cctor")
+                        {
+                            Logger.LogText(Logger.LogChannel.Warn, "MethodType.StaticConstructor should be used instead of setting methodName to .cctor");
+                            goto case MethodType.StaticConstructor;
+                        }
+
+                        if (attribute.methodName.StartsWith("get_") || attribute.methodName.StartsWith("set_"))
+                            Logger.LogText(Logger.LogChannel.Warn, "MethodType.Getter and MethodType.Setter should be used instead adding get_ and set_ to property names");
+
+                        var result = AccessTools.DeclaredMethod(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
+                        if (result != null) return result;
+
+                        result = AccessTools.Method(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
+                        if (result != null)
+                        {
+                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                            return result;
+                        }
+
+                        throw MakeException($"Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
+                    }
 
                 case MethodType.Getter:
-                    if (attr.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetGetMethod(true);
+                    {
+                        if (string.IsNullOrEmpty(attribute.methodName))
+                            throw MakeException("methodName can't be empty");
+
+                        var result = AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName);
+                        if (result != null)
+                        {
+                            var getter = result.GetGetMethod(true);
+                            if (getter == null)
+                                throw MakeException($"Property {attribute.methodName} does not have a Getter");
+                            return getter;
+                        }
+
+                        result = AccessTools.Property(attribute.declaringType, attribute.methodName);
+                        if (result != null)
+                        {
+                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                            var getter = result.GetGetMethod(true);
+                            if (getter == null)
+                                throw MakeException($"Property {attribute.methodName} does not have a Getter");
+                            return getter;
+                        }
+
+                        throw MakeException($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
+                    }
 
                 case MethodType.Setter:
-                    if (attr.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetSetMethod(true);
+                {
+                    if (string.IsNullOrEmpty(attribute.methodName))
+                        throw MakeException("methodName can't be empty");
+
+                    var result = AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName);
+                    if (result != null)
+                    {
+                        var getter = result.GetSetMethod(true);
+                        if (getter == null)
+                            throw MakeException($"Property {attribute.methodName} does not have a Setter");
+                        return getter;
+                    }
+
+                    result = AccessTools.Property(attribute.declaringType, attribute.methodName);
+                    if (result != null)
+                    {
+                        Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                        var getter = result.GetSetMethod(true);
+                        if (getter == null)
+                            throw MakeException($"Property {attribute.methodName} does not have a Setter");
+                        return getter;
+                    }
+
+                    throw MakeException($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
+                }
 
                 case MethodType.Constructor:
-                    return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
+                    {
+                        var constructor = AccessTools.DeclaredConstructor(attribute.declaringType, attribute.argumentTypes);
+                        if (constructor != null) return constructor;
+
+                        throw MakeException($"Could not find constructor with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
+                    }
 
                 case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attr.declaringType).FirstOrDefault(c => c.IsStatic);
+                    {
+                        var constructor = AccessTools.GetDeclaredConstructors(attribute.declaringType).FirstOrDefault(c => c.IsStatic);
+                        if (constructor != null) return constructor;
+
+                        throw MakeException($"Could not find static constructor in type {attribute.declaringType.FullDescription()}");
+                    }
             }
 
             return null;
@@ -493,13 +553,6 @@ namespace HarmonyLib
                 var actualParameters = AccessTools.ActualParameters(method, input);
                 method.Invoke(null, actualParameters);
             }
-        }
-
-        private List<MethodInfo> GetReversePatches(Type patchType)
-        {
-            var attr = typeof(HarmonyReversePatch).FullName;
-            return patchType.GetMethods(AccessTools.all)
-                            .Where(m => m.GetCustomAttributes(true).Any(a => a.GetType().FullName == attr)).ToList();
         }
 
         private MethodInfo GetPatchMethod<T>(Type patchType, string name)

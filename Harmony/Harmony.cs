@@ -5,8 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal;
-using HarmonyLib.Internal.RuntimeFixes;
-using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using MonoMod.Utils;
 
@@ -18,6 +16,7 @@ namespace HarmonyLib
         /// <summary>The unique identifier</summary>
         public string Id { get; private set; }
 
+        [Obsolete("No longer used, subscribe to Logger.LogChannel.Info")]
         /// <summary>Set to true before instantiating Harmony to debug Harmony</summary>
         public static bool DEBUG;
 
@@ -34,27 +33,24 @@ namespace HarmonyLib
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentException($"{nameof(id)} cannot be null or empty");
 
-            if (DEBUG)
+            Logger.Log(Logger.LogChannel.Info, () =>
             {
                 var assembly = typeof(Harmony).Assembly;
                 var version = assembly.GetName().Version;
-                var location = assembly.Location;
+                var assemblyLocation = assembly.Location;
 
-                if (string.IsNullOrEmpty(location))
-                    location = new Uri(assembly.CodeBase).LocalPath;
-
-                Logger.Log(Logger.LogChannel.Info, () => $"### Harmony id={id}, version={version}, location={location}");
+                if (string.IsNullOrEmpty(assemblyLocation))
+                    assemblyLocation = new Uri(assembly.CodeBase).LocalPath;
 
                 var callingMethod = AccessTools.GetOutsideCaller();
                 var callingAssembly = callingMethod.DeclaringType.Assembly;
 
-                location = callingAssembly.Location;
-                if (string.IsNullOrEmpty(location))
-                    location = new Uri(callingAssembly.CodeBase).LocalPath;
+                var callingAssemblyLocation = callingAssembly.Location;
+                if (string.IsNullOrEmpty(callingAssemblyLocation))
+                    callingAssemblyLocation = new Uri(callingAssembly.CodeBase).LocalPath;
 
-                Logger.Log(Logger.LogChannel.Info, () => $"### Started from {callingMethod.GetID()}, location {location}");
-                Logger.Log(Logger.LogChannel.Info, () => $"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
-            }
+                return $"Created Harmony instance id={id}, version={version}, location={assemblyLocation} - Started from {callingMethod.GetID()} location={callingAssemblyLocation}";
+            });
 
             Id = id;
 
@@ -285,7 +281,7 @@ namespace HarmonyLib
                         if (!methodToPatch.methodType.HasValue)
                             methodToPatch.methodType = MethodType.Normal;
 
-                        var originalMethod = GetOriginalMethod(methodToPatch);
+                        var originalMethod = PatchProcessor.GetOriginalMethod(methodToPatch);
 
                         if (originalMethod == null)
                             throw new ArgumentException($"Null method for attribute: \n" +
@@ -315,7 +311,7 @@ namespace HarmonyLib
             harmony.PatchAll(type);
             return harmony;
         }
-        
+
         /// <summary>
         /// Applies all patches specified in the assembly.
         /// </summary>
@@ -326,56 +322,6 @@ namespace HarmonyLib
             var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
             harmony.PatchAll(assembly);
             return harmony;
-        }
-
-        private static MethodBase GetOriginalMethod(HarmonyMethod attribute)
-        {
-            if (attribute.declaringType == null)
-                return null;
-
-            switch (attribute.methodType)
-            {
-                case MethodType.Normal:
-                    if (attribute.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredMethod(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
-
-                case MethodType.Getter:
-                    if (attribute.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName)
-                                      .GetGetMethod(true);
-
-                case MethodType.Setter:
-                    if (attribute.methodName == null)
-                        return null;
-                    return AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName)
-                                      .GetSetMethod(true);
-
-                case MethodType.Constructor:
-                    return AccessTools.GetDeclaredConstructors(attribute.declaringType)
-                                      .FirstOrDefault((ConstructorInfo c) =>
-                                      {
-                                          if (c.IsStatic)
-                                          {
-                                              return false;
-                                          }
-                                          var parameters = c.GetParameters();
-                                          if (attribute.argumentTypes == null && parameters.Length == 0)
-                                          {
-                                              return true;
-                                          }
-                                          return parameters
-                                              .Select((p) => p.ParameterType)
-                                              .SequenceEqual(attribute.argumentTypes);
-                                      });
-
-                case MethodType.StaticConstructor:
-                    return AccessTools.GetDeclaredConstructors(attribute.declaringType)
-                                      .FirstOrDefault(c => c.IsStatic);
-            }
-
-            return null;
         }
     }
 }

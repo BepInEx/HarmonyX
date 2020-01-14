@@ -184,12 +184,10 @@ namespace HarmonyLibTests
             Assert.IsNotNull(finalizer);
 
             Harmony.SELF_PATCHING = false;
-            if (Harmony.DEBUG)
-            {
-                FileLog.Reset();
-                FileLog.Log("### Original: " + parts[1]);
-                FileLog.Log("### Patching: " + parts[2]);
-            }
+
+            FileLog.Reset();
+            FileLog.Log("### Original: " + parts[1]);
+            FileLog.Log("### Patching: " + parts[2]);
 
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
@@ -222,7 +220,7 @@ namespace HarmonyLibTests
 
             instance.UnpatchAll();
 
-            Assert.IsTrue((bool) info["finalized"], "Finalizer not called");
+            Assert.IsTrue((bool)info["finalized"], "Finalizer not called");
         }
 
         private void AssertGotResult(string str)
