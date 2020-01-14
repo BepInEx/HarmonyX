@@ -8,6 +8,7 @@ using System.Text;
 namespace HarmonyLib
 {
     /// <summary>A file log for debugging</summary>
+    [Obsolete("Use HarmonyFileLog instead", true)]
     public static class FileLog
     {
         /// <summary>Full pathname of the log file</summary>

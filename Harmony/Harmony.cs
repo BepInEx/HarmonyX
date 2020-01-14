@@ -21,9 +21,8 @@ namespace HarmonyLib
         public static bool DEBUG;
 
         /// <summary>Set to false before instantiating Harmony to prevent Harmony from patching other older instances of itself</summary>
+        [Obsolete("Not supported by HarmonyX", true)]
         public static bool SELF_PATCHING = false;
-
-        private static bool selfPatchingDone;
 
         /// <summary>Creates a new Harmony instance</summary>
         /// <param name="id">A unique identifier</param>
@@ -53,13 +52,6 @@ namespace HarmonyLib
             });
 
             Id = id;
-
-            if (!selfPatchingDone)
-            {
-                selfPatchingDone = true;
-                if (SELF_PATCHING)
-                    throw new NotSupportedException("Self-Patching is not supported yet");
-            }
         }
 
         /// <summary>Searches current assembly for Harmony annotations and uses them to create patches</summary>

@@ -183,12 +183,6 @@ namespace HarmonyLibTests
             var finalizer = patchType.GetMethod("Finalizer");
             Assert.IsNotNull(finalizer);
 
-            Harmony.SELF_PATCHING = false;
-
-            FileLog.Reset();
-            FileLog.Log("### Original: " + parts[1]);
-            FileLog.Log("### Patching: " + parts[2]);
-
             var instance = new Harmony("test");
             Assert.IsNotNull(instance);
             var patcher = new PatchProcessor(instance, originalMethod);
