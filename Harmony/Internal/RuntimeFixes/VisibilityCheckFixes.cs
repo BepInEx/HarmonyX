@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -42,7 +42,7 @@ namespace HarmonyLib.Internal.RuntimeFixes
 
             var fixup = AccessTools.Method(typeof(VisibilityCheckFixes), nameof(FixupAccessOldMono));
 
-#if !NETSTANDARD2_1
+#if !NETSTANDARD
             new NativeDetour(AccessTools.Method(typeof(DMDGenerator<DMDEmitMethodBuilderGenerator>), "_Postbuild"),
                              fixup).Apply();
 #endif
