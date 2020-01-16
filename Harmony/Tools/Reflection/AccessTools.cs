@@ -38,8 +38,8 @@ namespace HarmonyLib
 
             var type = Type.GetType(name, false);
             if (type == null)
-                type = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
-                                .FirstOrDefault(x => x.FullName == name);
+                type = AppDomain.CurrentDomain.GetAssemblies().Select(assembly => assembly.GetType(name))
+                                .FirstOrDefault(t => t != null);
             if (type == null)
                 type = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                                 .FirstOrDefault(x => x.Name == name);
