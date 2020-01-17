@@ -250,6 +250,7 @@ namespace HarmonyLib
                     HarmonyMethod prefix = null;
                     HarmonyMethod transpiler = null;
                     HarmonyMethod postfix = null;
+                    HarmonyMethod finalizer = null;
 
                     if (attributes.Any(x => x is HarmonyPrefix))
                         prefix = new HarmonyMethod(method);
@@ -259,6 +260,9 @@ namespace HarmonyLib
 
                     if (attributes.Any(x => x is HarmonyPostfix))
                         postfix = new HarmonyMethod(method);
+
+                    if (attributes.Any(x => x is HarmonyFinalizer))
+                        finalizer = new HarmonyMethod(method);
 
 
                     var completeMethods = patchAttributeMethods.Where(x => x.declaringType != null && x.methodName != null).ToList();
@@ -279,13 +283,22 @@ namespace HarmonyLib
                             throw new ArgumentException($"Null method for attribute: \n" +
                                                         $"Type={methodToPatch.declaringType.FullName ?? "<null>"}\n" +
                                                         $"Name={methodToPatch.methodName ?? "<null>"}\n" +
-                                                        $"MethodType={(methodToPatch.methodType.HasValue ? methodToPatch.methodType.Value.ToString() : "<null>")}\n" +
+                                                        $"MethodType={(methodToPatch.methodType?.ToString())}\n" +
                                                         $"Args={(methodToPatch.argumentTypes == null ? "<null>" : string.Join(",", methodToPatch.argumentTypes.Select(x => x.FullName).ToArray()))}");
 
                         originalMethods.Add(originalMethod);
                     }
 
-                    var processor = new PatchProcessor(this, originalMethods, prefix, postfix, transpiler);
+                    var processor = new PatchProcessor(this);
+
+                    foreach (var originalMethod in originalMethods)
+                        processor.AddOriginal(originalMethod);
+
+                    processor.AddPrefix(prefix);
+                    processor.AddPostfix(postfix);
+                    processor.AddTranspiler(transpiler);
+                    processor.AddFinalizer(finalizer);
+
                     processor.Patch();
                 }
             }
