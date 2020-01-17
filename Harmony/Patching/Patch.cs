@@ -71,6 +71,11 @@ namespace HarmonyLib
             AddPatch(ref prefixes, patch, owner, priority, before, after);
         }
 
+        /// <summary>
+        /// Adds a prefix method.
+        /// </summary>
+        /// <param name="owner">ID of the owner instance</param>
+        /// <param name="info">Method to add as prefix</param>
         public void AddPrefix(string owner, HarmonyMethod info)
         {
             AddPatch(ref prefixes, owner, info);
@@ -96,6 +101,11 @@ namespace HarmonyLib
             AddPatch(ref postfixes, patch, owner, priority, before, after);
         }
 
+        /// <summary>
+        /// Adds a postfix
+        /// </summary>
+        /// <param name="owner">The owner (Harmony ID)</param>
+        /// <param name="info">Method to add as postfix</param>
         public void AddPostfix(string owner, HarmonyMethod info)
         {
             AddPatch(ref postfixes, owner, info);
@@ -121,6 +131,11 @@ namespace HarmonyLib
             AddPatch(ref transpilers, patch, owner, priority, before, after);
         }
 
+        /// <summary>
+        /// Adds a transpiler
+        /// </summary>
+        /// <param name="owner">The owner (Harmony ID)</param>
+        /// <param name="info">The method to add as transpiler</param>
         public void AddTranspiler(string owner, HarmonyMethod info)
         {
             AddPatch(ref transpilers, owner, info);
@@ -146,6 +161,11 @@ namespace HarmonyLib
             AddPatch(ref finalizers, patch, owner, priority, before, after);
         }
 
+        /// <summary>
+        /// Adds a finalizer.
+        /// </summary>
+        /// <param name="owner">The owner (Harmony ID)</param>
+        /// <param name="info">Method to add as finalizer</param>
         public void AddFinalizer(string owner, HarmonyMethod info)
         {
             AddPatch(ref finalizers, owner, info);

@@ -16,8 +16,8 @@ namespace HarmonyLib
         /// <summary>The unique identifier</summary>
         public string Id { get; private set; }
 
-        [Obsolete("No longer used, subscribe to Logger.LogChannel.Info")]
         /// <summary>Set to true before instantiating Harmony to debug Harmony</summary>
+        [Obsolete("No longer used, subscribe to Logger.LogChannel.Info")]
         public static bool DEBUG;
 
         /// <summary>Set to false before instantiating Harmony to prevent Harmony from patching other older instances of itself</summary>
