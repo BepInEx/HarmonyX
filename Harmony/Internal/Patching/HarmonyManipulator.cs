@@ -229,9 +229,16 @@ namespace HarmonyLib.Internal.Patching
 
             // Flag to check if the orignal method should be run (or was run)
             // Only present if method has a return value and there are prefixes that modify control flow
-            var runOriginal = returnValueVar != null && prefixes.Any(p => p.ReturnType == typeof(bool))
+            var runOriginal = prefixes.Any(p => p.ReturnType == typeof(bool))
                 ? il.DeclareVariable(typeof(bool))
                 : null;
+
+            // Init runOriginal to true
+            if (runOriginal != null)
+            {
+                il.Emit(OpCodes.Ldc_I4_1);
+                il.Emit(OpCodes.Stloc, runOriginal);
+            }
 
             // If runOriginal flag exists, we need to add more logic to the method end
             var postProcessTarget = returnValueVar != null ? il.DeclareLabel() : returnLabel;
@@ -249,15 +256,22 @@ namespace HarmonyLib.Internal.Patching
 
                     if (runOriginal != null)
                     {
-                        il.Emit(OpCodes.Dup);
+                        // AND the current runOriginal to return value of the method (if any)
+                        il.Emit(OpCodes.Ldloc, runOriginal);
+                        il.Emit(OpCodes.And);
                         il.Emit(OpCodes.Stloc, runOriginal);
                     }
-
-                    il.Emit(OpCodes.Brfalse, postProcessTarget);
                 }
             }
 
             if (runOriginal == null)
+                return;
+
+            // If runOriginal is false, branch automatically to the end
+            il.Emit(OpCodes.Ldloc, runOriginal);
+            il.Emit(OpCodes.Brfalse, postProcessTarget);
+
+            if (returnValueVar == null)
                 return;
 
             // Finally, load return value onto stack at the end
