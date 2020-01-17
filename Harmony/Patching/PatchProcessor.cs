@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -198,7 +199,12 @@ namespace HarmonyLib
         ///
         public List<DynamicMethod> Patch()
         {
-            Logger.Log(Logger.LogChannel.Info, () => $"Patching {instance.Id}");
+            Stopwatch sw = null;
+            Logger.Log(Logger.LogChannel.Info, () =>
+            {
+                sw = Stopwatch.StartNew();
+                return $"Patching {instance.Id}...";
+            });
 
             var dynamicMethods = new List<DynamicMethod>();
             foreach (var original in originals)
@@ -233,6 +239,8 @@ namespace HarmonyLib
                     RunMethod<HarmonyCleanup>(original);
                 }
             }
+
+            Logger.Log(Logger.LogChannel.Info, () => $"Patching {instance.Id} took {sw.ElapsedMilliseconds}ms");
 
             return dynamicMethods;
         }
@@ -473,31 +481,31 @@ namespace HarmonyLib
                     }
 
                 case MethodType.Setter:
-                {
-                    if (string.IsNullOrEmpty(attribute.methodName))
-                        throw MakeException("methodName can't be empty");
-
-                    var result = AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName);
-                    if (result != null)
                     {
-                        var getter = result.GetSetMethod(true);
-                        if (getter == null)
-                            throw MakeException($"Property {attribute.methodName} does not have a Setter");
-                        return getter;
-                    }
+                        if (string.IsNullOrEmpty(attribute.methodName))
+                            throw MakeException("methodName can't be empty");
 
-                    result = AccessTools.Property(attribute.declaringType, attribute.methodName);
-                    if (result != null)
-                    {
-                        Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
-                        var getter = result.GetSetMethod(true);
-                        if (getter == null)
-                            throw MakeException($"Property {attribute.methodName} does not have a Setter");
-                        return getter;
-                    }
+                        var result = AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName);
+                        if (result != null)
+                        {
+                            var getter = result.GetSetMethod(true);
+                            if (getter == null)
+                                throw MakeException($"Property {attribute.methodName} does not have a Setter");
+                            return getter;
+                        }
 
-                    throw MakeException($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
-                }
+                        result = AccessTools.Property(attribute.declaringType, attribute.methodName);
+                        if (result != null)
+                        {
+                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                            var getter = result.GetSetMethod(true);
+                            if (getter == null)
+                                throw MakeException($"Property {attribute.methodName} does not have a Setter");
+                            return getter;
+                        }
+
+                        throw MakeException($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
+                    }
 
                 case MethodType.Constructor:
                     {
