@@ -18,14 +18,22 @@ namespace HarmonyLib
         private static int _counter;
         private static readonly Dictionary<MethodInfo, Type> TypeCache = new Dictionary<MethodInfo, Type>();
 
-        /// <summary>Creates a delegate type for a method</summary>
-        /// <param name="method">The method</param>
-        /// <returns>The new delegate type</returns>
-        public Type CreateDelegateType(MethodInfo method)
-        {
-            if (TypeCache.TryGetValue(method, out var type))
-                return type;
+        /// <summary>
+        /// Instance for the delegate type factory
+        /// </summary>
+        /// <remarks>
+        /// Exists for API compatibility with Harmony
+        /// </remarks>
+        public static readonly DelegateTypeFactory instance = new DelegateTypeFactory();
 
+        /// <summary>
+        /// Creates a delegate type for a method
+        /// </summary>
+        /// <param name="returnType">Type of the return value</param>
+        /// <param name="argTypes">Types of the arguments</param>
+        /// <returns>The new delegate type for the given type info</returns>
+        public Type CreateDelegateType(Type returnType, Type[] argTypes)
+        {
             _counter++;
             var assembly = AssemblyDefinition.CreateAssembly(
                 new AssemblyNameDefinition($"HarmonyDTFAssembly{_counter}", new Version(1, 0)),
@@ -47,29 +55,39 @@ namespace HarmonyLib
             };
             dtfType.Methods.Add(ctor);
 
-            var parameters = method.GetParameters();
 
             var invokeMethod =
                 new MethodDefinition(
                     "Invoke", MethodAttributes.HideBySig | MethodAttributes.Virtual | MethodAttributes.Public,
-                    module.ImportReference(method.ReturnType))
+                    module.ImportReference(returnType))
                 {
                     ImplAttributes = MethodImplAttributes.CodeTypeMask
                 };
 
-            invokeMethod.Parameters.AddRange(parameters.Select(
-                                                 p => new ParameterDefinition(
-                                                     p.Name, ParameterAttributes.None,
-                                                     module.ImportReference(p.ParameterType))));
+            invokeMethod.Parameters.AddRange(argTypes.Select(t => new ParameterDefinition(module.ImportReference(t))));
+            dtfType.Methods.Add(invokeMethod);
 
             using (var ms = new MemoryStream())
             {
                 assembly.Write(ms);
                 var loadedAss = Assembly.Load(ms.ToArray());
                 var delegateType = loadedAss.GetType($"HarmonyDTFType{_counter}");
-                TypeCache[method] = delegateType;
                 return delegateType;
             }
+        }
+
+        /// <summary>Creates a delegate type for a method</summary>
+        /// <param name="method">The method</param>
+        /// <returns>The new delegate type</returns>
+        public Type CreateDelegateType(MethodInfo method)
+        {
+            if (TypeCache.TryGetValue(method, out var type))
+                return type;
+
+            type = CreateDelegateType(method.ReturnType,
+                                          method.GetParameters().Select(p => p.ParameterType).ToArray());
+            TypeCache[method] = type;
+            return type;
         }
     }
 }
