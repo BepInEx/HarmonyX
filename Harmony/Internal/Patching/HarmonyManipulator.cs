@@ -33,13 +33,6 @@ namespace HarmonyLib.Internal.Patching
         private static readonly MethodInfo getMethodMethod =
             typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] {typeof(RuntimeMethodHandle)});
 
-
-        internal static ILContext.Manipulator Create(MethodBase original, PatchInfo patchInfo)
-        {
-            // We need to include the original method in order to obtain the patch info during patching
-            return il => Manipulate(original, patchInfo, il);
-        }
-
         private static void SortPatches(MethodBase original, PatchInfo patchInfo, out List<MethodInfo> prefixes,
                                         out List<MethodInfo> postfixes, out List<MethodInfo> transpilers,
                                         out List<MethodInfo> finalizers)
@@ -61,7 +54,7 @@ namespace HarmonyLib.Internal.Patching
             finalizers = finalizersArr.Sort(original);
         }
 
-        private static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
+        internal static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
         {
             SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
                         out var sortedFinalizers);
