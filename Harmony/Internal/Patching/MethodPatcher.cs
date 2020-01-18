@@ -111,12 +111,18 @@ namespace HarmonyLib.Internal.Patching
                 if (prevDmd != null)
                     TrampolineCache.Remove(prevDmd.GetHashCode());
 
-                TrampolineCache[_dmd.GetHashCode()] = _nativeDetour
-                                                      .GenerateTrampoline(_invokeTrampolineMethod)
-                                                      .CreateDelegate(_trampolineDelegateType);
+                TrampolineCache[_dmd.GetHashCode()] = CreateDelegate(_trampolineDelegateType, _nativeDetour.GenerateTrampoline(_invokeTrampolineMethod));
             }
 
             _nativeDetour.Apply();
+        }
+
+        private Delegate CreateDelegate(Type delegateType, MethodBase mb)
+        {
+            if (mb is DynamicMethod dm)
+                return dm.CreateDelegate(delegateType);
+
+            return Delegate.CreateDelegate(delegateType, mb as MethodInfo ?? throw new Exception($"Unexpected method type: {mb.GetType()}"));
         }
 
         private static Delegate GetTrampoline(int hash)
