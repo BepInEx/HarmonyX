@@ -9,19 +9,15 @@ namespace HarmonyLib.Internal
     internal static class GlobalPatchState
     {
         private static readonly Dictionary<MethodBase, PatchInfo> PatchInfos = new Dictionary<MethodBase, PatchInfo>();
-        private static readonly Dictionary<MethodBase, ILHook> ILHooks = new Dictionary<MethodBase, ILHook>();
+        private static readonly Dictionary<MethodBase, MethodPatcher> MethodPatchers = new Dictionary<MethodBase, MethodPatcher>();
 
-        public static ILHook GetILHook(this MethodBase methodBase)
+        public static MethodPatcher GetMethodPatcher(this MethodBase methodBase)
         {
-            lock (ILHooks)
+            lock (MethodPatchers)
             {
-                if (ILHooks.TryGetValue(methodBase, out var ilHook))
-                    return ilHook;
-                return ILHooks[methodBase] = new ILHook(
-                    methodBase, HarmonyManipulator.Create(methodBase, methodBase.ToPatchInfo()), new ILHookConfig
-                    {
-                        ManualApply = true // Always apply manually to prevent unneeded manipulation
-                    });
+                if (MethodPatchers.TryGetValue(methodBase, out var methodPatcher))
+                    return methodPatcher;
+                return MethodPatchers[methodBase] = MethodPatcher.Create(methodBase);
             }
         }
 

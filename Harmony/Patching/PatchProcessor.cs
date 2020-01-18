@@ -221,7 +221,6 @@ namespace HarmonyLib
                 if (individualPrepareResult)
                 {
                     var patchInfo = original.ToPatchInfo();
-                    var ilHook = original.GetILHook();
 
                     // Lock patch info so we can assign the patches all at once
                     lock (patchInfo)
@@ -232,9 +231,7 @@ namespace HarmonyLib
                         patchInfo.AddFinalizer(instance.Id, finalizer);
                     }
 
-                    // TODO: Add batching by calling Refresh when needed
-
-                    ilHook.MarkApply(true).Apply();
+                    original.GetMethodPatcher().Apply();
 
                     RunMethod<HarmonyCleanup>(original);
                 }
@@ -254,7 +251,6 @@ namespace HarmonyLib
             foreach (var original in originals)
             {
                 var patchInfo = original.ToPatchInfo();
-                var ilHook = original.GetILHook();
 
                 lock (patchInfo)
                 {
@@ -268,7 +264,7 @@ namespace HarmonyLib
                         patchInfo.RemoveFinalizer(harmonyID);
                 }
 
-                ilHook.MarkApply(true).Apply();
+                original.GetMethodPatcher().Apply();
             }
 
             return this;
@@ -282,11 +278,10 @@ namespace HarmonyLib
             foreach (var original in originals)
             {
                 var patchInfo = original.ToPatchInfo();
-                var ilHook = original.GetILHook();
 
                 patchInfo.RemovePatch(patch);
 
-                ilHook.MarkApply(true).Apply();
+                original.GetMethodPatcher().Apply();
             }
 
             return this;

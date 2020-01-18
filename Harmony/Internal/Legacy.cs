@@ -36,7 +36,7 @@ namespace HarmonyLib
         [Obsolete("Exists for legacy support", true)]
         public static DynamicMethod UpdateWrapper(MethodBase original, PatchInfo info, string id)
         {
-            original.GetILHook().MarkApply(true).Apply();
+            original.GetMethodPatcher().Apply();
             return null;
         }
     }

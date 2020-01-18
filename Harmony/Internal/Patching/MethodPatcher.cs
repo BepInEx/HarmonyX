@@ -13,7 +13,7 @@ namespace HarmonyLib.Internal.Patching
 
         public abstract void Apply();
 
-        public static MethodPatcher Create(MethodInfo original)
+        public static MethodPatcher Create(MethodBase original)
         {
             if(original.GetMethodBody() == null)
                 return new NativeMethodPatcher(original);
