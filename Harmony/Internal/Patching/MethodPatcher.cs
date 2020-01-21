@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Tools;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
@@ -62,6 +63,8 @@ namespace HarmonyLib.Internal.Patching
 
     internal class NativeMethodPatcher : MethodPatcher
     {
+        private static readonly bool IsRunningOnDotNetCore = Type.GetType("System.Runtime.Loader.AssemblyLoadContext") != null;
+
         private static readonly Dictionary<int, Delegate> TrampolineCache = new Dictionary<int, Delegate>();
 
         private static readonly MethodInfo GetTrampolineMethod =
@@ -90,6 +93,12 @@ namespace HarmonyLib.Internal.Patching
             // 3. NativeDetour the method to the managed proxy
             // 4. Cache the NativeDetour's trampoline (technically we wouldn't need to, this is just a workaround
             //    for MonoMod's API.
+
+            if (IsRunningOnDotNetCore)
+                Logger.Log(Logger.LogChannel.Warn, () => $"Patch target {Original.GetID()} is marked as extern. " +
+                                                         "Extern methods may not be patched because of inlining behaviour of coreclr (refer to https://github.com/dotnet/coreclr/pull/8263)." +
+                                                         "If you need to patch externs, consider using pure NativeDetour instead.");
+
 
             var prevDmd = _dmd;
             _nativeDetour?.Dispose();
