@@ -499,29 +499,6 @@ namespace HarmonyLib
         }
     }
 
-    // This attribute is for Harmony patching itself to the latest
-    //
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor)]
-    internal class UpgradeToLatestVersion : Attribute
-    {
-        /// <summary>The version.</summary>
-        public int version;
-
-        public Type[] types;
-
-        public UpgradeToLatestVersion(int version)
-        {
-            this.version = version;
-            types = null;
-        }
-
-        public UpgradeToLatestVersion(int version, Type[] types)
-        {
-            this.version = version;
-            this.types = types;
-        }
-    }
-
     /// <summary>
     /// Specifies the indices of parameters that are ByRef.
     /// For use with <see cref="Harmony.PatchAll(Type)"/> overload only.
