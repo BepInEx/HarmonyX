@@ -462,11 +462,12 @@ namespace HarmonyLib
         ///
         public CodeMatcher InsertAndAdvance(params CodeInstruction[] instructions)
         {
-            instructions.Do(instruction =>
+            foreach (var instruction in instructions)
             {
                 Insert(instruction);
                 Pos++;
-            });
+            }
+
             return this;
         }
 
@@ -476,7 +477,8 @@ namespace HarmonyLib
         ///
         public CodeMatcher InsertAndAdvance(IEnumerable<CodeInstruction> instructions)
         {
-            instructions.Do(instruction => InsertAndAdvance(instruction));
+            foreach (var instruction in instructions)
+                InsertAndAdvance(instruction);
             return this;
         }
 

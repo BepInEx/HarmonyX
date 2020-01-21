@@ -83,7 +83,8 @@ namespace HarmonyLib
         ///
         public void PatchAll(Assembly assembly)
         {
-            assembly.GetTypes().Do(type => ProcessorForAnnotatedClass(type)?.Patch());
+            foreach (var type in assembly.GetTypes())
+                ProcessorForAnnotatedClass(type)?.Patch();
         }
 
         /// <summary>Creates patches by manually specifying the methods</summary>
@@ -201,24 +202,33 @@ namespace HarmonyLib
         {
             currentVersion = typeof(Harmony).Assembly.GetName().Version;
             var assemblies = new Dictionary<string, Assembly>();
-            GetAllPatchedMethods().Do(method =>
+
+            void AddAssemblies(IEnumerable<Patch> patches)
+            {
+                foreach (var patch in patches)
+                    assemblies[patch.owner] = patch.patch.DeclaringType?.Assembly;
+            }
+
+            foreach (var method in GetAllPatchedMethods())
             {
                 var info = GetPatchInfo(method);
-                info.Prefixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-                info.Postfixes.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-                info.Transpilers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-                info.Finalizers.Do(fix => assemblies[fix.owner] = fix.patch.DeclaringType.Assembly);
-            });
+
+                AddAssemblies(info.Prefixes);
+                AddAssemblies(info.Postfixes);
+                AddAssemblies(info.Transpilers);
+                AddAssemblies(info.Finalizers);
+            }
 
             var result = new Dictionary<string, Version>();
-            assemblies.Do(info =>
+
+            foreach (var info in assemblies)
             {
                 var assemblyName = info.Value.GetReferencedAssemblies()
                                        .FirstOrDefault(
-                                           a => a.FullName.StartsWith("0Harmony, Version", StringComparison.Ordinal));
+                                            a => a.FullName.StartsWith("0Harmony, Version", StringComparison.Ordinal));
                 if (assemblyName != null)
                     result[info.Key] = assemblyName.Version;
-            });
+            }
             return result;
         }
 
