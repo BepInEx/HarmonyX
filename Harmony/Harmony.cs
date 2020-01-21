@@ -122,19 +122,22 @@ namespace HarmonyLib
         ///
         public void UnpatchAll(string harmonyID = null)
         {
-            bool IDCheck(Patch patchInfo)
+            void UnpatchAllId(MethodBase original, IEnumerable<Patch> patches)
             {
-                return harmonyID == null || patchInfo.owner == harmonyID;
+                foreach (var patchInfo in patches)
+                    if(harmonyID == null || patchInfo.owner == harmonyID)
+                        Unpatch(original, patchInfo.patch);
             }
 
             var originals = GetAllPatchedMethods().ToList();
             foreach (var original in originals)
             {
                 var info = GetPatchInfo(original);
-                info.Prefixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
-                info.Postfixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
-                info.Transpilers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
-                info.Finalizers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.patch));
+
+                UnpatchAllId(original, info.Prefixes);
+                UnpatchAllId(original, info.Postfixes);
+                UnpatchAllId(original, info.Transpilers);
+                UnpatchAllId(original, info.Finalizers);
             }
         }
 
