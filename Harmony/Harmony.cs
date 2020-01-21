@@ -126,7 +126,7 @@ namespace HarmonyLib
                 return harmonyID == null || patchInfo.owner == harmonyID;
             }
 
-            var originals = GetPatchedMethods().ToList();
+            var originals = GetAllPatchedMethods().ToList();
             foreach (var original in originals)
             {
                 var info = GetPatchInfo(original);
