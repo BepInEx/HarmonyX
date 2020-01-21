@@ -608,17 +608,10 @@ namespace HarmonyLib
 
             var il = dm.GetILGenerator();
 
-            if (fieldInfo.IsStatic)
-            {
-                il.Emit(OpCodes.Ldsflda, fieldInfo);
-            }
-            else
-            {
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldflda, fieldInfo);
-            }
-
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldflda, fieldInfo);
             il.Emit(OpCodes.Ret);
+
             return (FieldRef<T, U>) dm.Generate().CreateDelegate<FieldRef<T, U>>();
         }
 
@@ -632,6 +625,48 @@ namespace HarmonyLib
         public static ref U FieldRefAccess<T, U>(T instance, string fieldName)
         {
             return ref FieldRefAccess<T, U>(fieldName)(instance);
+        }
+
+        /// <summary>A read/writable reference delegate to a static field</summary>
+        /// <typeparam name="F">The type of the field</typeparam>
+        /// <returns>An readable/assignable object representing the static field</returns>
+        ///
+        public delegate ref F FieldRef<F>();
+
+        /// <summary>Creates a static field reference</summary>
+        /// <typeparam name="T">The class the field is defined in or "object" if type cannot be accessed at compile time</typeparam>
+        /// <typeparam name="F">The type of the field</typeparam>
+        /// <param name="fieldName">The name of the field</param>
+        /// <returns>An readable/assignable object representing the static field</returns>
+        ///
+        public static ref F StaticFieldRefAccess<T, F>(string fieldName)
+        {
+            const BindingFlags bf = BindingFlags.NonPublic |
+                                    BindingFlags.Static |
+                                    BindingFlags.DeclaredOnly;
+
+            var fi = typeof(T).GetField(fieldName, bf);
+            return ref StaticFieldRefAccess<F>(fi)();
+        }
+
+        /// <summary>Creates a static field reference delegate</summary>
+        /// <typeparam name="F">The type of the field</typeparam>
+        /// <param name="fieldInfo">FieldInfo for the field</param>
+        /// <returns>A read and writable field reference delegate</returns>
+        ///
+        public static FieldRef<F> StaticFieldRefAccess<F>(FieldInfo fieldInfo)
+        {
+            if (fieldInfo == null)
+                throw new ArgumentNullException(nameof(fieldInfo));
+            var t = fieldInfo.DeclaringType;
+
+            var dm = new DynamicMethodDefinition($"__refget_{t.Name}_static_fi_{fieldInfo.Name}", typeof(F).MakeByRefType(), new Type[0]);
+
+            var il = dm.GetILGenerator();
+            il.Emit(OpCodes.Ldsflda, fieldInfo);
+            il.Emit(OpCodes.Ret);
+
+            return (FieldRef<F>)dm.Generate().CreateDelegate<FieldRef<F>>();
         }
 
         /// <summary>Returns who called the current method</summary>
