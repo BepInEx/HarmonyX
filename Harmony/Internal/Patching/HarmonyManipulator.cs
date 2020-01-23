@@ -190,10 +190,9 @@ namespace HarmonyLib.Internal.Patching
                 if (firstParam == null || postfix.ReturnType != firstParam.ParameterType)
                 {
                     if (firstParam != null)
-                        throw new Exception(
-                            $"Return type of pass through postfix {postfix} does not match type of its first parameter");
-                    // TODO: Make the error more understandable
-                    throw new Exception($"Postfix patch {postfix} must have `void` as return type");
+                        throw new InvalidHarmonyPatchArgumentException(
+                            $"Return type of pass through postfix {postfix.GetID()} does not match type of its first parameter", original, postfix);
+                    throw new InvalidHarmonyPatchArgumentException($"Postfix patch {postfix.GetID()} must have `void` as return type", original, postfix);
                 }
             }
         }
@@ -244,8 +243,8 @@ namespace HarmonyLib.Internal.Patching
                 if (!AccessTools.IsVoid(prefix.ReturnType))
                 {
                     if (prefix.ReturnType != typeof(bool))
-                        throw new Exception(
-                            $"Prefix patch {prefix} has return type {prefix.ReturnType}, but only `bool` or `void` are permitted");
+                        throw new InvalidHarmonyPatchArgumentException(
+                            $"Prefix patch {prefix.GetID()} has return type {prefix.ReturnType}, but only `bool` or `void` are permitted", original, prefix);
 
                     if (runOriginal != null)
                     {

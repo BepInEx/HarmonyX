@@ -682,7 +682,7 @@ namespace HarmonyLib
                     return method;
             }
 
-            throw new Exception("Unexpected end of stack trace");
+            throw new InvalidOperationException("Unexpected end of stack trace");
         }
 
         /// <summary>Throws a missing member runtime exception</summary>

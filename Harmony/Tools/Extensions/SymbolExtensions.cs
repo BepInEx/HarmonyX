@@ -48,7 +48,7 @@ namespace HarmonyLib
 
             var method = outermostExpression.Method;
             if (method == null)
-                throw new Exception($"Cannot find method for expression {expression}");
+                throw new MemberNotFoundException($"Cannot find method for expression {expression}");
 
             return method;
         }

@@ -175,7 +175,7 @@ namespace HarmonyLib
         public object GetValue(params object[] arguments)
         {
             if (_method == null)
-                throw new Exception("cannot get method value without method");
+                throw new InvalidOperationException("Cannot get method value without method");
             return _method.Invoke(_root, arguments);
         }
 
@@ -187,7 +187,7 @@ namespace HarmonyLib
         public T GetValue<T>(params object[] arguments)
         {
             if (_method == null)
-                throw new Exception("cannot get method value without method");
+                throw new InvalidOperationException("cannot get method value without method");
             return (T) _method.Invoke(_root, arguments);
         }
 

@@ -131,7 +131,7 @@ namespace HarmonyLib.Internal.Patching
             if (mb is DynamicMethod dm)
                 return dm.CreateDelegate(delegateType);
 
-            return Delegate.CreateDelegate(delegateType, mb as MethodInfo ?? throw new Exception($"Unexpected method type: {mb.GetType()}"));
+            return Delegate.CreateDelegate(delegateType, mb as MethodInfo ?? throw new InvalidCastException($"Unexpected method type: {mb.GetType()}"));
         }
 
         private static Delegate GetTrampoline(int hash)
