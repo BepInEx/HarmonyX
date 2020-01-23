@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib.Tools;
+using MonoMod.Utils;
 
 namespace HarmonyLib.Internal.Patching
 {
@@ -107,7 +108,7 @@ namespace HarmonyLib.Internal.Patching
                     if (!_handledPatches.Contains(afterNode))
                     {
                         _waitingList[i].RemoveAfterDependency(afterNode);
-                        Logger.Log(Logger.LogChannel.Info, () => $"Breaking dependance between {afterNode.innerPatch.patch.FullDescription()} and {_waitingList[i].innerPatch.patch.FullDescription()}");
+                        Logger.Log(Logger.LogChannel.Info, () => $"Breaking dependance between {afterNode.innerPatch.patch.GetID()} and {_waitingList[i].innerPatch.patch.GetID()}");
                         return;
                     }
         }

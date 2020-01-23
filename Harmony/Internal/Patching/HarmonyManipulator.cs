@@ -554,13 +554,13 @@ namespace HarmonyLib.Internal.Patching
                 {
                     var returnType = AccessTools.GetReturnedType(original);
                     if (returnType == typeof(void))
-                        throw new Exception($"Cannot get result from void method {original.FullDescription()}");
+                        throw new InvalidHarmonyPatchArgumentException($"Cannot get result from void method", original, patch);
                     var resultType = patchParam.ParameterType;
                     if (resultType.IsByRef)
                         resultType = resultType.GetElementType();
                     if (resultType.IsAssignableFrom(returnType) == false)
-                        throw new Exception(
-                            $"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName} for method {original.FullDescription()}");
+                        throw new InvalidHarmonyPatchArgumentException(
+                            $"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName}", original, patch);
                     il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, variables[RESULT_VAR]);
                     continue;
                 }
@@ -577,16 +577,16 @@ namespace HarmonyLib.Internal.Patching
                 {
                     var val = patchParam.Name.Substring(PARAM_INDEX_PREFIX.Length);
                     if (!int.TryParse(val, out idx))
-                        throw new Exception($"Parameter {patchParam.Name} does not contain a valid index");
+                        throw new InvalidHarmonyPatchArgumentException($"Parameter {patchParam.Name} does not contain a valid index", original, patch);
                     if (idx < 0 || idx >= originalParameters.Length)
-                        throw new Exception($"No parameter found at index {idx}");
+                        throw new InvalidHarmonyPatchArgumentException($"No parameter found at index {idx}", original, patch);
                 }
                 else
                 {
                     idx = GetArgumentIndex(patch, originalParameterNames, patchParam);
                     if (idx == -1)
-                        throw new Exception(
-                            $"Parameter \"{patchParam.Name}\" not found in method {original.FullDescription()}");
+                        throw new InvalidHarmonyPatchArgumentException(
+                            $"Parameter \"{patchParam.Name}\" not found", original, patch);
                 }
 
                 //   original -> patch     opcode

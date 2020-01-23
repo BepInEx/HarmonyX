@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using MonoMod.Utils;
 
 namespace HarmonyLib
 {
@@ -102,7 +103,7 @@ namespace HarmonyLib
             var type = argument.GetType();
 
             if (argument is MethodInfo method)
-                return method.FullDescription();
+                return method.GetID();
 
             if (type == typeof(string))
                 return $"\"{argument}\"";

@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using HarmonyLib.Internal;
 using HarmonyLib.Tools;
+using MonoMod.Utils;
 
 namespace HarmonyLib
 {
@@ -201,7 +202,7 @@ namespace HarmonyLib
             else if (_info is PropertyInfo)
                 ((PropertyInfo) _info).SetValue(_root, value, AccessTools.all, null, _params, CultureInfo.CurrentCulture);
             else if (_method != null)
-                throw new Exception($"cannot set value of method {_method.FullDescription()}");
+                throw new InvalidOperationException($"Cannot set value of method {_method.GetID()}");
             else
                 Logger.Log(Logger.LogChannel.Warn, () => "Traverse.SetValue was called while not pointing at an existing Field or Property. The call will have no effect.\n" + new StackTrace());
             return this;

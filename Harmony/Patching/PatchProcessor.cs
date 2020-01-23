@@ -363,7 +363,7 @@ namespace HarmonyLib
             if (prefixMethod != null)
             {
                 if (prefixMethod.IsStatic == false)
-                    throw new ArgumentException($"Patch method {prefixMethod.FullDescription()} must be static");
+                    throw new ArgumentException($"Patch method {prefixMethod.GetID()} must be static");
 
                 var prefixAttributes = HarmonyMethodExtensions.GetFromMethod(prefixMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(prefixAttributes)).CopyTo(prefix);
@@ -372,7 +372,7 @@ namespace HarmonyLib
             if (postfixMethod != null)
             {
                 if (postfixMethod.IsStatic == false)
-                    throw new ArgumentException($"Patch method {postfixMethod.FullDescription()} must be static");
+                    throw new ArgumentException($"Patch method {postfixMethod.GetID()} must be static");
 
                 var postfixAttributes = HarmonyMethodExtensions.GetFromMethod(postfixMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(postfixAttributes)).CopyTo(postfix);
@@ -381,7 +381,7 @@ namespace HarmonyLib
             if (transpilerMethod != null)
             {
                 if (transpilerMethod.IsStatic == false)
-                    throw new ArgumentException($"Patch method {transpilerMethod.FullDescription()} must be static");
+                    throw new ArgumentException($"Patch method {transpilerMethod.GetID()} must be static");
 
                 var transpilerAttributes = HarmonyMethodExtensions.GetFromMethod(transpilerMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(transpilerAttributes)).CopyTo(transpiler);
@@ -390,7 +390,7 @@ namespace HarmonyLib
             if (finalizerMethod != null)
             {
                 if (finalizerMethod.IsStatic == false)
-                    throw new ArgumentException($"Patch method {finalizerMethod.FullDescription()} must be static");
+                    throw new ArgumentException($"Patch method {finalizerMethod.GetID()} must be static");
 
                 var finalizerAttributes = HarmonyMethodExtensions.GetFromMethod(finalizerMethod);
                 containerAttributes.Merge(HarmonyMethod.Merge(finalizerAttributes)).CopyTo(finalizer);
