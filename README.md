@@ -23,13 +23,15 @@
 
 **HarmonyX** is a fork of [Harmony 2](https://github.com/pardeike/Harmony) that specializes on support for games and game modding frameworks.
 
+HarmonyX is being developed primarily for use in game frameworks alongside MonoMod. The main target usage of HarmonyX is [BepInEx](https://github.com/BepInEx/BepInEx) and Unity.
+
 Important aspects of HarmonyX include:
 
 * Better runtime support: .NET Standard 2, .NET Core 2, Mono shipped with some Unity games
 * Better platform and OS support: x86, x64, ARM
 * Active developer support
 * Patching feature parity with Harmony
-* New patch types with power of MonoMod: patches for native methods, IL manipulators (WIP, see above)
+* New patch types with power of MonoMod: [support for native method patching](https://github.com/BepInEx/HarmonyX/wiki/Valid-patch-targets#native-methods-marked-extern)
 * Fixes, changes and optimizations for game modding
 
 HarmonyX is powered by [MonoMod](https://github.com/MonoMod) and its runtime patching tools.
