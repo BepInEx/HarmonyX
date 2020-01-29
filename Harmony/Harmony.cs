@@ -214,36 +214,7 @@ namespace HarmonyLib
         ///
         public static Dictionary<string, Version> VersionInfo(out Version currentVersion)
         {
-            currentVersion = typeof(Harmony).Assembly.GetName().Version;
-            var assemblies = new Dictionary<string, Assembly>();
-
-            void AddAssemblies(IEnumerable<Patch> patches)
-            {
-                foreach (var patch in patches)
-                    assemblies[patch.owner] = patch.patch.DeclaringType?.Assembly;
-            }
-
-            foreach (var method in GetAllPatchedMethods())
-            {
-                var info = GetPatchInfo(method);
-
-                AddAssemblies(info.Prefixes);
-                AddAssemblies(info.Postfixes);
-                AddAssemblies(info.Transpilers);
-                AddAssemblies(info.Finalizers);
-            }
-
-            var result = new Dictionary<string, Version>();
-
-            foreach (var info in assemblies)
-            {
-                var assemblyName = info.Value.GetReferencedAssemblies()
-                                       .FirstOrDefault(
-                                            a => a.FullName.StartsWith("0Harmony, Version", StringComparison.Ordinal));
-                if (assemblyName != null)
-                    result[info.Key] = assemblyName.Version;
-            }
-            return result;
+            return PatchProcessor.VersionInfo(out currentVersion);
         }
 
         /// <summary>

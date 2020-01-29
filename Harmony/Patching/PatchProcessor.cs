@@ -5,10 +5,12 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal;
+using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using MonoMod.Utils;
+using MonoMod.Utils.Cil;
 
 namespace HarmonyLib
 {
@@ -36,7 +38,7 @@ namespace HarmonyLib
         /// <param name="instance">The Harmony instance</param>
         /// <param name="original">An optional original method</param>
         ///
-        public PatchProcessor(Harmony instance, MethodBase original = null)
+        public PatchProcessor(Harmony instance, MethodBase original)
         {
             this.instance = instance;
             if (original != null)
@@ -189,16 +191,91 @@ namespace HarmonyLib
                                    patchInfo.finalizers);
         }
 
+        /// <summary>Gets Harmony version for all active Harmony instances</summary>
+        /// <param name="currentVersion">[out] The current Harmony version</param>
+        /// <returns>A dictionary containing assembly versions keyed by Harmony IDs</returns>
+        ///
+        public static Dictionary<string, Version> VersionInfo(out Version currentVersion)
+        {
+            currentVersion = typeof(Harmony).Assembly.GetName().Version;
+            var assemblies = new Dictionary<string, Assembly>();
+
+            void AddAssemblies(IEnumerable<Patch> patches)
+            {
+                foreach (var patch in patches)
+                    assemblies[patch.owner] = patch.patch.DeclaringType?.Assembly;
+            }
+
+            foreach (var method in GetAllPatchedMethods())
+            {
+                var info = GetPatchInfo(method);
+
+                AddAssemblies(info.Prefixes);
+                AddAssemblies(info.Postfixes);
+                AddAssemblies(info.Transpilers);
+                AddAssemblies(info.Finalizers);
+            }
+
+            var result = new Dictionary<string, Version>();
+
+            foreach (var info in assemblies)
+            {
+                var assemblyName = info.Value.GetReferencedAssemblies()
+                                       .FirstOrDefault(
+                                            a => a.FullName.StartsWith("0Harmony, Version", StringComparison.Ordinal));
+                if (assemblyName != null)
+                    result[info.Key] = assemblyName.Version;
+            }
+            return result;
+        }
+
+        /// <summary>Returns the methods unmodified list of CodeInstructions</summary>
+        /// <param name="original">The original method</param>
+        /// <param name="generator">Optionally an existing generator that will be used to create all local variables and labels contained in the result (if not specified, an internal generator is used)</param>
+        /// <returns>A list containing all the original CodeInstructions</returns>
+        public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, ILGenerator generator = null)
+        {
+            // Create a copy
+            var dmd = new DynamicMethodDefinition(original);
+            // Create a manipulator to obtain the instructions
+            var manipulator = new ILManipulator(dmd.Definition.Body);
+            var il = generator ?? new CecilILGenerator(dmd.GetILProcessor()).GetProxy();
+            return manipulator.GetInstructions(il);
+        }
+
+        /// <summary>Returns the methods unmodified list of CodeInstructions</summary>
+        /// <param name="original">The original method</param>
+        /// <param name="generator">A new generator that now contains all local variables and labels contained in the result</param>
+        /// <returns>A list containing all the original CodeInstructions</returns>
+        public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, out ILGenerator generator)
+        {
+            // Create a copy
+            var dmd = new DynamicMethodDefinition(original);
+            // Create a manipulator to obtain the instructions
+            var manipulator = new ILManipulator(dmd.Definition.Body);
+            generator = new CecilILGenerator(dmd.GetILProcessor()).GetProxy();
+            return manipulator.GetInstructions(generator);
+        }
+
         /// <summary>Gets all patched original methods</summary>
         /// <returns>All patched original methods</returns>
         ///
+        [Obsolete("Use GetAllPatchedMethods instead")]
         public static IEnumerable<MethodBase> AllPatchedMethods() { return GlobalPatchState.GetPatchedMethods(); }
+
+        /// <summary>Gets all patched original methods</summary>
+        /// <returns>All patched original methods</returns>
+        ///
+        public static IEnumerable<MethodBase> GetAllPatchedMethods() { return GlobalPatchState.GetPatchedMethods(); }
+
 
         /// <summary>Applies the patch</summary>
         /// <returns>A list of all created dynamic methods</returns>
         ///
         public List<DynamicMethod> Patch()
         {
+            // TODO: Replace return type to MethodInfo
+
             Stopwatch sw = null;
             Logger.Log(Logger.LogChannel.Info, () =>
             {

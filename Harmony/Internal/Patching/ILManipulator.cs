@@ -193,6 +193,56 @@ namespace HarmonyLib.Internal.Patching
             return tempInstructions.ToList();
         }
 
+        public List<CodeInstruction> GetInstructions(SRE.ILGenerator il)
+        {
+            Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel);
+            return codeInstructions.ToList();
+        }
+
+        private void Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
+        {
+            foreach (var codeInstruction in codeInstructions)
+            {
+                // Set operand to the same as the IL operand (in most cases they are the same)
+                codeInstruction.operand = codeInstruction.ilOperand;
+
+                switch (codeInstruction.opcode.OperandType)
+                {
+                    case SRE.OperandType.InlineVar:
+                    case SRE.OperandType.ShortInlineVar:
+                    {
+                        if (codeInstruction.ilOperand is VariableDefinition varDef)
+                            codeInstruction.operand = getLocal(varDef);
+                    }
+                        break;
+                    case SRE.OperandType.InlineSwitch when codeInstruction.ilOperand is CodeInstruction[] targets:
+                    {
+                        var labels = new List<SRE.Label>();
+                        foreach (var target in targets)
+                        {
+                            var label = defineLabel();
+                            target.labels.Add(label);
+                            labels.Add(label);
+                        }
+
+                        codeInstruction.operand = labels.ToArray();
+                    }
+                        break;
+                    case SRE.OperandType.ShortInlineBrTarget:
+                    case SRE.OperandType.InlineBrTarget:
+                    {
+                        if (codeInstruction.operand is CodeInstruction target)
+                        {
+                            var label = defineLabel();
+                            target.labels.Add(label);
+                            codeInstruction.operand = label;
+                        }
+                    }
+                        break;
+                }
+            }
+        }
+
         /// <summary>
         ///     Processes and writes IL to the provided method body.
         ///     Note that this cleans the existing method body (removes insturctions and exception handlers).
@@ -221,46 +271,7 @@ namespace HarmonyLib.Internal.Patching
             il.DefineLabel();
 
             // Step 1: Prepare labels for instructions
-            foreach (var codeInstruction in codeInstructions)
-            {
-                // Set operand to the same as the IL operand (in most cases they are the same)
-                codeInstruction.operand = codeInstruction.ilOperand;
-
-                switch (codeInstruction.opcode.OperandType)
-                {
-                    case SRE.OperandType.InlineVar:
-                    case SRE.OperandType.ShortInlineVar:
-                    {
-                        if (codeInstruction.ilOperand is VariableDefinition varDef)
-                            codeInstruction.operand = il.GetLocal(varDef);
-                    }
-                        break;
-                    case SRE.OperandType.InlineSwitch when codeInstruction.ilOperand is CodeInstruction[] targets:
-                    {
-                        var labels = new List<SRE.Label>();
-                        foreach (var target in targets)
-                        {
-                            var label = il.DefineLabel();
-                            target.labels.Add(label);
-                            labels.Add(label);
-                        }
-
-                        codeInstruction.operand = labels.ToArray();
-                    }
-                        break;
-                    case SRE.OperandType.ShortInlineBrTarget:
-                    case SRE.OperandType.InlineBrTarget:
-                    {
-                        if (codeInstruction.operand is CodeInstruction target)
-                        {
-                            var label = il.DefineLabel();
-                            target.labels.Add(label);
-                            codeInstruction.operand = label;
-                        }
-                    }
-                        break;
-                }
-            }
+            Prepare(vDef => il.GetLocal(vDef), il.DefineLabel);
 
             // Step 2: Run the code instruction through transpilers
             var newInstructions = ApplyTranspilers(cil, original);
