@@ -202,6 +202,25 @@ namespace HarmonyLib
                        .ToList();
         }
 
+        /// <summary>Gets all annotations on a class in merged form</summary>
+        /// <param name="type">The class</param>
+        /// <returns>The merged HarmonyMethod</returns>
+        ///
+        public static HarmonyMethod GetMergedFromType(Type type)
+        {
+            return HarmonyMethod.Merge(GetFromType(type));
+        }
+
+
+        /// <summary>Gets all annotations on a method in merged form</summary>
+        /// <param name="method">The method</param>
+        /// <returns>The merged HarmonyMethod</returns>
+        ///
+        public static HarmonyMethod GetMergedFromMethod(MethodBase method)
+        {
+            return HarmonyMethod.Merge(GetFromMethod(method));
+        }
+
         /// <summary>Gets all annotations on a method</summary>
         /// <param name="method">The method</param>
         /// <returns>All annotations</returns>
