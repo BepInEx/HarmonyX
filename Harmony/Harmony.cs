@@ -98,12 +98,23 @@ namespace HarmonyLib
         public DynamicMethod Patch(MethodBase original, HarmonyMethod prefix = null, HarmonyMethod postfix = null,
                                    HarmonyMethod transpiler = null, HarmonyMethod finalizer = null)
         {
+            // TODO: Figure out allow MethodInfo return type (maybe shimming?)
             var processor = new PatchProcessor(this, original);
             processor.AddPrefix(prefix);
             processor.AddPostfix(postfix);
             processor.AddTranspiler(transpiler);
             processor.AddFinalizer(finalizer);
             return processor.Patch().FirstOrDefault();
+        }
+
+        /// <summary>Patches a foreign method onto a stub method of yours and optionally applies transpilers during the process</summary>
+        /// <param name="original">The original method/constructor you want to duplicate</param>
+        /// <param name="standin">Your stub method that will become the original. Needs to have the correct signature (either original or whatever your transpilers generates)</param>
+        /// <param name="transpiler">An optional transpiler that will be applied during the process</param>
+        public MethodInfo ReversePatch(MethodBase original, HarmonyMethod standin, MethodInfo transpiler = null)
+        {
+            // TODO: Implement (along with ILHook returning the detour it creates)
+            return null;
         }
 
         /// <summary>
