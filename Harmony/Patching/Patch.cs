@@ -214,7 +214,13 @@ namespace HarmonyLib
         public readonly string[] after;
 
         /// <summary>The patch method</summary>
-        public readonly MethodInfo patch;
+        public MethodInfo patch;
+
+        public MethodInfo PatchMethod
+        {
+            get => patch;
+            set => patch = value;
+        }
 
         /// <summary>Creates a patch</summary>
         /// <param name="patch">The patch</param>
@@ -244,14 +250,14 @@ namespace HarmonyLib
         ///
         public MethodInfo GetMethod(MethodBase original)
         {
-            if (patch.ReturnType != typeof(DynamicMethod)) return patch;
+            if (patch.ReturnType != typeof(DynamicMethod) && patch.ReturnType != typeof(MethodInfo)) return patch;
             if (patch.IsStatic == false) return patch;
             var parameters = patch.GetParameters();
             if (parameters.Count() != 1) return patch;
             if (parameters[0].ParameterType != typeof(MethodBase)) return patch;
 
             // we have a DynamicMethod factory, let's use it
-            return patch.Invoke(null, new object[] {original}) as DynamicMethod;
+            return patch.Invoke(null, new object[] {original}) as MethodInfo;
         }
 
         /// <summary>Determines whether patches are equal</summary>
