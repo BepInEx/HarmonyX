@@ -30,9 +30,6 @@ namespace HarmonyLib.Internal.Patching
         private static readonly string PARAM_INDEX_PREFIX = "__";
         private static readonly string INSTANCE_FIELD_PREFIX = "___";
 
-        private static readonly MethodInfo getMethodMethod =
-            typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] {typeof(RuntimeMethodHandle)});
-
         private static void SortPatches(MethodBase original, PatchInfo patchInfo, out List<MethodInfo> prefixes,
                                         out List<MethodInfo> postfixes, out List<MethodInfo> transpilers,
                                         out List<MethodInfo> finalizers)
@@ -445,6 +442,8 @@ namespace HarmonyLib.Internal.Patching
             }
         }
 
+        static readonly MethodInfo GetMethodFromHandle1 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) });
+        static readonly MethodInfo GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) });
         private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
                                               Dictionary<string, VariableDefinition> variables,
                                               bool allowFirsParamPassthrough)
@@ -463,21 +462,20 @@ namespace HarmonyLib.Internal.Patching
             {
                 if (patchParam.Name == ORIGINAL_METHOD_PARAM)
                 {
-                    if (original is ConstructorInfo constructorInfo)
+                    if (original is MethodInfo method)
+                        il.Emit(OpCodes.Ldtoken, method);
+                    else if (original is ConstructorInfo constructor)
+                        il.Emit(OpCodes.Ldtoken, constructor);
+                    else
                     {
-                        il.Emit(OpCodes.Ldtoken, constructorInfo);
-                        il.Emit(OpCodes.Call, getMethodMethod);
+                        il.Emit(OpCodes.Ldnull);
                         continue;
                     }
 
-                    if (original is MethodInfo methodInfo)
-                    {
-                        il.Emit(OpCodes.Ldtoken, methodInfo);
-                        il.Emit(OpCodes.Call, getMethodMethod);
-                        continue;
-                    }
-
-                    il.Emit(OpCodes.Ldnull);
+                    var type = original.ReflectedType;
+                    if (type != null && type.IsGenericType)
+                        il.Emit(OpCodes.Ldtoken, type);
+                    il.Emit(OpCodes.Call, type != null && type.IsGenericType ? GetMethodFromHandle2 : GetMethodFromHandle1);
                     continue;
                 }
 
