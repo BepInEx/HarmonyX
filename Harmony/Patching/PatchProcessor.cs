@@ -38,7 +38,7 @@ namespace HarmonyLib
         /// <param name="instance">The Harmony instance</param>
         /// <param name="original">An optional original method</param>
         ///
-        public PatchProcessor(Harmony instance, MethodBase original)
+        public PatchProcessor(Harmony instance, MethodBase original = null)
         {
             this.instance = instance;
             if (original != null)
