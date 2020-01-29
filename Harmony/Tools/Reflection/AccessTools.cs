@@ -678,7 +678,7 @@ namespace HarmonyLib
             foreach (var frame in trace.GetFrames())
             {
                 var method = frame.GetMethod();
-                if (method.DeclaringType.Namespace != typeof(Harmony).Namespace)
+                if (method.DeclaringType?.Namespace != typeof(Harmony).Namespace)
                     return method;
             }
 

@@ -539,7 +539,7 @@ namespace HarmonyLib.Internal.Patching
                 // state is special too since each patch has its own local var
                 if (patchParam.Name == STATE_VAR)
                 {
-                    if (variables.TryGetValue(patch.DeclaringType.FullName, out var stateVar))
+                    if (variables.TryGetValue(patch.DeclaringType?.FullName ?? string.Empty, out var stateVar))
                         il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, stateVar);
                     else
                         il.Emit(OpCodes.Ldnull);

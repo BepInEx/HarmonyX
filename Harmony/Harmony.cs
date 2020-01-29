@@ -42,11 +42,11 @@ namespace HarmonyLib
                     assemblyLocation = new Uri(assembly.CodeBase).LocalPath;
 
                 var callingMethod = AccessTools.GetOutsideCaller();
-                var callingAssembly = callingMethod.DeclaringType.Assembly;
+                var callingAssembly = callingMethod.DeclaringType?.Assembly; // Can be null in <Module>
 
-                var callingAssemblyLocation = callingAssembly.Location;
+                var callingAssemblyLocation = callingAssembly?.Location;
                 if (string.IsNullOrEmpty(callingAssemblyLocation))
-                    callingAssemblyLocation = new Uri(callingAssembly.CodeBase).LocalPath;
+                    callingAssemblyLocation = callingAssembly != null ? new Uri(callingAssembly.CodeBase).LocalPath : string.Empty;
 
                 return $"Created Harmony instance id={id}, version={version}, location={assemblyLocation} - Started from {callingMethod.GetID()} location={callingAssemblyLocation}";
             });
