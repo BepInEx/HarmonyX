@@ -7,7 +7,6 @@ using System.Reflection.Emit;
 using HarmonyLib.Internal;
 using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.RuntimeFixes;
-using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
@@ -483,20 +482,21 @@ namespace HarmonyLib
         {
             if (attribute == null) throw new ArgumentNullException(nameof(attribute));
 
-            ArgumentException MakeException(string reason)
+            MethodBase MakeFailure(string reason)
             {
-                return new ArgumentException($"{(attribute.method?.ToString() ?? "Unknown patch")} - {reason}");
+                Logger.Log(Logger.LogChannel.Error, () => $"Failed to process patch {attribute.method?.ToString() ?? "Unknown patch"} - {reason}");
+                return null;
             }
 
             if (attribute.declaringType == null)
-                throw MakeException("declaringType cannot be null");
+                return MakeFailure("declaringType cannot be null");
 
             switch (attribute.methodType)
             {
                 case MethodType.Normal:
                     {
                         if (string.IsNullOrEmpty(attribute.methodName))
-                            throw MakeException("methodName can't be empty");
+                            return MakeFailure("methodName can't be empty");
 
                         if (attribute.methodName == ".ctor")
                         {
@@ -522,20 +522,20 @@ namespace HarmonyLib
                             return result;
                         }
 
-                        throw MakeException($"Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
                     }
 
                 case MethodType.Getter:
                     {
                         if (string.IsNullOrEmpty(attribute.methodName))
-                            throw MakeException("methodName can't be empty");
+                            return MakeFailure("methodName can't be empty");
 
                         var result = AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName);
                         if (result != null)
                         {
                             var getter = result.GetGetMethod(true);
                             if (getter == null)
-                                throw MakeException($"Property {attribute.methodName} does not have a Getter");
+                                return MakeFailure($"Property {attribute.methodName} does not have a Getter");
                             return getter;
                         }
 
@@ -545,24 +545,24 @@ namespace HarmonyLib
                             Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
                             var getter = result.GetGetMethod(true);
                             if (getter == null)
-                                throw MakeException($"Property {attribute.methodName} does not have a Getter");
+                                return MakeFailure($"Property {attribute.methodName} does not have a Getter");
                             return getter;
                         }
 
-                        throw MakeException($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
                     }
 
                 case MethodType.Setter:
                     {
                         if (string.IsNullOrEmpty(attribute.methodName))
-                            throw MakeException("methodName can't be empty");
+                            return MakeFailure("methodName can't be empty");
 
                         var result = AccessTools.DeclaredProperty(attribute.declaringType, attribute.methodName);
                         if (result != null)
                         {
                             var getter = result.GetSetMethod(true);
                             if (getter == null)
-                                throw MakeException($"Property {attribute.methodName} does not have a Setter");
+                                return MakeFailure($"Property {attribute.methodName} does not have a Setter");
                             return getter;
                         }
 
@@ -572,11 +572,11 @@ namespace HarmonyLib
                             Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
                             var getter = result.GetSetMethod(true);
                             if (getter == null)
-                                throw MakeException($"Property {attribute.methodName} does not have a Setter");
+                                return MakeFailure($"Property {attribute.methodName} does not have a Setter");
                             return getter;
                         }
 
-                        throw MakeException($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}");
                     }
 
                 case MethodType.Constructor:
@@ -584,7 +584,7 @@ namespace HarmonyLib
                         var constructor = AccessTools.DeclaredConstructor(attribute.declaringType, attribute.argumentTypes);
                         if (constructor != null) return constructor;
 
-                        throw MakeException($"Could not find constructor with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find constructor with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
                     }
 
                 case MethodType.StaticConstructor:
@@ -592,7 +592,7 @@ namespace HarmonyLib
                         var constructor = AccessTools.GetDeclaredConstructors(attribute.declaringType).FirstOrDefault(c => c.IsStatic);
                         if (constructor != null) return constructor;
 
-                        throw MakeException($"Could not find static constructor in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find static constructor in type {attribute.declaringType.FullDescription()}");
                     }
             }
 
