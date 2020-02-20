@@ -83,8 +83,15 @@ namespace HarmonyLib
         ///
         public void PatchAll(Assembly assembly)
         {
-            foreach (var type in assembly.GetTypes())
-                ProcessorForAnnotatedClass(type)?.Patch();
+            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+
+            var patchProcessors = assembly.GetTypes().Select(ProcessorForAnnotatedClass).Where(x => x != null).ToList();
+
+            foreach (var type in patchProcessors)
+                type.Patch();
+
+            if (patchProcessors.Count == 0)
+                Logger.Log(Logger.LogChannel.Warn, () => $"Could not find any valid Harmony patches inside of assembly {assembly.FullName}");
         }
 
         /// <summary>Creates patches by manually specifying the methods</summary>
@@ -136,7 +143,7 @@ namespace HarmonyLib
             void UnpatchAllId(MethodBase original, IEnumerable<Patch> patches)
             {
                 foreach (var patchInfo in patches)
-                    if(harmonyID == null || patchInfo.owner == harmonyID)
+                    if (harmonyID == null || patchInfo.owner == harmonyID)
                         Unpatch(original, patchInfo.patch);
             }
 
@@ -223,6 +230,7 @@ namespace HarmonyLib
 		/// <param name="type">The type to scan.</param>
 		public void PatchAll(Type type)
         {
+            if (type == null) throw new ArgumentNullException(nameof(type));
             foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
             {
                 var patchAttributeMethods = HarmonyMethodExtensions.GetFromMethod(method);
@@ -295,6 +303,15 @@ namespace HarmonyLib
                     processor.AddFinalizer(finalizer);
 
                     processor.Patch();
+                }
+                else
+                {
+                    // Only check when logging warnings
+                    if ((Logger.ChannelFilter & Logger.LogChannel.Warn) != 0)
+                    {
+                        if (method.GetCustomAttributes(typeof(HarmonyAttribute), true).Any())
+                            Logger.LogText(Logger.LogChannel.Warn, "Method " + method.FullDescription() + " has an invalid combination of Harmony attributes and will be ignored");
+                    }
                 }
             }
         }

@@ -198,6 +198,7 @@ namespace HarmonyLib
         ///
         public static List<HarmonyMethod> GetFromType(Type type)
         {
+            if (type == null) throw new ArgumentNullException(nameof(type));
             return type.GetCustomAttributes(true).Select(attr => GetHarmonyMethodInfo(attr)).Where(info => info != null)
                        .ToList();
         }
