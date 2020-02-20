@@ -280,6 +280,9 @@ namespace HarmonyLib
                         if (!methodToPatch.methodType.HasValue)
                             methodToPatch.methodType = MethodType.Normal;
 
+                        if (methodToPatch.method == null)
+                            methodToPatch.method = method;
+
                         var originalMethod = PatchProcessor.GetOriginalMethod(methodToPatch);
 
                         if (originalMethod == null)
