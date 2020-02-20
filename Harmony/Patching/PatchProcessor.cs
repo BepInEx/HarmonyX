@@ -484,7 +484,7 @@ namespace HarmonyLib
 
             MethodBase MakeFailure(string reason)
             {
-                Logger.Log(Logger.LogChannel.Error, () => $"Failed to process patch {attribute.method?.ToString() ?? "Unknown patch"} - {reason}");
+                Logger.Log(Logger.LogChannel.Error, () => $"Failed to process patch {attribute.method?.FullDescription() ?? "Unknown patch"} - {reason}");
                 return null;
             }
 
@@ -522,7 +522,7 @@ namespace HarmonyLib
                             return result;
                         }
 
-                        return MakeFailure($"Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find method {attribute.methodName} with {attribute.argumentTypes.Description()} parameters in type {attribute.declaringType.FullDescription()}");
                     }
 
                 case MethodType.Getter:
@@ -542,7 +542,7 @@ namespace HarmonyLib
                         result = AccessTools.Property(attribute.declaringType, attribute.methodName);
                         if (result != null)
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type: {result.DeclaringType.FullDescription()}");
                             var getter = result.GetGetMethod(true);
                             if (getter == null)
                                 return MakeFailure($"Property {attribute.methodName} does not have a Getter");
@@ -569,7 +569,7 @@ namespace HarmonyLib
                         result = AccessTools.Property(attribute.declaringType, attribute.methodName);
                         if (result != null)
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type: {result.DeclaringType.FullDescription()}");
                             var getter = result.GetSetMethod(true);
                             if (getter == null)
                                 return MakeFailure($"Property {attribute.methodName} does not have a Setter");
@@ -584,7 +584,7 @@ namespace HarmonyLib
                         var constructor = AccessTools.DeclaredConstructor(attribute.declaringType, attribute.argumentTypes);
                         if (constructor != null) return constructor;
 
-                        return MakeFailure($"Could not find constructor with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}");
+                        return MakeFailure($"Could not find constructor with {attribute.argumentTypes.Description()} parameters in type {attribute.declaringType.FullDescription()}");
                     }
 
                 case MethodType.StaticConstructor:
@@ -594,9 +594,10 @@ namespace HarmonyLib
 
                         return MakeFailure($"Could not find static constructor in type {attribute.declaringType.FullDescription()}");
                     }
-            }
 
-            return null;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(attribute.methodType), attribute.methodType, "Unknown method type");
+            }
         }
 
         private T RunMethod<S, T>(T defaultIfNotExisting, params object[] parameters)

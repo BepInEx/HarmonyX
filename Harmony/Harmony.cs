@@ -285,14 +285,8 @@ namespace HarmonyLib
 
                         var originalMethod = PatchProcessor.GetOriginalMethod(methodToPatch);
 
-                        if (originalMethod == null)
-                            throw new ArgumentException($"Null method for attribute: \n" +
-                                                        $"Type={methodToPatch.declaringType.FullName ?? "<null>"}\n" +
-                                                        $"Name={methodToPatch.methodName ?? "<null>"}\n" +
-                                                        $"MethodType={(methodToPatch.methodType?.ToString())}\n" +
-                                                        $"Args={(methodToPatch.argumentTypes == null ? "<null>" : string.Join(",", methodToPatch.argumentTypes.Select(x => x.FullName).ToArray()))}");
-
-                        originalMethods.Add(originalMethod);
+                        if (originalMethod != null)
+                            originalMethods.Add(originalMethod);
                     }
 
                     var processor = new PatchProcessor(this);
