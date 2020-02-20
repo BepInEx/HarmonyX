@@ -482,9 +482,13 @@ namespace HarmonyLib
         {
             if (attribute == null) throw new ArgumentNullException(nameof(attribute));
 
+            string GetPatchName()
+            {
+                return attribute.method?.FullDescription() ?? "Unknown patch";
+            }
             MethodBase MakeFailure(string reason)
             {
-                Logger.Log(Logger.LogChannel.Error, () => $"Failed to process patch {attribute.method?.FullDescription() ?? "Unknown patch"} - {reason}");
+                Logger.Log(Logger.LogChannel.Error, () => $"Failed to process patch {GetPatchName()} - {reason}");
                 return null;
             }
 
@@ -500,17 +504,17 @@ namespace HarmonyLib
 
                         if (attribute.methodName == ".ctor")
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, "MethodType.Constructor should be used instead of setting methodName to .ctor");
+                            Logger.LogText(Logger.LogChannel.Warn, GetPatchName() + " - MethodType.Constructor should be used instead of setting methodName to .ctor");
                             goto case MethodType.Constructor;
                         }
                         if (attribute.methodName == ".cctor")
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, "MethodType.StaticConstructor should be used instead of setting methodName to .cctor");
+                            Logger.LogText(Logger.LogChannel.Warn, GetPatchName() + " - MethodType.StaticConstructor should be used instead of setting methodName to .cctor");
                             goto case MethodType.StaticConstructor;
                         }
 
                         if (attribute.methodName.StartsWith("get_") || attribute.methodName.StartsWith("set_"))
-                            Logger.LogText(Logger.LogChannel.Warn, "MethodType.Getter and MethodType.Setter should be used instead adding get_ and set_ to property names");
+                            Logger.LogText(Logger.LogChannel.Warn, GetPatchName() + " - MethodType.Getter and MethodType.Setter should be used instead adding get_ and set_ to property names");
 
                         var result = AccessTools.DeclaredMethod(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
                         if (result != null) return result;
@@ -518,7 +522,7 @@ namespace HarmonyLib
                         result = AccessTools.Method(attribute.declaringType, attribute.methodName, attribute.argumentTypes);
                         if (result != null)
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
+                            Logger.LogText(Logger.LogChannel.Warn, GetPatchName() + $" - Could not find method {attribute.methodName} with {attribute.argumentTypes?.Length ?? 0} parameters in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type {result.DeclaringType.FullDescription()}");
                             return result;
                         }
 
@@ -542,7 +546,7 @@ namespace HarmonyLib
                         result = AccessTools.Property(attribute.declaringType, attribute.methodName);
                         if (result != null)
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type: {result.DeclaringType.FullDescription()}");
+                            Logger.LogText(Logger.LogChannel.Warn, GetPatchName() + $" - Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type: {result.DeclaringType.FullDescription()}");
                             var getter = result.GetGetMethod(true);
                             if (getter == null)
                                 return MakeFailure($"Property {attribute.methodName} does not have a Getter");
@@ -569,7 +573,7 @@ namespace HarmonyLib
                         result = AccessTools.Property(attribute.declaringType, attribute.methodName);
                         if (result != null)
                         {
-                            Logger.LogText(Logger.LogChannel.Warn, $"Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type: {result.DeclaringType.FullDescription()}");
+                            Logger.LogText(Logger.LogChannel.Warn, GetPatchName() + $" - Could not find property {attribute.methodName} in type {attribute.declaringType.FullDescription()}, but it was found in base class of this type: {result.DeclaringType.FullDescription()}");
                             var getter = result.GetSetMethod(true);
                             if (getter == null)
                                 return MakeFailure($"Property {attribute.methodName} does not have a Setter");
