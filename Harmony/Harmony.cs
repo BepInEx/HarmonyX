@@ -240,34 +240,6 @@ namespace HarmonyLib
 
                     var combinedInfo = HarmonyMethod.Merge(patchAttributeMethods);
 
-                    if (attributes.Any(x => x is ParameterByRefAttribute))
-                    {
-                        var byRefAttribute = (ParameterByRefAttribute)attributes.First(x => x is ParameterByRefAttribute);
-
-                        foreach (var index in byRefAttribute.ParameterIndices)
-                        {
-                            combinedInfo.argumentTypes[index] = combinedInfo.argumentTypes[index].MakeByRefType();
-                        }
-                    }
-
-                    HarmonyMethod prefix = null;
-                    HarmonyMethod transpiler = null;
-                    HarmonyMethod postfix = null;
-                    HarmonyMethod finalizer = null;
-
-                    if (attributes.Any(x => x is HarmonyPrefix))
-                        prefix = new HarmonyMethod(method);
-
-                    if (attributes.Any(x => x is HarmonyTranspiler))
-                        transpiler = new HarmonyMethod(method);
-
-                    if (attributes.Any(x => x is HarmonyPostfix))
-                        postfix = new HarmonyMethod(method);
-
-                    if (attributes.Any(x => x is HarmonyFinalizer))
-                        finalizer = new HarmonyMethod(method);
-
-
                     var completeMethods = patchAttributeMethods.Where(x => x.declaringType != null && x.methodName != null).ToList();
 
                     if (patchAttributeMethods.All(x => x.declaringType != combinedInfo.declaringType && x.methodName != combinedInfo.methodName))
@@ -277,6 +249,12 @@ namespace HarmonyLib
 
                     foreach (var methodToPatch in completeMethods)
                     {
+                        foreach (var index in attributes.OfType<ParameterByRefAttribute>().SelectMany(x => x.ParameterIndices))
+                        {
+                            if (!methodToPatch.argumentTypes[index].IsByRef)
+                                methodToPatch.argumentTypes[index] = methodToPatch.argumentTypes[index].MakeByRefType();
+                        }
+
                         if (!methodToPatch.methodType.HasValue)
                             methodToPatch.methodType = MethodType.Normal;
 
@@ -294,10 +272,17 @@ namespace HarmonyLib
                     foreach (var originalMethod in originalMethods)
                         processor.AddOriginal(originalMethod);
 
-                    processor.AddPrefix(prefix);
-                    processor.AddPostfix(postfix);
-                    processor.AddTranspiler(transpiler);
-                    processor.AddFinalizer(finalizer);
+                    if (attributes.Any(x => x is HarmonyPrefix))
+                        processor.AddPrefix(new HarmonyMethod(method));
+
+                    if (attributes.Any(x => x is HarmonyTranspiler))
+                        processor.AddTranspiler(new HarmonyMethod(method));
+
+                    if (attributes.Any(x => x is HarmonyPostfix))
+                        processor.AddPostfix(new HarmonyMethod(method));
+
+                    if (attributes.Any(x => x is HarmonyFinalizer))
+                        processor.AddFinalizer(new HarmonyMethod(method));
 
                     processor.Patch();
                 }
