@@ -301,13 +301,7 @@ namespace HarmonyLib.Internal.Patching
                         if (ins.operand == null)
                             throw new ArgumentNullException(nameof(ins.operand), $"Invalid argument for {ins}");
 
-                        // TODO: Remove this fix once MonoMod fixes its ILGenerator
-                        var cecilOpCode = CecilOpCodes[ins.opcode.Value];
-                        if (cecilOpCode.OperandType == OperandType.InlineArg ||
-                            cecilOpCode.OperandType == OperandType.ShortInlineArg)
-                            il.IL.Emit(cecilOpCode, body.Method.Parameters[(int) ins.operand]);
-                        else
-                            il.Emit(ins.opcode, ins.operand);
+                        il.Emit(ins.opcode, ins.operand);
                         break;
                 }
 
