@@ -74,7 +74,7 @@ namespace HarmonyLib.Internal.Patching
 
         private int[] GetTargets(MethodBody body, object insOp)
         {
-            int[] Result<T>(T[] arr, Func<T, Instruction> insGetter) =>
+            int[] Result<T>(IEnumerable<T> arr, Func<T, Instruction> insGetter) =>
                 arr.Select(i => body.Instructions.IndexOf(insGetter(i))).ToArray();
 
             if (insOp is ILLabel[] labs)
