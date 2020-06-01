@@ -46,13 +46,13 @@ Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-    var files = GetFiles("./HarmonyTests/bin/Release/net*/HarmonyTests.dll", new GlobberSettings {
-        FilePredicate = f => !f.Path.FullPath.Contains("netcoreapp")
-    });
-    NUnit3(files, new NUnit3Settings {
-        NoResults = true
-    });
-    DotNetCoreVSTest("./HarmonyTests/bin/Release/netcoreapp*/HarmonyTests.dll");
+    var files = GetFiles("./HarmonyTests/bin/Release/net*/HarmonyTests.dll");
+    foreach(var file in files) {
+        VSTest(file.FullPath, new VSTestSettings {
+            InIsolation = true,
+            Parallel = false
+        });
+    }
 });
 
 Task("Publish")
