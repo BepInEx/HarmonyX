@@ -17,7 +17,8 @@
 ***
 
 > **NOTE**
-> The library is still WIP, see [current roadmap](https://github.com/BepInEx/HarmonyX/issues/2) for more details.
+> The library is still WIP, see [current roadmap](https://github.com/BepInEx/HarmonyX/issues/2) for more details.  
+> Note that this is a **fork** of Harmony 2 and not original version!
 
 ## About
 
