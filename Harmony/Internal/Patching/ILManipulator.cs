@@ -63,6 +63,27 @@ namespace HarmonyLib.Internal.Patching
             return isStatic ? pInfo.Position : pInfo.Position + 1;
         }
 
+        private int GetTarget(MethodBody body, object insOp)
+        {
+            if (insOp is ILLabel lab)
+                return body.Instructions.IndexOf(lab.Target);
+            if (insOp is Instruction ins)
+                return body.Instructions.IndexOf(ins);
+            return -1;
+        }
+
+        private int[] GetTargets(MethodBody body, object insOp)
+        {
+            int[] Result<T>(T[] arr, Func<T, Instruction> insGetter) =>
+                arr.Select(i => body.Instructions.IndexOf(insGetter(i))).ToArray();
+
+            if (insOp is ILLabel[] labs)
+                return Result(labs, l => l.Target);
+            if (insOp is Instruction[] ins)
+                return Result(ins, i => i);
+            return new int[0];
+        }
+
         private IEnumerable<CodeInstruction> ReadBody(MethodBody body)
         {
             var instructions = new List<CodeInstruction>(body.Instructions.Count);
@@ -89,11 +110,10 @@ namespace HarmonyLib.Internal.Patching
                         break;
                     case OperandType.InlineBrTarget:
                     case OperandType.ShortInlineBrTarget:
-                        cIns.ilOperand = body.Instructions.IndexOf(((ILLabel) ins.Operand).Target);
+                        cIns.ilOperand = GetTarget(body, ins.Operand);
                         break;
                     case OperandType.InlineSwitch:
-                        cIns.ilOperand = ((ILLabel[]) ins.Operand)
-                                         .Select(i => body.Instructions.IndexOf(i.Target)).ToArray();
+                        cIns.ilOperand = GetTargets(body, ins.Operand);
                         break;
                     default:
                         cIns.ilOperand = ins.Operand;
