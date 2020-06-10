@@ -290,6 +290,17 @@ namespace HarmonyLib.Internal.Patching
 
             Logger.Log(Logger.LogChannel.Info, () => "Writing finalizers");
 
+            // Create variables to hold custom exception
+            variables[EXCEPTION_VAR] = il.DeclareVariable(typeof(Exception));
+
+            // Create a flag to signify that finalizers have been run
+            // Cecil DMD fix: initialize it to false
+            var skipFinalizersVar = il.DeclareVariable(typeof(bool));
+            il.emitBefore = il.IL.Body.Instructions[0];
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Stloc, skipFinalizersVar);
+
+
             il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
 
             // Mark the original method return label here if it hasn't been yet
@@ -300,10 +311,6 @@ namespace HarmonyLib.Internal.Patching
                 var retVal = AccessTools.GetReturnedType(original);
                 returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
             }
-
-            // Create variables to hold custom exception
-            var skipFinalizersVar = il.DeclareVariable(typeof(bool));
-            variables[EXCEPTION_VAR] = il.DeclareVariable(typeof(Exception));
 
             // Start main exception block
             var mainBlock = il.BeginExceptionBlock(il.DeclareLabelFor(il.IL.Body.Instructions[0]));
