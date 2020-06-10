@@ -30,7 +30,6 @@ namespace HarmonyLib
         static PatchProcessor()
         {
             StackTraceFixes.Install();
-            VisibilityCheckFixes.Install();
         }
 
         /// <summary>Creates an empty patch processor</summary>
