@@ -67,13 +67,9 @@ namespace HarmonyLib
             invokeMethod.Parameters.AddRange(argTypes.Select(t => new ParameterDefinition(module.ImportReference(t))));
             dtfType.Methods.Add(invokeMethod);
 
-            using (var ms = new MemoryStream())
-            {
-                assembly.Write(ms);
-                var loadedAss = Assembly.Load(ms.ToArray());
-                var delegateType = loadedAss.GetType($"HarmonyDTFType{_counter}");
-                return delegateType;
-            }
+            var loadedAss = ReflectionHelper.Load(assembly.MainModule);
+            var delegateType = loadedAss.GetType($"HarmonyDTFType{_counter}");
+            return delegateType;
         }
 
         /// <summary>Creates a delegate type for a method</summary>

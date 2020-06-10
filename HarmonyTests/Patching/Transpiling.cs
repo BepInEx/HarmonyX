@@ -85,7 +85,7 @@ namespace HarmonyLibTests.Patching
             Assert.AreEqual(OpCodes.Call, instruction.opcode);
             Assert.IsTrue(instruction.operand is MethodInfo);
 
-            CompileInstruction(instruction)();
+            CompileInstruction(instruction)(null);
 
             Assert.AreEqual(5, TranspliersClasses.TestStaticField);
 
@@ -96,12 +96,12 @@ namespace HarmonyLibTests.Patching
             Assert.AreEqual(OpCodes.Call, instruction.opcode);
             Assert.IsTrue(instruction.operand is MethodInfo);
 
-            CompileInstruction(instruction)();
+            CompileInstruction(instruction)(null);
 
             Assert.AreEqual(15, dummy);
         }
 
-        private static Action CompileInstruction(CodeInstruction instruction) =>
-            (Action)((DynamicMethod)instruction.operand).CreateDelegate(typeof(Action));
+        private static FastInvokeHandler CompileInstruction(CodeInstruction instruction) =>
+            MethodInvoker.GetHandler((MethodInfo) instruction.operand);
     }
 }
