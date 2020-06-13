@@ -136,10 +136,19 @@ namespace HarmonyLib
             if (type == null) throw new ArgumentNullException(nameof(type));
             if (name == null) throw new ArgumentNullException(nameof(name));
 
-            var property = type.GetProperty(name, allDeclared);
-            if (property == null)
-                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredProperty: Could not find property for type {type} and name {name}");
-            return property;
+            try
+            {
+                var property = type.GetProperty(name, allDeclared);
+                if (property == null)
+                    Logger.Log(Logger.LogChannel.Warn,
+                               () =>
+                                   $"AccessTools.DeclaredProperty: Could not find property for type {type} and name {name}");
+                return property;
+            }
+            catch (AmbiguousMatchException ex)
+            {
+                throw new AmbiguousMatchException($"Ambiguous match for property {type}::{name}", ex);
+            }
         }
 
         /// <summary>Gets the reflection information for the getter method of a directly declared property</summary>
@@ -208,19 +217,35 @@ namespace HarmonyLib
             MethodInfo result;
             var modifiers = new ParameterModifier[] { };
 
-            if (parameters == null)
-                result = type.GetMethod(name, allDeclared);
-            else
-                result = type.GetMethod(name, allDeclared, null, parameters, modifiers);
-
-            if (result == null)
+            try
             {
-                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredMethod: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
-                return null;
+                if (parameters == null)
+                    result = type.GetMethod(name, allDeclared);
+                else
+                    result = type.GetMethod(name, allDeclared, null, parameters, modifiers);
+
+                if (result == null)
+                {
+                    Logger.Log(Logger.LogChannel.Warn,
+                               () =>
+                                   $"AccessTools.DeclaredMethod: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
+                    return null;
+                }
+
+                if (generics != null) result = result.MakeGenericMethod(generics);
+                return result;
+            }
+            catch (AmbiguousMatchException ex)
+            {
+                var genericPart = "";
+                if (generics != null)
+                    genericPart = $"<{string.Join(", ", generics.Select(g => g.FullName).ToArray())}>";
+                var paramsPart = "";
+                if (parameters != null)
+                    paramsPart = string.Join(", ", parameters.Select(p => p.FullName).ToArray());
+                throw new AmbiguousMatchException($"Ambiguous match for {type}::{name}{genericPart}(${paramsPart})", ex);
             }
 
-            if (generics != null) result = result.MakeGenericMethod(generics);
-            return result;
         }
 
         /// <summary>Gets the reflection information for a method by searching the type and all its super types</summary>
@@ -234,31 +259,44 @@ namespace HarmonyLib
             if (type == null) throw new ArgumentNullException(nameof(type));
             if (name == null) throw new ArgumentNullException(nameof(name));
 
-            MethodInfo result;
-            var modifiers = new ParameterModifier[] { };
-            if (parameters == null)
-                try
-                {
-                    result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all));
-                }
-                catch (AmbiguousMatchException ex)
-                {
-                    result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all, null, new Type[0], modifiers));
-
-                    if (result == null)
-                        throw new AmbiguousMatchException($"Ambiguous match in Harmony patch for {type}:{name}.{ex}");
-                }
-            else
-                result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all, null, parameters, modifiers));
-
-            if (result == null)
+            try
             {
-                Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.Method: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
-                return null;
-            }
+                MethodInfo result;
+                var modifiers = new ParameterModifier[] { };
+                if (parameters == null)
+                    try
+                    {
+                        result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all));
+                    }
+                    catch (AmbiguousMatchException ex)
+                    {
+                        result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all, null, new Type[0], modifiers));
 
-            if (generics != null) result = result.MakeGenericMethod(generics);
-            return result;
+                        if (result == null)
+                            throw new AmbiguousMatchException($"Ambiguous match for {type}:{name}", ex);
+                    }
+                else
+                    result = FindIncludingBaseTypes(type, t => t.GetMethod(name, all, null, parameters, modifiers));
+
+                if (result == null)
+                {
+                    Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.Method: Could not find method for type {type} and name {name} and parameters {parameters?.Description()}");
+                    return null;
+                }
+
+                if (generics != null) result = result.MakeGenericMethod(generics);
+                return result;
+            }
+            catch (AmbiguousMatchException ex)
+            {
+                var genericPart = "";
+                if (generics != null)
+                    genericPart = $"<{string.Join(", ", generics.Select(g => g.FullName).ToArray())}>";
+                var paramsPart = "";
+                if (parameters != null)
+                    paramsPart = string.Join(", ", parameters.Select(p => p.FullName).ToArray());
+                throw new AmbiguousMatchException($"Ambiguous match for {type}::{name}{genericPart}(${paramsPart})", ex);
+            }
         }
 
         /// <summary>Gets the reflection information for a method by searching the type and all its super types</summary>
