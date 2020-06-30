@@ -217,29 +217,20 @@ namespace HarmonyLib.Internal.Patching
                 returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
             }
 
-            bool CanModifyControlFlow()
-            {
-                // A prefix that can modify control flow has one of the following:
-                // * It returns a boolean
-                // * It declares bool __runOriginal
-                return prefixes.Any(p => p.ReturnType == typeof(bool) ||
-                                         p.GetParameters()
-                                          .Any(pp => pp.Name == RUN_ORIGINAL_PARAM &&
-                                                     pp.ParameterType.OpenRefType() == typeof(bool)));
-            }
+            // A prefix that can modify control flow has one of the following:
+            // * It returns a boolean
+            // * It declares bool __runOriginal
+            var canModifyControlFlow = prefixes.Any(p => p.ReturnType == typeof(bool) ||
+                                                         p.GetParameters()
+                                                          .Any(pp => pp.Name == RUN_ORIGINAL_PARAM &&
+                                                                     pp.ParameterType.OpenRefType() == typeof(bool)));
 
             // Flag to check if the orignal method should be run (or was run)
-            // Only present if method has a return value and there are prefixes that modify control flow
-            var runOriginal = variables[RUN_ORIGINAL_PARAM] = CanModifyControlFlow()
-                ? il.DeclareVariable(typeof(bool))
-                : null;
-
+            // Always present so other patchers can access it
+            var runOriginal = variables[RUN_ORIGINAL_PARAM] = il.DeclareVariable(typeof(bool));
             // Init runOriginal to true
-            if (runOriginal != null)
-            {
-                il.Emit(OpCodes.Ldc_I4_1);
-                il.Emit(OpCodes.Stloc, runOriginal);
-            }
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Stloc, runOriginal);
 
             // If runOriginal flag exists, we need to add more logic to the method end
             var postProcessTarget = returnValueVar != null ? il.DeclareLabel() : returnLabel;
@@ -255,7 +246,7 @@ namespace HarmonyLib.Internal.Patching
                         throw new InvalidHarmonyPatchArgumentException(
                             $"Prefix patch {prefix.GetID()} has return type {prefix.ReturnType}, but only `bool` or `void` are permitted", original, prefix);
 
-                    if (runOriginal != null)
+                    if (canModifyControlFlow)
                     {
                         // AND the current runOriginal to return value of the method (if any)
                         il.Emit(OpCodes.Ldloc, runOriginal);
@@ -265,7 +256,7 @@ namespace HarmonyLib.Internal.Patching
                 }
             }
 
-            if (runOriginal == null)
+            if (!canModifyControlFlow)
                 return;
 
             // If runOriginal is false, branch automatically to the end
