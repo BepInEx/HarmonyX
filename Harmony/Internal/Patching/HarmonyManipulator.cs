@@ -24,6 +24,7 @@ namespace HarmonyLib.Internal.Patching
         private static readonly string INSTANCE_PARAM = "__instance";
 
         private static readonly string ORIGINAL_METHOD_PARAM = "__originalMethod";
+        private static readonly string RUN_ORIGINAL_PARAM = "__runOriginal";
         private static readonly string RESULT_VAR = "__result";
         private static readonly string STATE_VAR = "__state";
         private static readonly string EXCEPTION_VAR = "__exception";
@@ -216,9 +217,20 @@ namespace HarmonyLib.Internal.Patching
                 returnValueVar = variables[RESULT_VAR] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
             }
 
+            bool CanModifyControlFlow()
+            {
+                // A prefix that can modify control flow has one of the following:
+                // * It returns a boolean
+                // * It declares bool __runOriginal
+                return prefixes.Any(p => p.ReturnType == typeof(bool) ||
+                                         p.GetParameters()
+                                          .Any(pp => pp.Name == RUN_ORIGINAL_PARAM &&
+                                                     pp.ParameterType.OpenRefType() == typeof(bool)));
+            }
+
             // Flag to check if the orignal method should be run (or was run)
             // Only present if method has a return value and there are prefixes that modify control flow
-            var runOriginal = prefixes.Any(p => p.ReturnType == typeof(bool))
+            var runOriginal = variables[RUN_ORIGINAL_PARAM] = CanModifyControlFlow()
                 ? il.DeclareVariable(typeof(bool))
                 : null;
 

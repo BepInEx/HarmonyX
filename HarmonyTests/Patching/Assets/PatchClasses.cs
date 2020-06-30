@@ -618,6 +618,21 @@ namespace HarmonyLibTests.Assets
         }
     }
 
+    class Class11PrefixPatches
+    {
+        public static bool runOriginal = true;
+
+        public static void Prefix1(ref bool __runOriginal)
+        {
+            __runOriginal = false;
+        }
+
+        public static void Prefix2(bool __runOriginal)
+        {
+            runOriginal = __runOriginal;
+        }
+    }
+
     // disabled - see test case
     /*
     public class ClassExceptionFilter

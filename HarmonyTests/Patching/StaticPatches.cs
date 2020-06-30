@@ -266,5 +266,35 @@ namespace HarmonyLibTests
             Assert.IsTrue(Class10Patch.postfixed);
             Assert.IsTrue(Class10Patch.originalResult);
         }
+
+        [Test]
+        public void TestSkipOriginalParam()
+        {
+            var originalClass = typeof(Class11);
+            var originalMethod = originalClass.GetMethod("TestMethod");
+            Assert.NotNull(originalMethod);
+
+            var patchClass = typeof(Class11PrefixPatches);
+            var prefix1 = patchClass.GetMethod("Prefix1");
+            Assert.NotNull(prefix1);
+            var prefix2 = patchClass.GetMethod("Prefix2");
+            Assert.NotNull(prefix2);
+
+            var instance = new Harmony("SkipOriginalParam");
+            Assert.NotNull(instance);
+
+            var patcher = new PatchProcessor(instance, originalMethod);
+            patcher.AddPrefix(prefix1);
+            patcher.Patch();
+
+            var patcher2 = new PatchProcessor(instance, originalMethod);
+            patcher2.AddPrefix(prefix2);
+            patcher2.Patch();
+
+            var testClass = new Class11();
+            testClass.TestMethod(0);
+            Assert.IsFalse(testClass.originalMethodRan);
+            Assert.IsFalse(Class11PrefixPatches.runOriginal);
+        }
     }
 }
