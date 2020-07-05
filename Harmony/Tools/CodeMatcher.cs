@@ -509,7 +509,7 @@ namespace HarmonyLib
         ///
         public CodeMatcher RemoveInstructions(int count)
         {
-            codes.RemoveRange(Pos, Pos + count - 1);
+            codes.RemoveRange(Pos, count);
             return this;
         }
 
