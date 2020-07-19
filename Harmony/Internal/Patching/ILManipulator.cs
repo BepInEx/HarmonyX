@@ -200,14 +200,14 @@ namespace HarmonyLib.Internal.Patching
 
         private List<CodeInstruction> ApplyTranspilers(SRE.ILGenerator il, MethodBase original = null)
         {
-            var tempInstructions = codeInstructions;
+            var tempInstructions = MakeBranchesLong(codeInstructions);
 
             foreach (var transpiler in transpilers)
             {
                 var args = GetTranpilerArguments(il, transpiler, tempInstructions, original);
 
                 Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.GetID()}");
-                tempInstructions = transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>;
+                tempInstructions = MakeBranchesLong(transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>);
             }
 
             return tempInstructions.ToList();
@@ -333,6 +333,40 @@ namespace HarmonyLib.Internal.Patching
 
             // Step 4: Run the code through raw IL manipulators (if any)
             // TODO: IL Manipulators
+        }
+
+        private static readonly Dictionary<SRE.OpCode, SRE.OpCode> ShortToLongMap = new Dictionary<SRE.OpCode, SRE.OpCode>
+        {
+            [SRE.OpCodes.Beq_S] = SRE.OpCodes.Beq,
+            [SRE.OpCodes.Bge_S] = SRE.OpCodes.Bge,
+            [SRE.OpCodes.Bge_Un_S] = SRE.OpCodes.Bge_Un,
+            [SRE.OpCodes.Bgt_S] = SRE.OpCodes.Bgt,
+            [SRE.OpCodes.Bgt_Un_S] = SRE.OpCodes.Bgt_Un,
+            [SRE.OpCodes.Ble_S] = SRE.OpCodes.Ble,
+            [SRE.OpCodes.Ble_Un_S] = SRE.OpCodes.Ble_Un,
+            [SRE.OpCodes.Blt_S] = SRE.OpCodes.Blt,
+            [SRE.OpCodes.Blt_Un_S] = SRE.OpCodes.Blt_Un,
+            [SRE.OpCodes.Bne_Un_S] = SRE.OpCodes.Bne_Un,
+            [SRE.OpCodes.Brfalse_S] = SRE.OpCodes.Brfalse,
+            [SRE.OpCodes.Brtrue_S] = SRE.OpCodes.Brtrue,
+            [SRE.OpCodes.Br_S] = SRE.OpCodes.Br,
+            [SRE.OpCodes.Leave_S] = SRE.OpCodes.Leave
+        };
+
+        /// <summary>
+        /// Converts all branches to long types. This exists to mimic the behaviour of Harmony 2
+        /// </summary>
+        /// <param name="instrs">Enumerable of instructions</param>
+        /// <returns>Enumerable of fixed instructions</returns>
+        private static IEnumerable<CodeInstruction> MakeBranchesLong(IEnumerable<CodeInstruction> instrs)
+        {
+            // Yes, we mutate original objects to save speed
+            foreach (var ins in instrs)
+            {
+                if (ShortToLongMap.TryGetValue(ins.opcode, out var longOpCode))
+                    ins.opcode = longOpCode;
+                yield return ins;
+            }
         }
     }
 }
