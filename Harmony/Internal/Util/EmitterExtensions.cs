@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
@@ -138,10 +139,31 @@ namespace HarmonyLib.Internal.Util
             var loc = vars.FirstOrDefault(kv => kv.Value == varDef).Key;
             if (loc != null)
                 return loc;
-            loc = il.DeclareLocal(varDef.VariableType.ResolveReflection());
-            il.IL.Body.Variables.Remove(vars[loc]);
+            // TODO: Remove once MonoMod allows to specify this manually
+            var type = varDef.VariableType.ResolveReflection();
+            var pinned = varDef.VariableType.IsPinned;
+            var index = varDef.Index;
+            loc = (LocalBuilder) (
+                c_LocalBuilder_params == 4 ? c_LocalBuilder.Invoke(new object[] { index, type, null, pinned }) :
+                c_LocalBuilder_params == 3 ? c_LocalBuilder.Invoke(new object[] { index, type, null }) :
+                c_LocalBuilder_params == 2 ? c_LocalBuilder.Invoke(new object[] { type, null }) :
+                c_LocalBuilder_params == 0 ? c_LocalBuilder.Invoke(new object[] { }) :
+                throw new NotSupportedException()
+            );
+
+            f_LocalBuilder_position?.SetValue(loc, (ushort) index);
+            f_LocalBuilder_is_pinned?.SetValue(loc, pinned);
             vars[loc] = varDef;
             return loc;
         }
+
+        private static readonly ConstructorInfo c_LocalBuilder =
+            typeof(LocalBuilder).GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                                .OrderByDescending(c => c.GetParameters().Length).First();
+        private static readonly FieldInfo f_LocalBuilder_position =
+            typeof(LocalBuilder).GetField("position", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo f_LocalBuilder_is_pinned =
+            typeof(LocalBuilder).GetField("is_pinned", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static int c_LocalBuilder_params = c_LocalBuilder.GetParameters().Length;
     }
 }
