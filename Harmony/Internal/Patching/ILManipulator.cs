@@ -104,9 +104,12 @@ namespace HarmonyLib.Internal.Patching
                     case OperandType.ShortInlineVar:
                         cIns.ilOperand = (VariableDefinition) ins.Operand;
                         break;
+                    // Handle Harmony's speciality of using smaller types for indices in ld/starg
                     case OperandType.InlineArg:
+                        cIns.ilOperand = (short)((ParameterDefinition) ins.Operand).Index;
+                        break;
                     case OperandType.ShortInlineArg:
-                        cIns.ilOperand = ((ParameterDefinition) ins.Operand).Index;
+                        cIns.ilOperand = (byte)((ParameterDefinition) ins.Operand).Index;
                         break;
                     case OperandType.InlineBrTarget:
                     case OperandType.ShortInlineBrTarget:
