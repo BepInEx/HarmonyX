@@ -240,7 +240,13 @@ namespace HarmonyLib
 
                     var combinedInfo = HarmonyMethod.Merge(patchAttributeMethods);
 
-                    var completeMethods = patchAttributeMethods.Where(x => x.declaringType != null && x.methodName != null).ToList();
+                    bool IsMethodComplete(HarmonyMethod m)
+                    {
+                        return m.declaringType != null &&
+                               (m.methodName != null || m.methodType == MethodType.Constructor || m.methodType == MethodType.StaticConstructor);
+                    }
+
+                    var completeMethods = patchAttributeMethods.Where(IsMethodComplete).ToList();
 
                     if (patchAttributeMethods.All(x => x.declaringType != combinedInfo.declaringType && x.methodName != combinedInfo.methodName))
                         completeMethods.Add(combinedInfo);
