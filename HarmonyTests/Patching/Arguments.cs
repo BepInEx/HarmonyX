@@ -132,5 +132,38 @@ namespace HarmonyLibTests
             Assert.AreEqual(10, result.a);
             Assert.AreEqual(20, result.b);
         }
+
+
+        [Test]
+        public void Test_InjectingBaseClassField()
+        {
+            var testInstance = new InjectFieldSubClass();
+            testInstance.Method("foo");
+            Assert.AreEqual("foo", testInstance.TestValue);
+
+            var originalClass = testInstance.GetType();
+            Assert.IsNotNull(originalClass);
+            var originalMethod = originalClass.GetMethod("Method");
+            Assert.IsNotNull(originalMethod);
+
+            var patchClass = typeof(InjectFieldSubClass_Patch);
+            var postfix = patchClass.GetMethod("Postfix");
+            Assert.IsNotNull(postfix);
+
+            var instance = new Harmony("test");
+            Assert.IsNotNull(instance);
+
+            instance.Patch(originalMethod, postfix: new HarmonyMethod(postfix));
+
+            var patcher = new PatchProcessor(instance, originalMethod);
+            Assert.IsNotNull(patcher);
+            _ = patcher.AddPostfix(postfix);
+            Assert.IsNotNull(patcher);
+
+            _ = patcher.Patch();
+
+            testInstance.Method("bar");
+            Assert.AreEqual("patched", testInstance.TestValue);
+        }
     }
 }

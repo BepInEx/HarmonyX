@@ -527,7 +527,7 @@ namespace HarmonyLib.Internal.Patching
                     }
                     else
                     {
-                        fieldInfo = AccessTools.DeclaredField(original.DeclaringType, fieldName);
+                        fieldInfo = AccessTools.Field(original.DeclaringType, fieldName);
                         if (fieldInfo == null)
                             throw new ArgumentException(
                                 $"No such field defined in class {original.DeclaringType.FullName}", fieldName);
