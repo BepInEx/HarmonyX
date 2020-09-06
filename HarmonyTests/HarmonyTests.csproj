@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net35;net45;net472;net48;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
+		<TargetFrameworks>net35;net45;netcoreapp3</TargetFrameworks>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<LangVersion>8.0</LangVersion>
 		<IsPackable>false</IsPackable>
@@ -42,10 +42,9 @@
 		<!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="all" />
 		<PackageReference Include="jnm2.ReferenceAssemblies.net35" Version="1.0.1" PrivateAssets="all" Condition="'$(TargetFramework)'=='net35'" />
-	</ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="MonoMod.Common" Version="20.5.31.1" />
+		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
+		<PackageReference Include="MonoMod.RuntimeDetour" Version="20.8.3.5" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
@@ -54,7 +53,7 @@
 
 	<Target Name="ChangeAliasesOfStrongNameAssemblies" BeforeTargets="FindReferenceAssembliesForReferences;ResolveReferences">
 		<ItemGroup>
-			<ReferencePath Condition="'%(FileName)'=='MonoMod.Common'">
+			<ReferencePath Condition="'%(FileName)'=='MonoMod.Utils'">
 				<Aliases>mmc</Aliases>
 			</ReferencePath>
 		</ItemGroup>
