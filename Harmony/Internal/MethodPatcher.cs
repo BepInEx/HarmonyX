@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Tools;
+
+// TODO: Replace with HarmonyManipulator
 
 namespace HarmonyLib
 {
@@ -57,7 +60,8 @@ namespace HarmonyLib
 
 			idx = prefixes.Count() + postfixes.Count() + finalizers.Count();
 			useStructReturnBuffer = StructReturnBuffer.NeedsFix(original);
-			if (debug && useStructReturnBuffer) FileLog.Log($"### Note: A buffer for the returned struct is used. That requires an extra IntPtr argument before the first real argument");
+			if (debug && useStructReturnBuffer)
+				Logger.Log(Logger.LogChannel.Warn, () => "A buffer for the returned struct is used. That requires an extra IntPtr argument before the first real argument");
 			returnType = AccessTools.GetReturnedType(original);
 			patch = CreateDynamicMethod(original, $"_Patch{idx}", debug);
 			if (patch is null)
@@ -264,14 +268,15 @@ namespace HarmonyLib
 				param.Name = parameters[i].Name;
 			}
 
-			if (debug)
+			Logger.Log(Logger.LogChannel.Debug, () =>
 			{
 				var parameterStrings = parameterTypes.Select(p => p.FullDescription()).ToList();
 				if (parameterTypes.Count == method.Definition.Parameters.Count)
 					for (var i = 0; i < parameterTypes.Count; i++)
 						parameterStrings[i] += $" {method.Definition.Parameters[i].Name}";
-				FileLog.Log($"### Replacement: static {returnType.FullDescription()} {original.DeclaringType.FullName}::{patchName}({parameterStrings.Join()})");
-			}
+				return
+					$"Replacement: static {returnType.FullDescription()} {original.DeclaringType?.FullName}::{patchName}({parameterStrings.Join()})";
+			});
 
 			return method;
 		}

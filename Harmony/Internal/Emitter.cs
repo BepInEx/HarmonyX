@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 
+// TODO: Remove
+
 namespace HarmonyLib
 {
 	internal class LeaveTry

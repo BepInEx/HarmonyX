@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using HarmonyLib.Tools;
 
 namespace HarmonyLib
 {
@@ -112,7 +113,7 @@ namespace HarmonyLib
 						{
 							var part1 = afterNode.innerPatch.PatchMethod.FullDescription();
 							var part2 = waitingList[i].innerPatch.PatchMethod.FullDescription();
-							FileLog.LogBuffered($"Breaking dependance between {part1} and {part2}");
+							Logger.Log(Logger.LogChannel.Debug, () => $"Breaking dependance between {part1} and {part2}");
 						}
 						return;
 					}

@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using HarmonyLib.Tools;
 
 namespace HarmonyLib
 {
 	/// <summary>A PatchClassProcessor used to turn <see cref="HarmonyAttribute"/> on a class/type into patches</summary>
-	/// 
+	///
 	public class PatchClassProcessor
 	{
 		readonly Harmony instance;
@@ -236,22 +238,23 @@ namespace HarmonyLib
 		void ReportException(Exception exception, MethodBase original)
 		{
 			if (exception is null) return;
-			if ((containerAttributes.debug ?? false) || Harmony.DEBUG)
+
+			Logger.Log(Logger.LogChannel.Debug, () =>
 			{
 				_ = Harmony.VersionInfo(out var currentVersion);
-
-				FileLog.indentLevel = 0;
-				FileLog.Log($"### Exception from user \"{instance.Id}\", Harmony v{currentVersion}");
-				FileLog.Log($"### Original: {(original?.FullDescription() ?? "NULL")}");
-				FileLog.Log($"### Patch class: {containerType.FullDescription()}");
+				var sb = new StringBuilder();
+				sb.AppendLine($"### Exception from user \"{instance.Id}\", Harmony v{currentVersion}");
+				sb.AppendLine($"### Original: {original?.FullDescription() ?? "NULL"}");
+				sb.AppendLine($"### Patch class: {containerType.FullDescription()}");
 				var logException = exception;
 				if (logException is HarmonyException hEx) logException = hEx.InnerException;
 				var exStr = logException.ToString();
 				while (exStr.Contains("\n\n"))
 					exStr = exStr.Replace("\n\n", "\n");
 				exStr = exStr.Split('\n').Join(line => $"### {line}", "\n");
-				FileLog.Log(exStr.Trim());
-			}
+				sb.AppendLine(exStr.Trim());
+				return sb.ToString();
+			});
 
 			if (exception is HarmonyException) throw exception; // assume HarmonyException already wraps the actual exception
 			throw new HarmonyException($"Patching exception in method {original.FullDescription()}", exception);

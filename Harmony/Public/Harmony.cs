@@ -3,20 +3,23 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using HarmonyLib.Tools;
 
 namespace HarmonyLib
 {
 	/// <summary>The Harmony instance is the main entry to Harmony. After creating one with an unique identifier, it is used to patch and query the current application domain</summary>
-	/// 
+	///
 	public class Harmony
 	{
 		/// <summary>The unique identifier</summary>
-		/// 
+		///
 		public string Id { get; private set; }
 
 		/// <summary>Set to true before instantiating Harmony to debug Harmony or use an environment variable to set HARMONY_DEBUG to '1' like this: cmd /C "set HARMONY_DEBUG=1 &amp;&amp; game.exe"</summary>
 		/// <remarks>This is for full debugging. To debug only specific patches, use the <see cref="HarmonyDebug"/> attribute</remarks>
-		/// 
+		///
+		[Obsolete("Use HarmonyFileLog.Enabled instead")]
 		public static bool DEBUG;
 
 		/// <summary>Creates a new Harmony instance</summary>
@@ -41,28 +44,35 @@ namespace HarmonyLib
 			}
 
 			if (DEBUG)
+				HarmonyFileLog.Enabled = true;
+
+			Logger.Log(Logger.LogChannel.Info, () =>
 			{
+				var sb = new StringBuilder();
 				var assembly = typeof(Harmony).Assembly;
 				var version = assembly.GetName().Version;
 				var location = assembly.Location;
 				if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
-				FileLog.Log($"### Harmony id={id}, version={version}, location={location}");
+
+				sb.AppendLine($"### Initializing Harmony instance: Harmony id={id}, version={version}, location={location}");
 				var callingMethod = AccessTools.GetOutsideCaller();
 				if (callingMethod.DeclaringType is object)
 				{
 					var callingAssembly = callingMethod.DeclaringType.Assembly;
 					location = callingAssembly.Location;
 					if (string.IsNullOrEmpty(location)) location = new Uri(callingAssembly.CodeBase).LocalPath;
-					FileLog.Log($"### Started from {callingMethod.FullDescription()}, location {location}");
-					FileLog.Log($"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
+					sb.AppendLine($"### Started from {callingMethod.FullDescription()}, location {location}");
+					sb.Append($"### At {DateTime.Now:yyyy-MM-dd hh.mm.ss}");
 				}
-			}
+
+				return sb.ToString();
+			});
 
 			Id = id;
 		}
 
 		/// <summary>Searches the current assembly for Harmony annotations and uses them to create patches</summary>
-		/// 
+		///
 		public void PatchAll()
 		{
 			var method = new StackTrace().GetFrame(1).GetMethod();
@@ -82,7 +92,7 @@ namespace HarmonyLib
 		/// <summary>Creates a patch class processor from an annotated class</summary>
 		/// <param name="type">The class/type</param>
 		/// <returns>A new <see cref="PatchClassProcessor"/> instance</returns>
-		/// 
+		///
 		public PatchClassProcessor CreateClassProcessor(Type type)
 		{
 			return new PatchClassProcessor(this, type);
@@ -100,7 +110,7 @@ namespace HarmonyLib
 
 		/// <summary>Searches an assembly for Harmony annotations and uses them to create patches</summary>
 		/// <param name="assembly">The assembly</param>
-		/// 
+		///
 		public void PatchAll(Assembly assembly)
 		{
 			AccessTools.GetTypesFromAssembly(assembly).Do(type => CreateClassProcessor(type).Patch());
@@ -129,7 +139,7 @@ namespace HarmonyLib
 		/// <param name="standin">Your stub method as <see cref="HarmonyMethod"/> that will become the original. Needs to have the correct signature (either original or whatever your transpilers generates)</param>
 		/// <param name="transpiler">An optional transpiler as method that will be applied during the process</param>
 		/// <returns>The replacement method that was created to patch the stub method</returns>
-		/// 
+		///
 		public static MethodInfo ReversePatch(MethodBase original, HarmonyMethod standin, MethodInfo transpiler = null)
 		{
 			return PatchFunctions.ReversePatch(standin, original, transpiler);
