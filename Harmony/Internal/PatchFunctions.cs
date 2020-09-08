@@ -11,10 +11,10 @@ namespace HarmonyLib
 		/// <summary>Sorts patch methods by their priority rules</summary>
 		/// <param name="original">The original method</param>
 		/// <param name="patches">Patches to sort</param>
-		/// <param name="debug">Use debug mode</param>
+		/// <param name="debug">Use debug mode. Present for source parity with Harmony 2, don't use.</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug)
+		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug = false)
 		{
 			return new PatchSorter(patches, debug).Sort(original);
 		}

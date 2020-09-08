@@ -18,7 +18,7 @@ namespace HarmonyLib
 		/// <summary>Creates a patch sorter</summary>
 		/// <param name="patches">Array of patches that will be sorted</param>
 		/// <param name="debug">Use debugging</param>
-		internal PatchSorter(Patch[] patches, bool debug)
+		internal PatchSorter(Patch[] patches, bool debug = false)
 		{
 			// Build the list of all patches first to be able to create dependency relationships.
 			this.patches = patches.Select(x => new PatchSortingWrapper(x)).ToList();

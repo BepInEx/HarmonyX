@@ -11,7 +11,7 @@ namespace HarmonyLib
 	public class CodeInstruction
 	{
 		/// <summary>The opcode</summary>
-		/// 
+		///
 		public OpCode opcode;
 
 		/// <summary>The operand</summary>
@@ -19,12 +19,16 @@ namespace HarmonyLib
 		public object operand;
 
 		/// <summary>All labels defined on this instruction</summary>
-		/// 
+		///
 		public List<Label> labels = new List<Label>();
 
 		/// <summary>All exception block boundaries defined on this instruction</summary>
-		/// 
+		///
 		public List<ExceptionBlock> blocks = new List<ExceptionBlock>();
+
+		/// <summary>Helper object for <see cref="Mono.Cecil.Cil.Instruction"/> operand conversion</summary>
+		///
+		internal object ilOperand;
 
 		/// <summary>Creates a new CodeInstruction with a given opcode and optional operand</summary>
 		/// <param name="opcode">The opcode</param>
