@@ -22,10 +22,16 @@ namespace HarmonyLib.Internal.Patching
     /// </summary>
     internal class ILManipulator
     {
+	    class UnresolvedInstruction
+	    {
+		    public CodeInstruction Instruction { get; set; }
+		    public object Operand { get; set; }
+	    }
+
         private static readonly Dictionary<short, SRE.OpCode> SREOpCodes = new Dictionary<short, SRE.OpCode>();
         private static readonly Dictionary<short, OpCode> CecilOpCodes = new Dictionary<short, OpCode>();
 
-        private readonly IEnumerable<CodeInstruction> codeInstructions;
+        private readonly IEnumerable<UnresolvedInstruction> codeInstructions;
         private readonly List<MethodInfo> transpilers = new List<MethodInfo>();
 
 
@@ -84,71 +90,52 @@ namespace HarmonyLib.Internal.Patching
             return new int[0];
         }
 
-        private IEnumerable<CodeInstruction> ReadBody(MethodBody body)
+        private IEnumerable<UnresolvedInstruction> ReadBody(MethodBody body)
         {
-            var instructions = new List<CodeInstruction>(body.Instructions.Count);
+            var instructions = new List<UnresolvedInstruction>(body.Instructions.Count);
 
-            CodeInstruction ReadInstruction(Instruction ins)
-            {
-                var cIns = new CodeInstruction(SREOpCodes[ins.OpCode.Value]);
-
-                switch (ins.OpCode.OperandType)
-                {
-                    case OperandType.InlineField:
-                    case OperandType.InlineMethod:
-                    case OperandType.InlineType:
-                    case OperandType.InlineTok:
-                        cIns.ilOperand = ((MemberReference) ins.Operand).ResolveReflection();
-                        break;
-                    case OperandType.InlineVar:
-                    case OperandType.ShortInlineVar:
-                        cIns.ilOperand = (VariableDefinition) ins.Operand;
-                        break;
-                    // Handle Harmony's speciality of using smaller types for indices in ld/starg
-                    case OperandType.InlineArg:
-                        cIns.ilOperand = (short)((ParameterDefinition) ins.Operand).Index;
-                        break;
-                    case OperandType.ShortInlineArg:
-                        cIns.ilOperand = (byte)((ParameterDefinition) ins.Operand).Index;
-                        break;
-                    case OperandType.InlineBrTarget:
-                    case OperandType.ShortInlineBrTarget:
-                        cIns.ilOperand = GetTarget(body, ins.Operand);
-                        break;
-                    case OperandType.InlineSwitch:
-                        cIns.ilOperand = GetTargets(body, ins.Operand);
-                        break;
-                    default:
-                        cIns.ilOperand = ins.Operand;
-                        break;
-                }
-
-                return cIns;
-            }
+            UnresolvedInstruction ReadInstruction(Instruction ins) =>
+	            new UnresolvedInstruction
+	            {
+		            Instruction = new CodeInstruction(SREOpCodes[ins.OpCode.Value]),
+		            Operand = ins.OpCode.OperandType switch
+		            {
+			            OperandType.InlineField => ((MemberReference)ins.Operand).ResolveReflection(),
+			            OperandType.InlineMethod => ((MemberReference)ins.Operand).ResolveReflection(),
+			            OperandType.InlineType => ((MemberReference)ins.Operand).ResolveReflection(),
+			            OperandType.InlineTok => ((MemberReference)ins.Operand).ResolveReflection(),
+			            OperandType.InlineVar => (VariableDefinition)ins.Operand,
+			            OperandType.ShortInlineVar => (VariableDefinition)ins.Operand,
+			            // Handle Harmony's speciality of using smaller types for indices in ld/starg
+			            OperandType.InlineArg => (short)((ParameterDefinition)ins.Operand).Index,
+			            OperandType.ShortInlineArg => (byte)((ParameterDefinition)ins.Operand).Index,
+			            OperandType.InlineBrTarget => GetTarget(body, ins.Operand),
+			            OperandType.ShortInlineBrTarget => GetTarget(body, ins.Operand),
+			            OperandType.InlineSwitch => GetTargets(body, ins.Operand),
+			            _ => ins.Operand
+		            }
+	            };
 
             // Pass 1: Convert IL to base abstract CodeInstructions
             instructions.AddRange(body.Instructions.Select(ReadInstruction));
 
             //Pass 2: Resolve CodeInstructions for branch parameters
-            foreach (var cIns in instructions)
-                switch (cIns.opcode.OperandType)
-                {
-                    case SRE.OperandType.ShortInlineBrTarget:
-                    case SRE.OperandType.InlineBrTarget:
-                        cIns.ilOperand = instructions[(int) cIns.ilOperand];
-                        break;
-                    case SRE.OperandType.InlineSwitch:
-                        cIns.ilOperand = ((int[]) cIns.ilOperand).Select(i => instructions[i]).ToArray();
-                        break;
-                }
+            foreach (var uIns in instructions)
+	            uIns.Operand = uIns.Instruction.opcode.OperandType switch
+	            {
+		            SRE.OperandType.ShortInlineBrTarget => instructions[(int)uIns.Operand],
+		            SRE.OperandType.InlineBrTarget => instructions[(int)uIns.Operand],
+		            SRE.OperandType.InlineSwitch => ((int[])uIns.Operand).Select(i => instructions[i]).ToArray(),
+		            _ => uIns.Operand
+	            };
 
             // Pass 3: Attach exception blocks to each code instruction
             foreach (var exception in body.ExceptionHandlers)
             {
-                var tryStart = instructions[body.Instructions.IndexOf(exception.TryStart)];
-                var tryEnd = instructions[body.Instructions.IndexOf(exception.TryEnd)];
-                var handlerStart = instructions[body.Instructions.IndexOf(exception.HandlerStart)];
-                var handlerEnd = instructions[body.Instructions.IndexOf(exception.HandlerEnd.Previous)];
+                var tryStart = instructions[body.Instructions.IndexOf(exception.TryStart)].Instruction;
+                var tryEnd = instructions[body.Instructions.IndexOf(exception.TryEnd)].Instruction;
+                var handlerStart = instructions[body.Instructions.IndexOf(exception.HandlerStart)].Instruction;
+                var handlerEnd = instructions[body.Instructions.IndexOf(exception.HandlerEnd.Previous)].Instruction;
 
                 tryStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginExceptionBlock));
                 handlerEnd.blocks.Add(new ExceptionBlock(ExceptionBlockType.EndExceptionBlock));
@@ -160,7 +147,7 @@ namespace HarmonyLib.Internal.Patching
                                                                    exception.CatchType.ResolveReflection()));
                         break;
                     case ExceptionHandlerType.Filter:
-                        var filterStart = instructions[body.Instructions.IndexOf(exception.FilterStart)];
+                        var filterStart = instructions[body.Instructions.IndexOf(exception.FilterStart)].Instruction;
                         filterStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginExceptFilterBlock));
                         break;
                     case ExceptionHandlerType.Finally:
@@ -201,9 +188,9 @@ namespace HarmonyLib.Internal.Patching
             return result.ToArray();
         }
 
-        private List<CodeInstruction> ApplyTranspilers(SRE.ILGenerator il, MethodBase original = null)
+        private List<CodeInstruction> ApplyTranspilers(IEnumerable<CodeInstruction> instructions, SRE.ILGenerator il, MethodBase original = null)
         {
-            var tempInstructions = MakeBranchesLong(codeInstructions);
+            var tempInstructions = MakeBranchesLong(instructions);
 
             foreach (var transpiler in transpilers)
             {
@@ -218,27 +205,26 @@ namespace HarmonyLib.Internal.Patching
 
         public List<CodeInstruction> GetInstructions(SRE.ILGenerator il)
         {
-            Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel);
-            return codeInstructions.ToList();
+            return Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).ToList();
         }
 
-        private void Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
+        private IEnumerable<CodeInstruction> Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
         {
-            foreach (var codeInstruction in codeInstructions)
+            foreach (var unresolvedInstruction in codeInstructions)
             {
                 // Set operand to the same as the IL operand (in most cases they are the same)
-                codeInstruction.operand = codeInstruction.ilOperand;
+                unresolvedInstruction.Instruction.operand = unresolvedInstruction.Operand;
 
-                switch (codeInstruction.opcode.OperandType)
+                switch (unresolvedInstruction.Instruction.opcode.OperandType)
                 {
                     case SRE.OperandType.InlineVar:
                     case SRE.OperandType.ShortInlineVar:
                     {
-                        if (codeInstruction.ilOperand is VariableDefinition varDef)
-                            codeInstruction.operand = getLocal(varDef);
+                        if (unresolvedInstruction.Operand is VariableDefinition varDef)
+                            unresolvedInstruction.Instruction.operand = getLocal(varDef);
                     }
                         break;
-                    case SRE.OperandType.InlineSwitch when codeInstruction.ilOperand is CodeInstruction[] targets:
+                    case SRE.OperandType.InlineSwitch when unresolvedInstruction.Operand is CodeInstruction[] targets:
                     {
                         var labels = new List<SRE.Label>();
                         foreach (var target in targets)
@@ -248,22 +234,24 @@ namespace HarmonyLib.Internal.Patching
                             labels.Add(label);
                         }
 
-                        codeInstruction.operand = labels.ToArray();
+                        unresolvedInstruction.Instruction.operand = labels.ToArray();
                     }
                         break;
                     case SRE.OperandType.ShortInlineBrTarget:
                     case SRE.OperandType.InlineBrTarget:
                     {
-                        if (codeInstruction.operand is CodeInstruction target)
+                        if (unresolvedInstruction.Instruction.operand is CodeInstruction target)
                         {
                             var label = defineLabel();
                             target.labels.Add(label);
-                            codeInstruction.operand = label;
+                            unresolvedInstruction.Instruction.operand = label;
                         }
                     }
                         break;
                 }
             }
+
+            return codeInstructions.Select(c => c.Instruction);
         }
 
         /// <summary>
@@ -294,10 +282,10 @@ namespace HarmonyLib.Internal.Patching
             il.DefineLabel();
 
             // Step 1: Prepare labels for instructions
-            Prepare(vDef => il.GetLocal(vDef), il.DefineLabel);
+            var instructions = Prepare(vDef => il.GetLocal(vDef), il.DefineLabel);
 
             // Step 2: Run the code instruction through transpilers
-            var newInstructions = ApplyTranspilers(cil, original);
+            var newInstructions = ApplyTranspilers(instructions, cil, original);
 
             // We don't remove trailing `ret`s because we need to do so only if prefixes/postfixes are present
 

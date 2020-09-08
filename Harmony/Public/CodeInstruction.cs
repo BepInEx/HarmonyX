@@ -26,10 +26,6 @@ namespace HarmonyLib
 		///
 		public List<ExceptionBlock> blocks = new List<ExceptionBlock>();
 
-		/// <summary>Helper object for <see cref="Mono.Cecil.Cil.Instruction"/> operand conversion</summary>
-		///
-		internal object ilOperand;
-
 		/// <summary>Creates a new CodeInstruction with a given opcode and optional operand</summary>
 		/// <param name="opcode">The opcode</param>
 		/// <param name="operand">The operand</param>
