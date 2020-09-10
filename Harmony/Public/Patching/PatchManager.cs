@@ -75,12 +75,24 @@ namespace HarmonyLib.Public.Patching
 			}
 		}
 
+		/// <summary>
+		/// Gets patch info for the given target method.
+		/// </summary>
+		/// <param name="methodBase">Method to get patch info for.</param>
+		/// <returns>Current patch info of the method.</returns>
+		///
 		public static PatchInfo GetPatchInfo(this MethodBase methodBase)
 		{
 			lock (PatchInfos)
 				return PatchInfos.GetValueSafe(methodBase);
 		}
 
+		/// <summary>
+		/// Gets or creates patch info for the given method.
+		/// </summary>
+		/// <param name="methodBase">Method to get info from.</param>
+		/// <returns>An existing or new patch info for the method containing information about the applied patches.</returns>
+		///
 		public static PatchInfo ToPatchInfo(this MethodBase methodBase)
 		{
 			lock (PatchInfos)
@@ -92,12 +104,20 @@ namespace HarmonyLib.Public.Patching
 			}
 		}
 
+		/// <summary>
+		/// Gets all methods that have been patched.
+		/// </summary>
+		/// <returns>List of methods that have been patched.</returns>
+		///
 		public static IEnumerable<MethodBase> GetPatchedMethods()
 		{
 			lock (PatchInfos)
 				return PatchInfos.Keys.ToList();
 		}
 
+		/// <summary>
+		/// Removes all method resolvers. Use with care, this removes the default ones too!
+		/// </summary>
 		public static void ClearAllPatcherResolvers()
 		{
 			ResolvePatcher = null;
