@@ -51,6 +51,11 @@ namespace HarmonyLib
             {
                 ImplAttributes = MethodImplAttributes.CodeTypeMask
             };
+            ctor.Parameters.AddRange(new []
+            {
+	            new ParameterDefinition(module.ImportReference(typeof(object))),
+	            new ParameterDefinition(module.ImportReference(typeof(IntPtr))),
+            });
             dtfType.Methods.Add(ctor);
 
 
@@ -79,7 +84,7 @@ namespace HarmonyLib
                 return type;
 
             type = CreateDelegateType(method.ReturnType,
-                                          method.GetParameters().Select(p => p.ParameterType).ToArray());
+                                          method.GetParameters().Types().ToArray());
             TypeCache[method] = type;
             return type;
         }
