@@ -39,4 +39,4 @@ HarmonyX is powered by [MonoMod](https://github.com/MonoMod) and its runtime pat
 
 ## Documentation
 
-At the moment the basic documentation is available at [original Harmony docs](http://pardeike.github.io/Harmony).
+Documentation is available in the project's [wiki](https://github.com/BepInEx/HarmonyX/wiki).
