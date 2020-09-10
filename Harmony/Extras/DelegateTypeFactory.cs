@@ -58,7 +58,6 @@ namespace HarmonyLib
             });
             dtfType.Methods.Add(ctor);
 
-
             var invokeMethod =
                 new MethodDefinition(
                     "Invoke", MethodAttributes.HideBySig | MethodAttributes.Virtual | MethodAttributes.Public,

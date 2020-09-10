@@ -18,7 +18,7 @@ namespace HarmonyLib.Internal.Patching
     /// <summary>
     ///     IL manipulator to create Harmony-style patches
     /// </summary>
-    internal static class HarmonyManipulator
+    public static class HarmonyManipulator
     {
         /// special parameter names that can be used in prefix and postfix methods
         private static readonly string INSTANCE_PARAM = "__instance";
