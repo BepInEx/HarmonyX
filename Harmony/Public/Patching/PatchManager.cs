@@ -19,6 +19,12 @@ namespace HarmonyLib.Public.Patching
 		private static readonly Dictionary<MethodBase, PatchInfo> PatchInfos = new Dictionary<MethodBase, PatchInfo>();
 		private static readonly Dictionary<MethodBase, MethodPatcher> MethodPatchers = new Dictionary<MethodBase, MethodPatcher>();
 
+		static PatchManager()
+		{
+			ResolvePatcher += ManagedMethodPatcher.TryResolve;
+			ResolvePatcher += NativeDetourMethodPatcher.TryResolve;
+		}
+
 		public static MethodPatcher GetMethodPatcher(this MethodBase methodBase)
 		{
 			lock (MethodPatchers)
