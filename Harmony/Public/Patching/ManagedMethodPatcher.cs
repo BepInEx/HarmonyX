@@ -7,6 +7,12 @@ using MonoMod.Utils;
 
 namespace HarmonyLib.Public.Patching
 {
+	/// <summary>
+	/// Method patcher for normal managed methods that have IL body attached to them.
+	/// Uses <see cref="MonoMod.RuntimeDetour.ILHook"/> in order to apply hooks in a way compatible with MonoMod's own
+	/// hooking system.
+	/// </summary>
+	///
 	public class ManagedMethodPatcher : MethodPatcher
 	{
 		private static readonly MethodInfo IsAppliedSetter =
@@ -17,6 +23,7 @@ namespace HarmonyLib.Public.Patching
 
 		private ILHook ilHook;
 
+		/// <inheritdoc />
 		public ManagedMethodPatcher(MethodBase original) : base(original) { }
 
 		/// <inheritdoc />

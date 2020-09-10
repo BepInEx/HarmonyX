@@ -8,6 +8,11 @@ using MonoMod.Utils;
 
 namespace HarmonyLib.Public.Patching
 {
+	/// <summary>
+	/// A method patcher that uses <see cref="MonoMod.RuntimeDetour.NativeDetour"/> to patch internal calls,
+	/// methods marked with <see cref="DynDllImportAttribute"/> and any other managed method that CLR managed-to-native
+	/// trampolines for and which has no IL body defined.
+	/// </summary>
 	public class NativeDetourMethodPatcher : MethodPatcher
 	{
 		private static readonly Dictionary<int, Delegate> TrampolineCache = new Dictionary<int, Delegate>();
