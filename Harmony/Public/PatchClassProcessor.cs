@@ -180,7 +180,7 @@ namespace HarmonyLib
 				{
 					try
 					{
-						var patchInfo = job.original.ToPatchInfo(); //HarmonySharedState.GetPatchInfo(job.original) ?? new PatchInfo();
+						var patchInfo = job.original.ToPatchInfo();
 
 						patchInfo.AddPrefixes(instance.Id, job.prefixes.ToArray());
 						patchInfo.AddPostfixes(instance.Id, job.postfixes.ToArray());

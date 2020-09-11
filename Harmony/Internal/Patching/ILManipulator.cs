@@ -26,6 +26,8 @@ namespace HarmonyLib.Internal.Patching
 	    {
 		    public CodeInstruction Instruction { get; set; }
 		    public object Operand { get; set; }
+
+		    public Instruction CILInstruction { get; set; }
 	    }
 
         private static readonly Dictionary<short, SRE.OpCode> SREOpCodes = new Dictionary<short, SRE.OpCode>();
@@ -113,7 +115,8 @@ namespace HarmonyLib.Internal.Patching
 			            OperandType.ShortInlineBrTarget => GetTarget(body, ins.Operand),
 			            OperandType.InlineSwitch => GetTargets(body, ins.Operand),
 			            _ => ins.Operand
-		            }
+		            },
+		            CILInstruction = ins
 	            };
 
             // Pass 1: Convert IL to base abstract CodeInstructions
@@ -205,10 +208,22 @@ namespace HarmonyLib.Internal.Patching
 
         public List<CodeInstruction> GetInstructions(SRE.ILGenerator il)
         {
-            return Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).ToList();
+            return Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).Select(i => i.Instruction).ToList();
         }
 
-        private IEnumerable<CodeInstruction> Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
+        public Dictionary<int, CodeInstruction> GetIndexedInstructions(SRE.ILGenerator il)
+        {
+	        static int Grow(ref int i, int s)
+	        {
+		        var result = i;
+		        i += s;
+		        return result;
+	        }
+	        var size = 0;
+	        return Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).ToDictionary(i => Grow(ref size, i.CILInstruction.GetSize()), i => i.Instruction);
+        }
+
+        private IEnumerable<UnresolvedInstruction> Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
         {
             foreach (var unresolvedInstruction in codeInstructions)
             {
@@ -251,7 +266,7 @@ namespace HarmonyLib.Internal.Patching
                 }
             }
 
-            return codeInstructions.Select(c => c.Instruction);
+            return codeInstructions;
         }
 
         /// <summary>
@@ -281,8 +296,8 @@ namespace HarmonyLib.Internal.Patching
             // By defining the first label we'll ensure label count is correct
             il.DefineLabel();
 
-            // Step 1: Prepare labels for instructions
-            var instructions = Prepare(vDef => il.GetLocal(vDef), il.DefineLabel);
+            // Step 1: Prepare labels for instructions. Use ToList to force
+            var instructions = Prepare(vDef => il.GetLocal(vDef), il.DefineLabel).Select(i => i.Instruction).ToList();
 
             // Step 2: Run the code instruction through transpilers
             var newInstructions = ApplyTranspilers(instructions, cil, original);

@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using HarmonyLib.Internal.Patching;
+using HarmonyLib.Public.Patching;
+using MonoMod.Cil;
 
 namespace HarmonyLib
 {
@@ -26,26 +29,29 @@ namespace HarmonyLib
 		///
 		internal static MethodInfo UpdateWrapper(MethodBase original, PatchInfo patchInfo)
 		{
-			var debug = patchInfo.Debugging || Harmony.DEBUG;
+			var patcher = original.GetMethodPatcher();
+			var dmd = patcher.PrepareOriginal();
 
-			var sortedPrefixes = GetSortedPatchMethods(original, patchInfo.prefixes, debug);
-			var sortedPostfixes = GetSortedPatchMethods(original, patchInfo.postfixes, debug);
-			var sortedTranspilers = GetSortedPatchMethods(original, patchInfo.transpilers, debug);
-			var sortedFinalizers = GetSortedPatchMethods(original, patchInfo.finalizers, debug);
-
-			var patcher = new MethodPatcher(original, null, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers, debug);
-			var replacement = patcher.CreateReplacement(out var finalInstructions);
-			if (replacement is null) throw new MissingMethodException($"Cannot create replacement for {original.FullDescription()}");
+			if (dmd != null)
+			{
+				var ctx = new ILContext(dmd.Definition);
+				HarmonyManipulator.Manipulate(original, patchInfo, ctx);
+			}
 
 			try
 			{
-				Memory.DetourMethodAndPersist(original, replacement);
+				return patcher.DetourTo(dmd?.Generate()) as MethodInfo;
 			}
 			catch (Exception ex)
 			{
+				Dictionary<int, CodeInstruction> finalInstructions = new Dictionary<int, CodeInstruction>();
+				if (dmd != null)
+				{
+					var manipulator = new ILManipulator(dmd.Definition.Body);
+					finalInstructions = manipulator.GetIndexedInstructions(PatchProcessor.CreateILGenerator());
+				}
 				throw HarmonyException.Create(ex, finalInstructions);
 			}
-			return replacement;
 		}
 
 		internal static MethodInfo ReversePatch(HarmonyMethod standin, MethodBase original, MethodInfo postTranspiler)
