@@ -48,7 +48,8 @@ namespace HarmonyLib.Public.Patching
 		/// Otherwise, this will be <b>null</b>, in which case you must manually generate Harmony-patched method
 		/// with <see cref="HarmonyManipulator.Manipulate"/>.
 		/// </param>
+		/// <returns><see cref="MethodBase"/> of the hook, if it's different from `replacement`.</returns>
 		///
-		public abstract void DetourTo(MethodBase replacement);
+		public abstract MethodBase DetourTo(MethodBase replacement);
 	}
 }

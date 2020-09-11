@@ -74,7 +74,7 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		/// <inheritdoc />
-		public override void DetourTo(MethodBase replacement)
+		public override MethodBase DetourTo(MethodBase replacement)
 		{
 			nativeDetour?.Dispose();
 
@@ -89,6 +89,7 @@ namespace HarmonyLib.Public.Patching
 			}
 
 			nativeDetour.Apply();
+			return replacement;
 		}
 
 		private Delegate CreateDelegate(Type delegateType, MethodBase mb)

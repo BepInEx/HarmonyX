@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
@@ -33,12 +34,13 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		/// <inheritdoc />
-		public override void DetourTo(MethodBase replacement)
+		public override MethodBase DetourTo(MethodBase replacement)
 		{
 			ilHook ??= new ILHook(Original, Manipulator, new ILHookConfig {ManualApply = true});
 			// Reset IsApplied to force MonoMod to reapply the ILHook without removing it
 			SetIsApplied(ilHook, false);
 			ilHook.Apply();
+			return ilHook.GetCurrentTarget();
 		}
 
 		private void Manipulator(ILContext ctx)
