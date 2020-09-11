@@ -4,11 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Public.Patching;
 
 namespace HarmonyLib
 {
 	/// <summary>A PatchProcessor handles patches on a method/constructor</summary>
-	/// 
+	///
 	public class PatchProcessor
 	{
 		readonly Harmony instance;
@@ -116,10 +117,7 @@ namespace HarmonyLib
 		///
 		public static IEnumerable<MethodBase> GetAllPatchedMethods()
 		{
-			lock (locker)
-			{
-				return HarmonySharedState.GetPatchedMethods();
-			}
+			return PatchManager.GetPatchedMethods();
 		}
 
 		/// <summary>Applies all registered patches</summary>
@@ -138,7 +136,7 @@ namespace HarmonyLib
 
 			lock (locker)
 			{
-				var patchInfo = HarmonySharedState.GetPatchInfo(original) ?? new PatchInfo();
+				var patchInfo = original.ToPatchInfo();
 
 				patchInfo.AddPrefixes(instance.Id, prefix);
 				patchInfo.AddPostfixes(instance.Id, postfix);
@@ -146,8 +144,6 @@ namespace HarmonyLib
 				patchInfo.AddFinalizers(instance.Id, finalizer);
 
 				var replacement = PatchFunctions.UpdateWrapper(original, patchInfo);
-
-				HarmonySharedState.UpdatePatchInfo(original, patchInfo);
 				return replacement;
 			}
 		}
@@ -161,8 +157,7 @@ namespace HarmonyLib
 		{
 			lock (locker)
 			{
-				var patchInfo = HarmonySharedState.GetPatchInfo(original);
-				if (patchInfo is null) patchInfo = new PatchInfo();
+				var patchInfo = original.ToPatchInfo();
 
 				if (type == HarmonyPatchType.All || type == HarmonyPatchType.Prefix)
 					patchInfo.RemovePrefix(harmonyID);
@@ -174,7 +169,6 @@ namespace HarmonyLib
 					patchInfo.RemoveFinalizer(harmonyID);
 				_ = PatchFunctions.UpdateWrapper(original, patchInfo);
 
-				HarmonySharedState.UpdatePatchInfo(original, patchInfo);
 				return this;
 			}
 		}
@@ -187,13 +181,11 @@ namespace HarmonyLib
 		{
 			lock (locker)
 			{
-				var patchInfo = HarmonySharedState.GetPatchInfo(original);
-				if (patchInfo is null) patchInfo = new PatchInfo();
+				var patchInfo = original.ToPatchInfo();
 
 				patchInfo.RemovePatch(patch);
 				_ = PatchFunctions.UpdateWrapper(original, patchInfo);
 
-				HarmonySharedState.UpdatePatchInfo(original, patchInfo);
 				return this;
 			}
 		}
@@ -204,8 +196,7 @@ namespace HarmonyLib
 		///
 		public static Patches GetPatchInfo(MethodBase method)
 		{
-			PatchInfo patchInfo;
-			lock (locker) { patchInfo = HarmonySharedState.GetPatchInfo(method); }
+			PatchInfo patchInfo = method.GetPatchInfo();
 			if (patchInfo is null) return null;
 			return new Patches(patchInfo.prefixes, patchInfo.postfixes, patchInfo.transpilers, patchInfo.finalizers);
 		}
@@ -230,8 +221,7 @@ namespace HarmonyLib
 			var assemblies = new Dictionary<string, Assembly>();
 			GetAllPatchedMethods().Do(method =>
 			{
-				PatchInfo info;
-				lock (locker) { info = HarmonySharedState.GetPatchInfo(method); }
+				var info = method.GetPatchInfo();
 				info.prefixes.Do(fix => assemblies[fix.owner] = fix.PatchMethod.DeclaringType.Assembly);
 				info.postfixes.Do(fix => assemblies[fix.owner] = fix.PatchMethod.DeclaringType.Assembly);
 				info.transpilers.Do(fix => assemblies[fix.owner] = fix.PatchMethod.DeclaringType.Assembly);
@@ -250,7 +240,7 @@ namespace HarmonyLib
 
 		/// <summary>Creates a new empty <see cref="ILGenerator">generator</see> to use when reading method bodies</summary>
 		/// <returns>A new <see cref="ILGenerator"/></returns>
-		/// 
+		///
 		public static ILGenerator CreateILGenerator()
 		{
 			var method = new DynamicMethodDefinition($"ILGenerator_{Guid.NewGuid()}", typeof(void), new Type[0]);
@@ -260,7 +250,7 @@ namespace HarmonyLib
 		/// <summary>Creates a new <see cref="ILGenerator">generator</see> matching the method/constructor to use when reading method bodies</summary>
 		/// <param name="original">The original method/constructor to copy method information from</param>
 		/// <returns>A new <see cref="ILGenerator"/></returns>
-		/// 
+		///
 		public static ILGenerator CreateILGenerator(MethodBase original)
 		{
 			var returnType = original is MethodInfo m ? m.ReturnType : typeof(void);
@@ -274,7 +264,7 @@ namespace HarmonyLib
 		/// <param name="original">The original method/constructor</param>
 		/// <param name="generator">Optionally an existing generator that will be used to create all local variables and labels contained in the result (if not specified, an internal generator is used)</param>
 		/// <returns>A list containing all the original <see cref="CodeInstruction"/></returns>
-		/// 
+		///
 		public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, ILGenerator generator = null)
 		{
 			return MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, 0);
@@ -284,7 +274,7 @@ namespace HarmonyLib
 		/// <param name="original">The original method/constructor</param>
 		/// <param name="generator">A new generator that now contains all local variables and labels contained in the result</param>
 		/// <returns>A list containing all the original <see cref="CodeInstruction"/></returns>
-		/// 
+		///
 		public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, out ILGenerator generator)
 		{
 			generator = CreateILGenerator(original);
@@ -296,7 +286,7 @@ namespace HarmonyLib
 		/// <param name="maxTranspilers">Apply only the first count of transpilers</param>
 		/// <param name="generator">Optionally an existing generator that will be used to create all local variables and labels contained in the result (if not specified, an internal generator is used)</param>
 		/// <returns>A list of <see cref="CodeInstruction"/></returns>
-		/// 
+		///
 		public static List<CodeInstruction> GetCurrentInstructions(MethodBase original, int maxTranspilers = int.MaxValue, ILGenerator generator = null)
 		{
 			return MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, maxTranspilers);
@@ -307,7 +297,7 @@ namespace HarmonyLib
 		/// <param name="generator">A new generator that now contains all local variables and labels contained in the result</param>
 		/// <param name="maxTranspilers">Apply only the first count of transpilers</param>
 		/// <returns>A list of <see cref="CodeInstruction"/></returns>
-		/// 
+		///
 		public static List<CodeInstruction> GetCurrentInstructions(MethodBase original, out ILGenerator generator, int maxTranspilers = int.MaxValue)
 		{
 			generator = CreateILGenerator(original);

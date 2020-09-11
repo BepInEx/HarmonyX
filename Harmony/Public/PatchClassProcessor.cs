@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
 
 namespace HarmonyLib
@@ -179,7 +180,7 @@ namespace HarmonyLib
 				{
 					try
 					{
-						var patchInfo = HarmonySharedState.GetPatchInfo(job.original) ?? new PatchInfo();
+						var patchInfo = job.original.ToPatchInfo(); //HarmonySharedState.GetPatchInfo(job.original) ?? new PatchInfo();
 
 						patchInfo.AddPrefixes(instance.Id, job.prefixes.ToArray());
 						patchInfo.AddPostfixes(instance.Id, job.postfixes.ToArray());
@@ -187,7 +188,6 @@ namespace HarmonyLib
 						patchInfo.AddFinalizers(instance.Id, job.finalizers.ToArray());
 
 						replacement = PatchFunctions.UpdateWrapper(job.original, patchInfo);
-						HarmonySharedState.UpdatePatchInfo(job.original, patchInfo);
 					}
 					catch (Exception ex)
 					{
