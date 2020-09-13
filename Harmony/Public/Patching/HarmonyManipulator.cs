@@ -53,7 +53,7 @@ namespace HarmonyLib.Internal.Patching
             finalizers = PatchFunctions.GetSortedPatchMethods(original, finalizersArr);
         }
 
-        internal static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
+        public static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
         {
             SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
                         out var sortedFinalizers);
@@ -82,20 +82,6 @@ namespace HarmonyLib.Internal.Patching
             });
 
             MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
-        }
-
-        /// <summary>Mark method for no inlining</summary>
-        /// <param name="method">The method to change</param>
-        private static unsafe void MarkForNoInlining(MethodBase method)
-        {
-            //var methodDef = method.MetadataToken;
-
-            // TODO for now, this only works on mono
-            if (Type.GetType("Mono.Runtime") != null)
-            {
-                var iflags = (ushort*) method.MethodHandle.Value + 1;
-                *iflags |= (ushort) MethodImplOptions.NoInlining;
-            }
         }
 
         private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<MethodInfo> transpilers)
@@ -413,8 +399,6 @@ namespace HarmonyLib.Internal.Patching
                     throw new ArgumentException(nameof(original));
 
                 Logger.Log(Logger.LogChannel.Info, () => $"Running ILHook manipulator on {original.GetID()}");
-
-                MarkForNoInlining(original);
 
                 WriteTranspiledMethod(ctx, original, transpilers);
 
