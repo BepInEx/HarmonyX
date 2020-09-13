@@ -9,15 +9,15 @@ using MonoMod.Utils;
 namespace HarmonyLib.Public.Patching
 {
 	/// <summary>
-	/// A method patcher that uses <see cref="MonoMod.RuntimeDetour.NativeDetour"/> to patch internal calls,
-	/// methods marked with <see cref="DynDllImportAttribute"/> and any other managed method that CLR managed-to-native
-	/// trampolines for and which has no IL body defined.
+	///    A method patcher that uses <see cref="MonoMod.RuntimeDetour.NativeDetour" /> to patch internal calls,
+	///    methods marked with <see cref="DynDllImportAttribute" /> and any other managed method that CLR managed-to-native
+	///    trampolines for and which has no IL body defined.
 	/// </summary>
 	public class NativeDetourMethodPatcher : MethodPatcher
 	{
 		private static readonly Dictionary<int, Delegate> TrampolineCache = new Dictionary<int, Delegate>();
 		private static int counter;
-		private static object counterLock = new object();
+		private static readonly object counterLock = new object();
 
 		private static readonly MethodInfo GetTrampolineMethod =
 			AccessTools.Method(typeof(NativeDetourMethodPatcher), nameof(GetTrampoline));
@@ -39,9 +39,10 @@ namespace HarmonyLib.Public.Patching
 		private void Init()
 		{
 			if (AccessTools.IsNetCoreRuntime)
-				Logger.Log(Logger.LogChannel.Warn, () => $"Patch target {Original.FullDescription()} is marked as extern. " +
-				                                         "Extern methods may not be patched because of inlining behaviour of coreclr (refer to https://github.com/dotnet/coreclr/pull/8263)." +
-				                                         "If you need to patch externs, consider using pure NativeDetour instead.");
+				Logger.Log(Logger.LogChannel.Warn, () =>
+					$"Patch target {Original.FullDescription()} is marked as extern. " +
+					"Extern methods may not be patched because of inlining behaviour of coreclr (refer to https://github.com/dotnet/coreclr/pull/8263)." +
+					"If you need to patch externs, consider using pure NativeDetour instead.");
 
 			var orig = Original;
 
@@ -78,7 +79,7 @@ namespace HarmonyLib.Public.Patching
 		{
 			nativeDetour?.Dispose();
 
-			nativeDetour = new NativeDetour(Original, replacement, new NativeDetourConfig { ManualApply = true });
+			nativeDetour = new NativeDetour(Original, replacement, new NativeDetourConfig {ManualApply = true});
 
 			lock (TrampolineCache)
 			{
@@ -111,7 +112,8 @@ namespace HarmonyLib.Public.Patching
 			if (mb is DynamicMethod dm)
 				return dm.CreateDelegate(delegateType);
 
-			return Delegate.CreateDelegate(delegateType, mb as MethodInfo ?? throw new InvalidCastException($"Unexpected method type: {mb.GetType()}"));
+			return Delegate.CreateDelegate(delegateType,
+				mb as MethodInfo ?? throw new InvalidCastException($"Unexpected method type: {mb.GetType()}"));
 		}
 
 		private static Delegate GetTrampoline(int hash)

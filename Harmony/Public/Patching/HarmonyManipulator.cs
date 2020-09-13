@@ -2,15 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Text;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
-using MonoMod.Utils;
-using OpCode = Mono.Cecil.Cil.OpCode;
-using OpCodes = Mono.Cecil.Cil.OpCodes;
 
 namespace HarmonyLib.Internal.Patching
 {

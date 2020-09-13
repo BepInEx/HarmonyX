@@ -10,6 +10,7 @@ using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
+using OpCodes = Mono.Cecil.Cil.OpCodes;
 
 namespace HarmonyLib
 {
@@ -95,7 +96,7 @@ namespace HarmonyLib
 				manipulator.WriteTo(ctx.Body, standin.method);
 
 				// Write a ret in case it got removed (wrt. HarmonyManipulator)
-				ctx.IL.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+				ctx.IL.Emit(OpCodes.Ret);
 			}, new ILHookConfig { ManualApply = true });
 
 			try

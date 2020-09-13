@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using MonoMod.Utils;
 
 namespace HarmonyLib.Public.Patching
 {
@@ -13,24 +12,13 @@ namespace HarmonyLib.Public.Patching
 	///
 	public static class PatchManager
 	{
-		/// <summary>
-		/// Patcher resolve event arguments.
-		/// </summary>
-		///
-		public class PatcherResolverEeventArgs : EventArgs
-		{
-			/// <summary>
-			/// Original method that is to be patched.
-			/// </summary>
-			///
-			public MethodBase Original { get; internal set; }
+		private static readonly Dictionary<MethodBase, PatchInfo> PatchInfos = new Dictionary<MethodBase, PatchInfo>();
+		private static readonly Dictionary<MethodBase, MethodPatcher> MethodPatchers = new Dictionary<MethodBase, MethodPatcher>();
 
-			/// <summary>
-			/// Method patcher to use to patch <see cref="Original"/>.
-			/// Set this value to specify which one to use.
-			/// </summary>
-			///
-			public MethodPatcher MethodPatcher { get; set; }
+		static PatchManager()
+		{
+			ResolvePatcher += ManagedMethodPatcher.TryResolve;
+			ResolvePatcher += NativeDetourMethodPatcher.TryResolve;
 		}
 
 		/// <summary>
@@ -44,15 +32,6 @@ namespace HarmonyLib.Public.Patching
 		/// </remarks>
 		///
 		public static event EventHandler<PatcherResolverEeventArgs> ResolvePatcher;
-
-		private static readonly Dictionary<MethodBase, PatchInfo> PatchInfos = new Dictionary<MethodBase, PatchInfo>();
-		private static readonly Dictionary<MethodBase, MethodPatcher> MethodPatchers = new Dictionary<MethodBase, MethodPatcher>();
-
-		static PatchManager()
-		{
-			ResolvePatcher += ManagedMethodPatcher.TryResolve;
-			ResolvePatcher += NativeDetourMethodPatcher.TryResolve;
-		}
 
 		/// <summary>
 		/// Creates or gets an existing instance of <see cref="MethodPatcher"/> that handles patching the method.
@@ -121,6 +100,26 @@ namespace HarmonyLib.Public.Patching
 		public static void ClearAllPatcherResolvers()
 		{
 			ResolvePatcher = null;
+		}
+
+		/// <summary>
+		/// Patcher resolve event arguments.
+		/// </summary>
+		///
+		public class PatcherResolverEeventArgs : EventArgs
+		{
+			/// <summary>
+			/// Original method that is to be patched.
+			/// </summary>
+			///
+			public MethodBase Original { get; internal set; }
+
+			/// <summary>
+			/// Method patcher to use to patch <see cref="Original"/>.
+			/// Set this value to specify which one to use.
+			/// </summary>
+			///
+			public MethodPatcher MethodPatcher { get; set; }
 		}
 	}
 }

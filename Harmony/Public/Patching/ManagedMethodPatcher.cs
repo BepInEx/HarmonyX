@@ -23,8 +23,9 @@ namespace HarmonyLib.Public.Patching
 		private static readonly Action<ILHook, bool> SetIsApplied =
 			(Action<ILHook, bool>) IsAppliedSetter.CreateDelegate<Action<ILHook, bool>>();
 
-		private ILHook ilHook;
 		private MethodBody hookBody;
+
+		private ILHook ilHook;
 
 		/// <inheritdoc />
 		public ManagedMethodPatcher(MethodBase original) : base(original) { }
