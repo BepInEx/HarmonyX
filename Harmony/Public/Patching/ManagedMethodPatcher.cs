@@ -65,6 +65,12 @@ namespace HarmonyLib.Public.Patching
 			HarmonyManipulator.Manipulate(Original, Original.GetPatchInfo(), ctx);
 		}
 
+		/// <summary>
+		/// A handler for <see cref="PatchManager.ResolvePatcher"/> that checks if a method is a normal Managed method.
+		/// </summary>
+		/// <param name="sender">Not used</param>
+		/// <param name="args">Patch resolver arguments</param>
+		///
 		public static void TryResolve(object sender, PatchManager.PatcherResolverEeventArgs args)
 		{
 			if (args.Original.GetMethodBody() != null)

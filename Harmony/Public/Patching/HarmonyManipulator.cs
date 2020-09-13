@@ -3,21 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 
-namespace HarmonyLib.Internal.Patching
+namespace HarmonyLib.Public.Patching
 {
 	/// <summary>
 	///    IL manipulator to create Harmony-style patches
 	/// </summary>
+	///
 	public static class HarmonyManipulator
 	{
-		/// special parameter names that can be used in prefix and postfix methods
 		private static readonly string INSTANCE_PARAM = "__instance";
-
 		private static readonly string ORIGINAL_METHOD_PARAM = "__originalMethod";
 		private static readonly string RUN_ORIGINAL_PARAM = "__runOriginal";
 		private static readonly string RESULT_VAR = "__result";
@@ -26,11 +26,10 @@ namespace HarmonyLib.Internal.Patching
 		private static readonly string PARAM_INDEX_PREFIX = "__";
 		private static readonly string INSTANCE_FIELD_PREFIX = "___";
 
-
-		private static readonly MethodInfo m_GetMethodFromHandle1 =
+		private static readonly MethodInfo GetMethodFromHandle1 =
 			typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] {typeof(RuntimeMethodHandle)});
 
-		private static readonly MethodInfo m_GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle",
+		private static readonly MethodInfo GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle",
 			new[] {typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle)});
 
 		private static void SortPatches(MethodBase original, PatchInfo patchInfo, out List<MethodInfo> prefixes,
@@ -55,6 +54,17 @@ namespace HarmonyLib.Internal.Patching
 			finalizers = PatchFunctions.GetSortedPatchMethods(original, finalizersArr);
 		}
 
+		/// <summary>
+		/// Manipulates a <see cref="Mono.Cecil.Cil.MethodBody"/> by applying Harmony patches to it.
+		/// </summary>
+		/// <param name="original">Reference to the method that should be considered as original. Used to reference parameter and return types.</param>
+		/// <param name="patchInfo">Collection of Harmony patches to apply.</param>
+		/// <param name="ctx">Method body to manipulate as <see cref="ILContext"/> instance. Should contain instructions to patch.</param>
+		/// <remarks>
+		/// In most cases you will want to use <see cref="PatchManager.ToPatchInfo"/> to create or obtain global
+		/// patch info for the method that contains aggregated info of all Harmony instances.
+		/// </remarks>
+		///
 		public static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
 		{
 			SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
@@ -483,7 +493,7 @@ namespace HarmonyLib.Internal.Patching
 
 			var type = original.ReflectedType;
 			if (type.IsGenericType) il.Emit(OpCodes.Ldtoken, type);
-			il.Emit(OpCodes.Call, type.IsGenericType ? m_GetMethodFromHandle2 : m_GetMethodFromHandle1);
+			il.Emit(OpCodes.Call, type.IsGenericType ? GetMethodFromHandle2 : GetMethodFromHandle1);
 			return true;
 		}
 

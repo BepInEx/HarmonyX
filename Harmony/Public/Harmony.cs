@@ -20,6 +20,7 @@ namespace HarmonyLib
 		/// <remarks>This is for full debugging. To debug only specific patches, use the <see cref="HarmonyDebug"/> attribute</remarks>
 		///
 		[Obsolete("Use HarmonyFileLog.Enabled instead")]
+		// ReSharper disable once InconsistentNaming
 		public static bool DEBUG;
 
 		/// <summary>Creates a new Harmony instance</summary>
@@ -28,6 +29,7 @@ namespace HarmonyLib
 		///
 		public Harmony(string id)
 		{
+#pragma warning disable 618
 			if (string.IsNullOrEmpty(id)) throw new ArgumentException($"{nameof(id)} cannot be null or empty");
 
 			try
@@ -69,6 +71,7 @@ namespace HarmonyLib
 			});
 
 			Id = id;
+#pragma warning restore 618
 		}
 
 		/// <summary>Searches the current assembly for Harmony annotations and uses them to create patches</summary>

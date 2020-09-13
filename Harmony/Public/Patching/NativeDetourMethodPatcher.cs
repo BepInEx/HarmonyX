@@ -17,7 +17,7 @@ namespace HarmonyLib.Public.Patching
 	{
 		private static readonly Dictionary<int, Delegate> TrampolineCache = new Dictionary<int, Delegate>();
 		private static int counter;
-		private static readonly object counterLock = new object();
+		private static readonly object CounterLock = new object();
 
 		private static readonly MethodInfo GetTrampolineMethod =
 			AccessTools.Method(typeof(NativeDetourMethodPatcher), nameof(GetTrampoline));
@@ -31,6 +31,10 @@ namespace HarmonyLib.Public.Patching
 		private Type returnType;
 		private Type trampolineDelegateType;
 
+		/// <summary>
+		/// Constructs a new instance of <see cref="NativeDetour"/> method patcher.
+		/// </summary>
+		/// <param name="original"></param>
 		public NativeDetourMethodPatcher(MethodBase original) : base(original)
 		{
 			Init();
@@ -131,7 +135,7 @@ namespace HarmonyLib.Public.Patching
 			var orig = Original;
 
 			var dmd = new DynamicMethodDefinition($"NativeDetour<{orig.GetID(simple: true)}>", returnType, argTypes);
-			lock (counterLock)
+			lock (CounterLock)
 			{
 				dmd.Definition.Name += $"?{counter}";
 				newOriginal = counter;
@@ -154,6 +158,14 @@ namespace HarmonyLib.Public.Patching
 			return dmd;
 		}
 
+		/// <summary>
+		/// A handler for <see cref="PatchManager.ResolvePatcher"/> that checks if a method doesn't have a body
+		/// (e.g. it's icall or marked with <see cref="DynDllImportAttribute"/>) and thus can be patched with
+		/// <see cref="NativeDetour"/>.
+		/// </summary>
+		/// <param name="sender">Not used</param>
+		/// <param name="args">Patch resolver arguments</param>
+		///
 		public static void TryResolve(object sender, PatchManager.PatcherResolverEeventArgs args)
 		{
 			if (args.Original.GetMethodBody() == null)
