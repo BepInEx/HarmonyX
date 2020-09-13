@@ -24,6 +24,8 @@ namespace HarmonyLibTests.Patching
 		[Test]
 		public void Test_TranspilerException1()
 		{
+			Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "mb");
+			Environment.SetEnvironmentVariable("MONOMOD_DMD_DUMP", "C:\\mmdump");
 			var test = new Class3();
 
 			test.TestMethod("start");

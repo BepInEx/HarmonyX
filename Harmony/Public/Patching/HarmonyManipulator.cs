@@ -110,17 +110,22 @@ namespace HarmonyLib.Internal.Patching
             // We mark the label as not emitted so that potential postfix code can mark it
             var resultLabel = il.DeclareLabel();
             resultLabel.emitted = false;
-            resultLabel.instruction = Instruction.Create(OpCodes.Ret);
 
+            var hasRet = false;
             foreach (var ins in il.IL.Body.Instructions.Where(ins => ins.MatchRet()))
             {
+	            hasRet = true;
                 ins.OpCode = OpCodes.Br;
                 ins.Operand = resultLabel.instruction;
                 resultLabel.targets.Add(ins);
             }
 
-            // Already append `ret` for other code to use as emitBefore point
+            // Pick `nop` if previously the method didn't have `ret` before, like in case of exception throwing
+            resultLabel.instruction = Instruction.Create(hasRet ? OpCodes.Ret : OpCodes.Nop);
+
+            // Already append ending label for other code to use as emitBefore point
             il.IL.Append(resultLabel.instruction);
+
             return resultLabel;
         }
 
@@ -427,7 +432,11 @@ namespace HarmonyLib.Internal.Patching
 
                 // Mark return label in case it hasn't been marked yet and close open labels to return
                 il.MarkLabel(returnLabel);
-                il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
+                var lastInstruction = il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
+
+                // If we have finalizers, ensure the return label is `ret` and not `nop`
+					if (finalizers.Count > 0)
+						lastInstruction.OpCode = OpCodes.Ret;
 
                 Logger.Log(Logger.LogChannel.IL, () => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
             }
@@ -437,181 +446,181 @@ namespace HarmonyLib.Internal.Patching
             }
         }
 
-        static readonly MethodInfo GetMethodFromHandle1 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) });
-        static readonly MethodInfo GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) });
-        private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
-                                              Dictionary<string, VariableDefinition> variables,
-                                              bool allowFirsParamPassthrough)
-        {
-            var isInstance = original.IsStatic == false;
-            var originalParameters = original.GetParameters();
-            var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
-
-            // check for passthrough using first parameter (which must have same type as return type)
-            var parameters = patch.GetParameters().ToList();
-            if (allowFirsParamPassthrough && patch.ReturnType != typeof(void) && parameters.Count > 0 &&
-                parameters[0].ParameterType == patch.ReturnType)
-                parameters.RemoveRange(0, 1);
-
-            foreach (var patchParam in parameters)
-            {
-                if (patchParam.Name == ORIGINAL_METHOD_PARAM)
-                {
-                    if (original is MethodInfo method)
-                        il.Emit(OpCodes.Ldtoken, method);
-                    else if (original is ConstructorInfo constructor)
-                        il.Emit(OpCodes.Ldtoken, constructor);
-                    else
-                    {
-                        il.Emit(OpCodes.Ldnull);
-                        continue;
-                    }
-
-                    var type = original.ReflectedType;
-                    if (type != null && type.IsGenericType)
-                        il.Emit(OpCodes.Ldtoken, type);
-                    il.Emit(OpCodes.Call, type != null && type.IsGenericType ? GetMethodFromHandle2 : GetMethodFromHandle1);
-                    continue;
-                }
-
-                if (patchParam.Name == INSTANCE_PARAM)
-                {
-                    if (original.IsStatic)
-                    {
-                        il.Emit(OpCodes.Ldnull);
-                    }
-                    else
-                    {
-                        var instanceIsRef = original.DeclaringType != null && AccessTools.IsStruct(original.DeclaringType);
-                        var parameterIsRef = patchParam.ParameterType.IsByRef;
-                        if (instanceIsRef == parameterIsRef)
-                            il.Emit(OpCodes.Ldarg_0);
-                        if (instanceIsRef && parameterIsRef == false)
-                        {
-                            il.Emit(OpCodes.Ldarg_0);
-                            il.Emit(OpCodes.Ldobj, original.DeclaringType);
-                        }
-
-                        if (instanceIsRef == false && parameterIsRef)
-                            il.Emit(OpCodes.Ldarga, 0);
-                    }
-
-                    continue;
-                }
-
-                if (patchParam.Name.StartsWith(INSTANCE_FIELD_PREFIX, StringComparison.Ordinal))
-                {
-                    var fieldName = patchParam.Name.Substring(INSTANCE_FIELD_PREFIX.Length);
-                    FieldInfo fieldInfo;
-                    if (fieldName.All(char.IsDigit))
-                    {
-                        fieldInfo = AccessTools.DeclaredField(original.DeclaringType, int.Parse(fieldName));
-                        if (fieldInfo == null)
-                            throw new ArgumentException(
-                                $"No field found at given index in class {original.DeclaringType.FullName}", fieldName);
-                    }
-                    else
-                    {
-                        fieldInfo = AccessTools.Field(original.DeclaringType, fieldName);
-                        if (fieldInfo == null)
-                            throw new ArgumentException(
-                                $"No such field defined in class {original.DeclaringType.FullName}", fieldName);
-                    }
-
-                    if (fieldInfo.IsStatic)
-                    {
-                        il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldsflda : OpCodes.Ldsfld, fieldInfo);
-                    }
-                    else
-                    {
-                        il.Emit(OpCodes.Ldarg_0);
-                        il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldflda : OpCodes.Ldfld, fieldInfo);
-                    }
-
-                    continue;
-                }
-
-                // state is special too since each patch has its own local var
-                if (patchParam.Name == STATE_VAR)
-                {
-                    if (variables.TryGetValue(patch.DeclaringType?.FullName ?? string.Empty, out var stateVar))
-                        il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, stateVar);
-                    else
-                        il.Emit(OpCodes.Ldnull);
-                    continue;
-                }
-
-                // treat __result var special
-                if (patchParam.Name == RESULT_VAR)
-                {
-                    var returnType = AccessTools.GetReturnedType(original);
-                    if (returnType == typeof(void))
-                        throw new InvalidHarmonyPatchArgumentException($"Cannot get result from void method", original, patch);
-                    var resultType = patchParam.ParameterType;
-                    if (resultType.IsByRef)
-                        resultType = resultType.GetElementType();
-                    if (resultType.IsAssignableFrom(returnType) == false)
-                        throw new InvalidHarmonyPatchArgumentException(
-                            $"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName}", original, patch);
-                    il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, variables[RESULT_VAR]);
-                    continue;
-                }
-
-                // any other declared variables
-                if (variables.TryGetValue(patchParam.Name, out var localBuilder))
-                {
-                    il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, localBuilder);
-                    continue;
-                }
-
-                int idx;
-                if (patchParam.Name.StartsWith(PARAM_INDEX_PREFIX, StringComparison.Ordinal))
-                {
-                    var val = patchParam.Name.Substring(PARAM_INDEX_PREFIX.Length);
-                    if (!int.TryParse(val, out idx))
-                        throw new InvalidHarmonyPatchArgumentException($"Parameter {patchParam.Name} does not contain a valid index", original, patch);
-                    if (idx < 0 || idx >= originalParameters.Length)
-                        throw new InvalidHarmonyPatchArgumentException($"No parameter found at index {idx}", original, patch);
-                }
-                else
-                {
-                    idx = GetArgumentIndex(patch, originalParameterNames, patchParam);
-                    if (idx == -1)
-                        throw new InvalidHarmonyPatchArgumentException(
-                            $"Parameter \"{patchParam.Name}\" not found", original, patch);
-                }
-
-                //   original -> patch     opcode
-                // --------------------------------------
-                // 1 normal   -> normal  : LDARG
-                // 2 normal   -> ref/out : LDARGA
-                // 3 ref/out  -> normal  : LDARG, LDIND_x
-                // 4 ref/out  -> ref/out : LDARG
-                //
-                var originalIsNormal = originalParameters[idx].IsOut == false &&
-                                       originalParameters[idx].ParameterType.IsByRef == false;
-                var patchIsNormal = patchParam.IsOut == false && patchParam.ParameterType.IsByRef == false;
-                var patchArgIndex = idx + (isInstance ? 1 : 0);
-
-                // Case 1 + 4
-                if (originalIsNormal == patchIsNormal)
-                {
-                    il.Emit(OpCodes.Ldarg, patchArgIndex);
-                    continue;
-                }
-
-                // Case 2
-                if (originalIsNormal && patchIsNormal == false)
-                {
-                    il.Emit(OpCodes.Ldarga, patchArgIndex);
-                    continue;
-                }
-
-                // Case 3
-                il.Emit(OpCodes.Ldarg, patchArgIndex);
-                il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
-            }
-        }
+        // static readonly MethodInfo GetMethodFromHandle1 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) });
+        // static readonly MethodInfo GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) });
+        // private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
+        //                                       Dictionary<string, VariableDefinition> variables,
+        //                                       bool allowFirsParamPassthrough)
+        // {
+        //     var isInstance = original.IsStatic == false;
+        //     var originalParameters = original.GetParameters();
+        //     var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
+        //
+        //     // check for passthrough using first parameter (which must have same type as return type)
+        //     var parameters = patch.GetParameters().ToList();
+        //     if (allowFirsParamPassthrough && patch.ReturnType != typeof(void) && parameters.Count > 0 &&
+        //         parameters[0].ParameterType == patch.ReturnType)
+        //         parameters.RemoveRange(0, 1);
+        //
+        //     foreach (var patchParam in parameters)
+        //     {
+        //         if (patchParam.Name == ORIGINAL_METHOD_PARAM)
+        //         {
+        //             if (original is MethodInfo method)
+        //                 il.Emit(OpCodes.Ldtoken, method);
+        //             else if (original is ConstructorInfo constructor)
+        //                 il.Emit(OpCodes.Ldtoken, constructor);
+        //             else
+        //             {
+        //                 il.Emit(OpCodes.Ldnull);
+        //                 continue;
+        //             }
+        //
+        //             var type = original.ReflectedType;
+        //             if (type != null && type.IsGenericType)
+        //                 il.Emit(OpCodes.Ldtoken, type);
+        //             il.Emit(OpCodes.Call, type != null && type.IsGenericType ? GetMethodFromHandle2 : GetMethodFromHandle1);
+        //             continue;
+        //         }
+        //
+        //         if (patchParam.Name == INSTANCE_PARAM)
+        //         {
+        //             if (original.IsStatic)
+        //             {
+        //                 il.Emit(OpCodes.Ldnull);
+        //             }
+        //             else
+        //             {
+        //                 var instanceIsRef = original.DeclaringType != null && AccessTools.IsStruct(original.DeclaringType);
+        //                 var parameterIsRef = patchParam.ParameterType.IsByRef;
+        //                 if (instanceIsRef == parameterIsRef)
+        //                     il.Emit(OpCodes.Ldarg_0);
+        //                 if (instanceIsRef && parameterIsRef == false)
+        //                 {
+        //                     il.Emit(OpCodes.Ldarg_0);
+        //                     il.Emit(OpCodes.Ldobj, original.DeclaringType);
+        //                 }
+        //
+        //                 if (instanceIsRef == false && parameterIsRef)
+        //                     il.Emit(OpCodes.Ldarga, 0);
+        //             }
+        //
+        //             continue;
+        //         }
+        //
+        //         if (patchParam.Name.StartsWith(INSTANCE_FIELD_PREFIX, StringComparison.Ordinal))
+        //         {
+        //             var fieldName = patchParam.Name.Substring(INSTANCE_FIELD_PREFIX.Length);
+        //             FieldInfo fieldInfo;
+        //             if (fieldName.All(char.IsDigit))
+        //             {
+        //                 fieldInfo = AccessTools.DeclaredField(original.DeclaringType, int.Parse(fieldName));
+        //                 if (fieldInfo == null)
+        //                     throw new ArgumentException(
+        //                         $"No field found at given index in class {original.DeclaringType.FullName}", fieldName);
+        //             }
+        //             else
+        //             {
+        //                 fieldInfo = AccessTools.Field(original.DeclaringType, fieldName);
+        //                 if (fieldInfo == null)
+        //                     throw new ArgumentException(
+        //                         $"No such field defined in class {original.DeclaringType.FullName}", fieldName);
+        //             }
+        //
+        //             if (fieldInfo.IsStatic)
+        //             {
+        //                 il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldsflda : OpCodes.Ldsfld, fieldInfo);
+        //             }
+        //             else
+        //             {
+        //                 il.Emit(OpCodes.Ldarg_0);
+        //                 il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldflda : OpCodes.Ldfld, fieldInfo);
+        //             }
+        //
+        //             continue;
+        //         }
+        //
+        //         // state is special too since each patch has its own local var
+        //         if (patchParam.Name == STATE_VAR)
+        //         {
+        //             if (variables.TryGetValue(patch.DeclaringType?.FullName ?? string.Empty, out var stateVar))
+        //                 il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, stateVar);
+        //             else
+        //                 il.Emit(OpCodes.Ldnull);
+        //             continue;
+        //         }
+        //
+        //         // treat __result var special
+        //         if (patchParam.Name == RESULT_VAR)
+        //         {
+        //             var returnType = AccessTools.GetReturnedType(original);
+        //             if (returnType == typeof(void))
+        //                 throw new InvalidHarmonyPatchArgumentException($"Cannot get result from void method", original, patch);
+        //             var resultType = patchParam.ParameterType;
+        //             if (resultType.IsByRef)
+        //                 resultType = resultType.GetElementType();
+        //             if (resultType.IsAssignableFrom(returnType) == false)
+        //                 throw new InvalidHarmonyPatchArgumentException(
+        //                     $"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName}", original, patch);
+        //             il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, variables[RESULT_VAR]);
+        //             continue;
+        //         }
+        //
+        //         // any other declared variables
+        //         if (variables.TryGetValue(patchParam.Name, out var localBuilder))
+        //         {
+        //             il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc, localBuilder);
+        //             continue;
+        //         }
+        //
+        //         int idx;
+        //         if (patchParam.Name.StartsWith(PARAM_INDEX_PREFIX, StringComparison.Ordinal))
+        //         {
+        //             var val = patchParam.Name.Substring(PARAM_INDEX_PREFIX.Length);
+        //             if (!int.TryParse(val, out idx))
+        //                 throw new InvalidHarmonyPatchArgumentException($"Parameter {patchParam.Name} does not contain a valid index", original, patch);
+        //             if (idx < 0 || idx >= originalParameters.Length)
+        //                 throw new InvalidHarmonyPatchArgumentException($"No parameter found at index {idx}", original, patch);
+        //         }
+        //         else
+        //         {
+        //             idx = GetArgumentIndex(patch, originalParameterNames, patchParam);
+        //             if (idx == -1)
+        //                 throw new InvalidHarmonyPatchArgumentException(
+        //                     $"Parameter \"{patchParam.Name}\" not found", original, patch);
+        //         }
+        //
+        //         //   original -> patch     opcode
+        //         // --------------------------------------
+        //         // 1 normal   -> normal  : LDARG
+        //         // 2 normal   -> ref/out : LDARGA
+        //         // 3 ref/out  -> normal  : LDARG, LDIND_x
+        //         // 4 ref/out  -> ref/out : LDARG
+        //         //
+        //         var originalIsNormal = originalParameters[idx].IsOut == false &&
+        //                                originalParameters[idx].ParameterType.IsByRef == false;
+        //         var patchIsNormal = patchParam.IsOut == false && patchParam.ParameterType.IsByRef == false;
+        //         var patchArgIndex = idx + (isInstance ? 1 : 0);
+        //
+        //         // Case 1 + 4
+        //         if (originalIsNormal == patchIsNormal)
+        //         {
+        //             il.Emit(OpCodes.Ldarg, patchArgIndex);
+        //             continue;
+        //         }
+        //
+        //         // Case 2
+        //         if (originalIsNormal && patchIsNormal == false)
+        //         {
+        //             il.Emit(OpCodes.Ldarga, patchArgIndex);
+        //             continue;
+        //         }
+        //
+        //         // Case 3
+        //         il.Emit(OpCodes.Ldarg, patchArgIndex);
+        //         il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
+        //     }
+        // }
 
         private static OpCode GetIndOpcode(Type type)
         {
@@ -633,6 +642,9 @@ namespace HarmonyLib.Internal.Patching
 
             return OpCodes.Ldind_Ref;
         }
+
+
+
 
         private static HarmonyArgument[] AllHarmonyArguments(object[] attributes)
         {
@@ -730,5 +742,216 @@ namespace HarmonyLib.Internal.Patching
 
             return -1;
         }
+
+
+        static readonly MethodInfo m_GetMethodFromHandle1 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) });
+		static readonly MethodInfo m_GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) });
+		static bool EmitOriginalBaseMethod(ILEmitter il, MethodBase original)
+		{
+			if (original is MethodInfo method)
+				il.Emit(OpCodes.Ldtoken, method);
+			else if (original is ConstructorInfo constructor)
+				il.Emit(OpCodes.Ldtoken, constructor);
+			else return false;
+
+			var type = original.ReflectedType;
+			if (type.IsGenericType) il.Emit(OpCodes.Ldtoken, type);
+			il.Emit(OpCodes.Call, type.IsGenericType ? m_GetMethodFromHandle2 : m_GetMethodFromHandle1);
+			return true;
+		}
+
+		static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch, Dictionary<string, VariableDefinition> variables, bool allowFirsParamPassthrough)
+		{
+			var isInstance = original.IsStatic is false;
+			var originalParameters = original.GetParameters();
+			var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
+
+			// check for passthrough using first parameter (which must have same type as return type)
+			var parameters = patch.GetParameters().ToList();
+			if (allowFirsParamPassthrough && patch.ReturnType != typeof(void) && parameters.Count > 0 && parameters[0].ParameterType == patch.ReturnType)
+				parameters.RemoveRange(0, 1);
+
+			foreach (var patchParam in parameters)
+			{
+				if (patchParam.Name == ORIGINAL_METHOD_PARAM)
+				{
+					if (EmitOriginalBaseMethod(il, original))
+						continue;
+
+					il.Emit(OpCodes.Ldnull);
+					continue;
+				}
+
+				if (patchParam.Name == INSTANCE_PARAM)
+				{
+					if (original.IsStatic)
+						il.Emit(OpCodes.Ldnull);
+					else
+					{
+						var instanceIsRef = original.DeclaringType is object && AccessTools.IsStruct(original.DeclaringType);
+						var parameterIsRef = patchParam.ParameterType.IsByRef;
+						if (instanceIsRef == parameterIsRef)
+						{
+							il.Emit(OpCodes.Ldarg_0);
+						}
+						if (instanceIsRef && parameterIsRef is false)
+						{
+							il.Emit(OpCodes.Ldarg_0);
+							il.Emit(OpCodes.Ldobj, original.DeclaringType);
+						}
+						if (instanceIsRef is false && parameterIsRef)
+						{
+							il.Emit(OpCodes.Ldarga, 0);
+						}
+					}
+					continue;
+				}
+
+				if (patchParam.Name.StartsWith(INSTANCE_FIELD_PREFIX, StringComparison.Ordinal))
+				{
+					var fieldName = patchParam.Name.Substring(INSTANCE_FIELD_PREFIX.Length);
+					FieldInfo fieldInfo;
+					if (fieldName.All(char.IsDigit))
+					{
+						// field access by index only works for declared fields
+						fieldInfo = AccessTools.DeclaredField(original.DeclaringType, int.Parse(fieldName));
+						if (fieldInfo is null)
+							throw new ArgumentException($"No field found at given index in class {original.DeclaringType.FullName}", fieldName);
+					}
+					else
+					{
+						fieldInfo = AccessTools.Field(original.DeclaringType, fieldName);
+						if (fieldInfo is null)
+							throw new ArgumentException($"No such field defined in class {original.DeclaringType.FullName}", fieldName);
+					}
+
+					if (fieldInfo.IsStatic)
+						il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldsflda : OpCodes.Ldsfld, fieldInfo);
+					else
+					{
+						il.Emit(OpCodes.Ldarg_0);
+						il.Emit(patchParam.ParameterType.IsByRef ? OpCodes.Ldflda : OpCodes.Ldfld, fieldInfo);
+					}
+					continue;
+				}
+
+				// state is special too since each patch has its own local var
+				if (patchParam.Name == STATE_VAR)
+				{
+					var ldlocCode = patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
+					if (variables.TryGetValue(patch.DeclaringType.FullName, out var stateVar))
+						il.Emit(ldlocCode, stateVar);
+					else
+						il.Emit(OpCodes.Ldnull);
+					continue;
+				}
+
+				// treat __result var special
+				if (patchParam.Name == RESULT_VAR)
+				{
+					var returnType = AccessTools.GetReturnedType(original);
+					if (returnType == typeof(void))
+						throw new Exception($"Cannot get result from void method {original.FullDescription()}");
+					var resultType = patchParam.ParameterType;
+					if (resultType.IsByRef)
+						resultType = resultType.GetElementType();
+					if (resultType.IsAssignableFrom(returnType) is false)
+						throw new Exception($"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName} for method {original.FullDescription()}");
+					var ldlocCode = patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
+					il.Emit(ldlocCode, variables[RESULT_VAR]);
+					continue;
+				}
+
+				// any other declared variables
+				if (variables.TryGetValue(patchParam.Name, out var localBuilder))
+				{
+					var ldlocCode = patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
+					il.Emit(ldlocCode, localBuilder);
+					continue;
+				}
+
+				int idx;
+				if (patchParam.Name.StartsWith(PARAM_INDEX_PREFIX, StringComparison.Ordinal))
+				{
+					var val = patchParam.Name.Substring(PARAM_INDEX_PREFIX.Length);
+					if (!int.TryParse(val, out idx))
+						throw new Exception($"Parameter {patchParam.Name} does not contain a valid index");
+					if (idx < 0 || idx >= originalParameters.Length)
+						throw new Exception($"No parameter found at index {idx}");
+				}
+				else
+				{
+					idx = patch.GetArgumentIndex(originalParameterNames, patchParam);
+					if (idx == -1)
+					{
+						var harmonyMethod = HarmonyMethodExtensions.GetMergedFromType(patchParam.ParameterType);
+						if (harmonyMethod.methodType is null) // MethodType default is Normal
+							harmonyMethod.methodType = MethodType.Normal;
+						var delegateOriginal = harmonyMethod.GetOriginalMethod();
+						if (delegateOriginal is MethodInfo methodInfo)
+						{
+							var delegateConstructor = patchParam.ParameterType.GetConstructor(new[] { typeof(object), typeof(IntPtr) });
+							if (delegateConstructor is object)
+							{
+								var originalType = original.DeclaringType;
+								if (methodInfo.IsStatic)
+									il.Emit(OpCodes.Ldnull);
+								else
+								{
+									il.Emit(OpCodes.Ldarg_0);
+									if (originalType.IsValueType)
+									{
+										il.Emit(OpCodes.Ldobj, originalType);
+										il.Emit(OpCodes.Box, originalType);
+									}
+								}
+
+								if (methodInfo.IsStatic is false && harmonyMethod.nonVirtualDelegate is false)
+								{
+									il.Emit(OpCodes.Dup);
+									il.Emit(OpCodes.Ldvirtftn, methodInfo);
+								}
+								else
+									il.Emit(OpCodes.Ldftn, methodInfo);
+								il.Emit(OpCodes.Newobj, delegateConstructor);
+								continue;
+							}
+						}
+
+						throw new Exception($"Parameter \"{patchParam.Name}\" not found in method {original.FullDescription()}");
+					}
+				}
+
+				//   original -> patch     opcode
+				// --------------------------------------
+				// 1 normal   -> normal  : LDARG
+				// 2 normal   -> ref/out : LDARGA
+				// 3 ref/out  -> normal  : LDARG, LDIND_x
+				// 4 ref/out  -> ref/out : LDARG
+				//
+				var originalIsNormal = originalParameters[idx].IsOut is false && originalParameters[idx].ParameterType.IsByRef is false;
+				var patchIsNormal = patchParam.IsOut is false && patchParam.ParameterType.IsByRef is false;
+				var patchArgIndex = idx + (isInstance ? 1 : 0);
+
+				// Case 1 + 4
+				if (originalIsNormal == patchIsNormal)
+				{
+					il.Emit(OpCodes.Ldarg, patchArgIndex);
+					continue;
+				}
+
+				// Case 2
+				if (originalIsNormal && patchIsNormal is false)
+				{
+					il.Emit(OpCodes.Ldarga, patchArgIndex);
+					continue;
+				}
+
+				// Case 3
+				il.Emit(OpCodes.Ldarg, patchArgIndex);
+				il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
+			}
+		}
+
     }
 }

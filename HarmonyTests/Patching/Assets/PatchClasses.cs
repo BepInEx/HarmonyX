@@ -984,8 +984,10 @@ namespace HarmonyLibTests.Assets
 
 		[HarmonyPrefix]
 		[HarmonyPriority(200)]
-		public static void Prefix4(ref string __result)
+		public static void Prefix4(ref string __result, ref bool __runOriginal)
 		{
+			if (!__runOriginal)
+				return;
 			events.Add(nameof(Prefix4));
 		}
 

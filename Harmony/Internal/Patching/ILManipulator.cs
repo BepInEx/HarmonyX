@@ -128,9 +128,9 @@ namespace HarmonyLib.Internal.Patching
             foreach (var uIns in instructions)
 	            uIns.Operand = uIns.Instruction.opcode.OperandType switch
 	            {
-		            SRE.OperandType.ShortInlineBrTarget => instructions[(int)uIns.Operand],
-		            SRE.OperandType.InlineBrTarget => instructions[(int)uIns.Operand],
-		            SRE.OperandType.InlineSwitch => ((int[])uIns.Operand).Select(i => instructions[i]).ToArray(),
+		            SRE.OperandType.ShortInlineBrTarget => instructions[(int)uIns.Operand].Instruction,
+		            SRE.OperandType.InlineBrTarget => instructions[(int)uIns.Operand].Instruction,
+		            SRE.OperandType.InlineSwitch => ((int[])uIns.Operand).Select(i => instructions[i].Instruction).ToArray(),
 		            _ => uIns.Operand
 	            };
 
@@ -200,7 +200,8 @@ namespace HarmonyLib.Internal.Patching
 
         public List<CodeInstruction> GetInstructions(SRE.ILGenerator il, MethodBase original = null)
         {
-            return ApplyTranspilers(il, original,vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).ToList();
+	        return MakeBranchesLong(ApplyTranspilers(il, original,
+		        vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel)).ToList();
         }
 
         private IEnumerable<CodeInstruction> ApplyTranspilers(SRE.ILGenerator il, MethodBase original, Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
@@ -218,11 +219,12 @@ namespace HarmonyLib.Internal.Patching
 	        {
 		        var args = GetTranspilerArguments(il, transpiler, tempInstructions, original);
 
-		        Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.GetID()}");
-		        tempInstructions = MakeBranchesLong(transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>);
+		        Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.FullDescription()}");
+		        var newInstructions = transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>;
+		        tempInstructions = MakeBranchesLong(newInstructions).ToList();
 	        }
 
-	        return tempInstructions.ToList();
+	        return tempInstructions;
         }
 
         public Dictionary<int, CodeInstruction> GetIndexedInstructions(SRE.ILGenerator il)
