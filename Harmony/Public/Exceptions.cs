@@ -20,7 +20,7 @@ namespace HarmonyLib
         public MethodInfo Patch { get; }
 
         /// <inheritdoc />
-        public override string Message => $"({Patch.GetID()}): {base.Message}";
+        public override string Message => $"({Patch.FullDescription()}): {base.Message}";
 
         /// <summary>
         ///     Constructs a new exception instance.
