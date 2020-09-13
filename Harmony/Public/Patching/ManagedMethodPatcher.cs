@@ -5,6 +5,7 @@ using HarmonyLib.Internal.Util;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
+using MethodBody = Mono.Cecil.Cil.MethodBody;
 
 namespace HarmonyLib.Public.Patching
 {
@@ -23,6 +24,7 @@ namespace HarmonyLib.Public.Patching
 			(Action<ILHook, bool>) IsAppliedSetter.CreateDelegate<Action<ILHook, bool>>();
 
 		private ILHook ilHook;
+		private MethodBody hookBody;
 
 		/// <inheritdoc />
 		public ManagedMethodPatcher(MethodBase original) : base(original) { }
@@ -39,12 +41,20 @@ namespace HarmonyLib.Public.Patching
 			ilHook ??= new ILHook(Original, Manipulator, new ILHookConfig {ManualApply = true});
 			// Reset IsApplied to force MonoMod to reapply the ILHook without removing it
 			SetIsApplied(ilHook, false);
-			ilHook.Apply();
+			try
+			{
+				ilHook.Apply();
+			}
+			catch (Exception e)
+			{
+				throw HarmonyException.Create(e, hookBody);
+			}
 			return ilHook.GetCurrentTarget();
 		}
 
 		private void Manipulator(ILContext ctx)
 		{
+			hookBody = ctx.Body;
 			HarmonyManipulator.Manipulate(Original, Original.GetPatchInfo(), ctx);
 		}
 
