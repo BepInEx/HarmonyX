@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 #endif
 using HarmonyLib;
+using MonoMod.RuntimeDetour;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using NUnit.Framework.Interfaces;
@@ -24,6 +25,20 @@ namespace HarmonyLibTests
 
 	public static class TestTools
 	{
+		public static long GetMethodStart(MethodBase method, out Exception exception)
+		{
+			try
+			{
+				exception = null;
+				return method.Pin().GetNativeStart().ToInt64();
+			}
+			catch (Exception e)
+			{
+				exception = e;
+				return 0;
+			}
+		}
+
 		// Change this from TestContext.Out to TestContext.Error for immediate output to stderr to help diagnose crashes.
 		// Note: Must be a property rather than a field, since the specific TestContext streams can change between tests.
 		static TextWriter LogWriter => TestContext.Out;

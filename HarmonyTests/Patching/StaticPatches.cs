@@ -59,9 +59,9 @@ namespace HarmonyLibTests.Patching
 			_ = patcher.AddPostfix(postfix);
 			_ = patcher.AddTranspiler(transpiler);
 
-			var originalMethodStartPre = Memory.GetMethodStart(originalMethod, out _);
+			var originalMethodStartPre = TestTools.GetMethodStart(originalMethod, out _);
 			_ = patcher.Patch();
-			var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out _);
+			var originalMethodStartPost = TestTools.GetMethodStart(originalMethod, out _);
 			Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
 
 			Class1.Method1();
@@ -97,9 +97,9 @@ namespace HarmonyLibTests.Patching
 			_ = patcher.AddPostfix(postfix);
 			_ = patcher.AddTranspiler(transpiler);
 
-			var originalMethodStartPre = Memory.GetMethodStart(originalMethod, out _);
+			var originalMethodStartPre = TestTools.GetMethodStart(originalMethod, out _);
 			_ = patcher.Patch();
-			var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out _);
+			var originalMethodStartPost = TestTools.GetMethodStart(originalMethod, out _);
 			Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
 
 			new Class2().Method2();
@@ -129,9 +129,9 @@ namespace HarmonyLibTests.Patching
 			Assert.NotNull(patcher);
 			_ = patcher.AddPrefix(prefix);
 
-			var originalMethodStartPre = Memory.GetMethodStart(originalMethod, out _);
+			var originalMethodStartPre = TestTools.GetMethodStart(originalMethod, out _);
 			_ = patcher.Patch();
-			var originalMethodStartPost = Memory.GetMethodStart(originalMethod, out _);
+			var originalMethodStartPost = TestTools.GetMethodStart(originalMethod, out _);
 			Assert.AreEqual(originalMethodStartPre, originalMethodStartPost);
 
 			(new Class4()).Method4("foo");
