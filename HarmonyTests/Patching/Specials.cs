@@ -10,7 +10,7 @@ namespace HarmonyLibTests.Patching
 	public class Specials : TestLogger
 	{
 		/* TODO - patching HttpWebRequest.GetResponse does not work
-		 * 
+		 *
 		[Test]
 		public void Test_HttpWebRequestGetResponse()
 		{
@@ -67,8 +67,6 @@ namespace HarmonyLibTests.Patching
 		[Test, NonParallelizable]
 		public void Test_Patch_Returning_Structs([Values(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)] int n, [Values("I", "S")] string type)
 		{
-			StructReturnBuffer.ResetCaches();
-
 			var name = $"{type}M{n:D2}";
 
 			var patchClass = typeof(ReturningStructs_Patch);
