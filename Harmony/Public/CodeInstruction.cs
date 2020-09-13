@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace HarmonyLib
@@ -187,9 +188,35 @@ namespace HarmonyLib
 				list.Add($"EX_{block.blockType.ToString().Replace("Block", "")}");
 
 			var extras = list.Count > 0 ? $" [{string.Join(", ", list.ToArray())}]" : "";
-			var operandStr = Emitter.FormatArgument(operand);
+			var operandStr = FormatArgument(operand);
 			if (operandStr.Length > 0) operandStr = " " + operandStr;
 			return opcode + operandStr + extras;
+		}
+
+		internal static string FormatArgument(object argument, string extra = null)
+		{
+			if (argument is null) return "NULL";
+			var type = argument.GetType();
+
+			if (argument is MethodBase method)
+				return method.FullDescription() + (extra is object ? " " + extra : "");
+
+			if (argument is FieldInfo field)
+				return $"{field.FieldType.FullDescription()} {field.DeclaringType.FullDescription()}::{field.Name}";
+
+			if (type == typeof(Label))
+				return $"Label{((Label)argument).GetHashCode()}";
+
+			if (type == typeof(Label[]))
+				return $"Labels{string.Join(",", ((Label[])argument).Select(l => l.GetHashCode().ToString()).ToArray())}";
+
+			if (type == typeof(LocalBuilder))
+				return $"{((LocalBuilder)argument).LocalIndex} ({((LocalBuilder)argument).LocalType})";
+
+			if (type == typeof(string))
+				return argument.ToString().ToLiteral();
+
+			return argument.ToString().Trim();
 		}
 	}
 }
