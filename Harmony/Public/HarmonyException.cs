@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using HarmonyLib.Internal.Patching;
+using Mono.Cecil.Cil;
 
 namespace HarmonyLib
 {
@@ -32,17 +34,22 @@ namespace HarmonyLib
 			this.errorOffset = errorOffset;
 		}
 
-		internal static Exception Create(Exception ex, Dictionary<int, CodeInstruction> finalInstructions)
+		internal static Exception Create(Exception ex, MethodBody body)
 		{
 			var match = Regex.Match(ex.Message.TrimEnd(), "Reason: Invalid IL code in.+: IL_(\\d{4}): (.+)$");
 			if (match.Success is false) return ex;
 
+			var finalInstructions = ILManipulator.GetInstructions(body) ?? new Dictionary<int, CodeInstruction>();
+
 			var offset = int.Parse(match.Groups[1].Value, System.Globalization.NumberStyles.HexNumber);
 			_ = Regex.Replace(match.Groups[2].Value, " {2,}", " ");
-			if (ex is HarmonyException hEx && finalInstructions.Count != 0)
+			if (ex is HarmonyException hEx)
 			{
-				hEx.instructions = finalInstructions;
-				hEx.errorOffset = offset;
+				if (finalInstructions.Count != 0)
+				{
+					hEx.instructions = finalInstructions;
+					hEx.errorOffset = offset;
+				}
 				return hEx;
 			}
 			return new HarmonyException(ex, finalInstructions, offset);
