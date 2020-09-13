@@ -53,9 +53,17 @@ namespace HarmonyLib.Public.Patching
 		public abstract MethodBase DetourTo(MethodBase replacement);
 
 		/// <summary>
-		/// Creates a copy of the original method.
+		/// Creates a copy of the original method. If not possible, creates a method that calls into the original method.
 		/// </summary>
-		/// <returns>Copy of the original method that is transpileable.</returns>
+		/// <returns>Copy of the original method that is transpileable. If not possible, returns <b>null</b>.</returns>
+		/// <remarks>
+		/// This method creates a pure copy of the original method that is usable with transpilers. Currently, this
+		/// method is used to generate reverse patchers.
+		/// If a purse IL copy is not possible, a best approximation should be generated
+		/// (e.g. a wrapper that calls original method).
+		/// If no best approximation is possible, this method should return <b>null</b>, in which case generating reverse
+		/// patchers for the method will fail.
+		/// </remarks>
 		///
 		public abstract DynamicMethodDefinition CopyOriginal();
 	}
