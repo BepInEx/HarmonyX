@@ -81,7 +81,7 @@ namespace HarmonyLib.Internal.Patching
                 return sb.ToString();
             });
 
-            MakePatched(original, null, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
+            MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
         }
 
         /// <summary>Mark method for no inlining</summary>
@@ -403,7 +403,7 @@ namespace HarmonyLib.Internal.Patching
                 il.Emit(OpCodes.Ldloc, returnValueVar);
         }
 
-        private static void MakePatched(MethodBase original, MethodBase source, ILContext ctx,
+        private static void MakePatched(MethodBase original, ILContext ctx,
                                         List<MethodInfo> prefixes, List<MethodInfo> postfixes,
                                         List<MethodInfo> transpilers, List<MethodInfo> finalizers)
         {

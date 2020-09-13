@@ -3,8 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
+using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
+using MonoMod.Utils;
+using MethodBody = Mono.Cecil.Cil.MethodBody;
+using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLib
 {
@@ -44,13 +50,7 @@ namespace HarmonyLib
 			}
 			catch (Exception ex)
 			{
-				Dictionary<int, CodeInstruction> finalInstructions = new Dictionary<int, CodeInstruction>();
-				if (dmd != null)
-				{
-					var manipulator = new ILManipulator(dmd.Definition.Body);
-					finalInstructions = manipulator.GetIndexedInstructions(PatchProcessor.CreateILGenerator());
-				}
-				throw HarmonyException.Create(ex, finalInstructions);
+				throw HarmonyException.Create(ex, dmd?.Definition?.Body);
 			}
 		}
 
@@ -61,34 +61,74 @@ namespace HarmonyLib
 			if (standin.method is null)
 				throw new ArgumentNullException($"{nameof(standin)}.{nameof(standin.method)}");
 
-			var debug = (standin.debug ?? false) || Harmony.DEBUG;
-
 			var transpilers = new List<MethodInfo>();
 			if (standin.reversePatchType == HarmonyReversePatchType.Snapshot)
 			{
 				var info = Harmony.GetPatchInfo(original);
-				transpilers.AddRange(GetSortedPatchMethods(original, info.Transpilers.ToArray(), debug));
+				transpilers.AddRange(GetSortedPatchMethods(original, info.Transpilers.ToArray()));
 			}
 			if (postTranspiler is object) transpilers.Add(postTranspiler);
 
-			var empty = new List<MethodInfo>();
-			var patcher = new MethodPatcher(standin.method, original, empty, empty, transpilers, empty, debug);
-			var replacement = patcher.CreateReplacement(out var finalInstructions);
-			if (replacement is null) throw new MissingMethodException($"Cannot create replacement for {standin.method.FullDescription()}");
+			MethodBody patchBody = null;
+			var hook = new ILHook(standin.method, ctx =>
+			{
+				if (!(original is MethodInfo mi))
+					return;
+
+				patchBody = ctx.Body;
+
+				// Make a cecil copy of the original method for convenience sake
+				// Here original can have no body, in which case we generate a wrapper that calls it
+				// Yes, it's not great, but it's better than hard crashing or giving no method to the user at all
+				var manipulator = original.HasMethodBody() ? GetManagedMethodManipulator(mi) : GetBodylessManipulator(mi);
+
+				// Copy over variables from the original code
+				ctx.Body.Variables.Clear();
+				foreach (var variableDefinition in manipulator.Body.Variables)
+					ctx.Body.Variables.Add(new VariableDefinition(ctx.Module.ImportReference(variableDefinition.VariableType)));
+
+				foreach (var methodInfo in transpilers)
+					manipulator.AddTranspiler(methodInfo);
+
+				manipulator.WriteTo(ctx.Body, standin.method);
+
+				// Write a ret in case it got removed (wrt. HarmonyManipulator)
+				ctx.IL.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+			}, new ILHookConfig { ManualApply = true });
 
 			try
 			{
-				var errorString = Memory.DetourMethod(standin.method, replacement);
-				if (errorString is object)
-					throw new FormatException($"Method {standin.method.FullDescription()} cannot be patched. Reason: {errorString}");
+				hook.Apply();
 			}
 			catch (Exception ex)
 			{
-				throw HarmonyException.Create(ex, finalInstructions);
+				throw HarmonyException.Create(ex, patchBody);
 			}
 
+			var replacement = hook.GetCurrentTarget() as MethodInfo;
 			PatchTools.RememberObject(standin.method, replacement);
 			return replacement;
+
+			static ILManipulator GetBodylessManipulator(MethodInfo original)
+			{
+				var paramList = new List<Type>();
+				if (!original.IsStatic)
+					paramList.Add(original.GetThisParamType());
+				paramList.AddRange(original.GetParameters().Select(p => p.ParameterType));
+				var dmd = new DynamicMethodDefinition("OrigWrapper", original.ReturnType, paramList.ToArray());
+				var il = dmd.GetILGenerator();
+				for (var i = 0; i < paramList.Count; i++)
+					il.Emit(OpCodes.Ldarg, i);
+				il.Emit(OpCodes.Call, original);
+				il.Emit(OpCodes.Ret);
+				return new ILManipulator(dmd.Definition.Body);
+			}
+
+			static ILManipulator GetManagedMethodManipulator(MethodInfo original)
+			{
+				var dmd = new DynamicMethodDefinition(original);
+				return new ILManipulator(dmd.Definition.Body);
+			}
 		}
 	}
 }

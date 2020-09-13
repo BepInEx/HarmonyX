@@ -36,6 +36,7 @@ namespace HarmonyLib.Internal.Patching
         private readonly IEnumerable<UnresolvedInstruction> codeInstructions;
         private readonly List<MethodInfo> transpilers = new List<MethodInfo>();
 
+        public MethodBody Body { get; }
 
         static ILManipulator()
         {
@@ -58,6 +59,7 @@ namespace HarmonyLib.Internal.Patching
         /// <param name="body">Body of the method to transpile</param>
         public ILManipulator(MethodBody body)
         {
+				Body = body;
             codeInstructions = ReadBody(body);
         }
 
@@ -373,6 +375,21 @@ namespace HarmonyLib.Internal.Patching
                     ins.opcode = longOpCode;
                 yield return ins;
             }
+        }
+
+        public static Dictionary<int, CodeInstruction> GetInstructions(MethodBody body)
+        {
+	        if (body == null)
+		        return null;
+	        try
+	        {
+					return new ILManipulator(body).GetIndexedInstructions(PatchProcessor.CreateILGenerator());
+	        }
+	        catch (Exception e)
+	        {
+		        Logger.Log(Logger.LogChannel.Warn, () => $"Could not read instructions of {body.Method.GetID()}: {e.Message}");
+		        return null;
+	        }
         }
     }
 }
