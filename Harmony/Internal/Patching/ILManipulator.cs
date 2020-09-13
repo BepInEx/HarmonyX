@@ -22,7 +22,7 @@ namespace HarmonyLib.Internal.Patching
     /// </summary>
     internal class ILManipulator
     {
-	    class UnresolvedInstruction
+	    class RawInstruction
 	    {
 		    public CodeInstruction Instruction { get; set; }
 		    public object Operand { get; set; }
@@ -33,7 +33,7 @@ namespace HarmonyLib.Internal.Patching
         private static readonly Dictionary<short, SRE.OpCode> SREOpCodes = new Dictionary<short, SRE.OpCode>();
         private static readonly Dictionary<short, OpCode> CecilOpCodes = new Dictionary<short, OpCode>();
 
-        private readonly IEnumerable<UnresolvedInstruction> codeInstructions;
+        private readonly IEnumerable<RawInstruction> codeInstructions;
         private readonly List<MethodInfo> transpilers = new List<MethodInfo>();
 
         public MethodBody Body { get; }
@@ -94,12 +94,12 @@ namespace HarmonyLib.Internal.Patching
             return new int[0];
         }
 
-        private IEnumerable<UnresolvedInstruction> ReadBody(MethodBody body)
+        private IEnumerable<RawInstruction> ReadBody(MethodBody body)
         {
-            var instructions = new List<UnresolvedInstruction>(body.Instructions.Count);
+            var instructions = new List<RawInstruction>(body.Instructions.Count);
 
-            UnresolvedInstruction ReadInstruction(Instruction ins) =>
-	            new UnresolvedInstruction
+            RawInstruction ReadInstruction(Instruction ins) =>
+	            new RawInstruction
 	            {
 		            Instruction = new CodeInstruction(SREOpCodes[ins.OpCode.Value]),
 		            Operand = ins.OpCode.OperandType switch
@@ -177,7 +177,7 @@ namespace HarmonyLib.Internal.Patching
             transpilers.Add(transpiler);
         }
 
-        private object[] GetTranpilerArguments(SRE.ILGenerator il, MethodInfo transpiler,
+        private object[] GetTranspilerArguments(SRE.ILGenerator il, MethodInfo transpiler,
                                                IEnumerable<CodeInstruction> instructions, MethodBase orignal = null)
         {
             var result = new List<object>();
@@ -193,24 +193,36 @@ namespace HarmonyLib.Internal.Patching
             return result.ToArray();
         }
 
-        private List<CodeInstruction> ApplyTranspilers(IEnumerable<CodeInstruction> instructions, SRE.ILGenerator il, MethodBase original = null)
+        public IEnumerable<KeyValuePair<SRE.OpCode, object>> GetRawInstructions()
         {
-            var tempInstructions = MakeBranchesLong(instructions);
-
-            foreach (var transpiler in transpilers)
-            {
-                var args = GetTranpilerArguments(il, transpiler, tempInstructions, original);
-
-                Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.GetID()}");
-                tempInstructions = MakeBranchesLong(transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>);
-            }
-
-            return tempInstructions.ToList();
+	        return codeInstructions.Select(i => new KeyValuePair<SRE.OpCode, object>(i.Instruction.opcode, i.Operand));
         }
 
-        public List<CodeInstruction> GetInstructions(SRE.ILGenerator il)
+        public List<CodeInstruction> GetInstructions(SRE.ILGenerator il, MethodBase original = null)
         {
-            return Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).Select(i => i.Instruction).ToList();
+            return ApplyTranspilers(il, original,vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).ToList();
+        }
+
+        private IEnumerable<CodeInstruction> ApplyTranspilers(SRE.ILGenerator il, MethodBase original, Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
+        {
+	        // Step 1: Prepare labels for instructions. Use ToList to force
+	        var instructions = Prepare(getLocal, defineLabel).Select(i => i.Instruction).ToList();
+
+	        if (transpilers.Count == 0)
+		        return instructions;
+
+	        // Step 2: Run the code instructions through transpilers
+	        var tempInstructions = MakeBranchesLong(instructions);
+
+	        foreach (var transpiler in transpilers)
+	        {
+		        var args = GetTranspilerArguments(il, transpiler, tempInstructions, original);
+
+		        Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.GetID()}");
+		        tempInstructions = MakeBranchesLong(transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>);
+	        }
+
+	        return tempInstructions.ToList();
         }
 
         public Dictionary<int, CodeInstruction> GetIndexedInstructions(SRE.ILGenerator il)
@@ -225,7 +237,7 @@ namespace HarmonyLib.Internal.Patching
 	        return Prepare(vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel).ToDictionary(i => Grow(ref size, i.CILInstruction.GetSize()), i => i.Instruction);
         }
 
-        private IEnumerable<UnresolvedInstruction> Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
+        private IEnumerable<RawInstruction> Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal, Func<SRE.Label> defineLabel)
         {
             foreach (var unresolvedInstruction in codeInstructions)
             {
@@ -298,15 +310,11 @@ namespace HarmonyLib.Internal.Patching
             // By defining the first label we'll ensure label count is correct
             il.DefineLabel();
 
-            // Step 1: Prepare labels for instructions. Use ToList to force
-            var instructions = Prepare(vDef => il.GetLocal(vDef), il.DefineLabel).Select(i => i.Instruction).ToList();
-
-            // Step 2: Run the code instruction through transpilers
-            var newInstructions = ApplyTranspilers(instructions, cil, original);
-
+            // Step 1: Apply transpilers
             // We don't remove trailing `ret`s because we need to do so only if prefixes/postfixes are present
+            var newInstructions = ApplyTranspilers(cil, original, vDef => il.GetLocal(vDef), il.DefineLabel);
 
-            // Step 3: Emit code
+            // Step 2: Emit code
             foreach (var ins in newInstructions)
             {
                 ins.labels.ForEach(l => il.MarkLabel(l));
@@ -339,7 +347,7 @@ namespace HarmonyLib.Internal.Patching
             // Note: We lose all unassigned labels here along with any way to log them
             // On the contrary, we gain better logging anyway down the line by using Cecil
 
-            // Step 4: Run the code through raw IL manipulators (if any)
+            // Step 3: Run the code through raw IL manipulators (if any)
             // TODO: IL Manipulators
         }
 

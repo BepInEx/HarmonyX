@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using HarmonyLib.Internal.Patching;
 using HarmonyLib.Public.Patching;
 
 namespace HarmonyLib
@@ -267,7 +268,7 @@ namespace HarmonyLib
 		///
 		public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, ILGenerator generator = null)
 		{
-			return MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, 0);
+			return PatchFunctions.ApplyTranspilers(original, generator ?? CreateILGenerator(original)).ToList();
 		}
 
 		/// <summary>Returns the methods unmodified list of code instructions</summary>
@@ -278,7 +279,7 @@ namespace HarmonyLib
 		public static List<CodeInstruction> GetOriginalInstructions(MethodBase original, out ILGenerator generator)
 		{
 			generator = CreateILGenerator(original);
-			return MethodCopier.GetInstructions(generator, original, 0);
+			return PatchFunctions.ApplyTranspilers(original, generator).ToList();
 		}
 
 		/// <summary>Returns the methods current list of code instructions after all existing transpilers have been applied</summary>
@@ -289,7 +290,7 @@ namespace HarmonyLib
 		///
 		public static List<CodeInstruction> GetCurrentInstructions(MethodBase original, int maxTranspilers = int.MaxValue, ILGenerator generator = null)
 		{
-			return MethodCopier.GetInstructions(generator ?? CreateILGenerator(original), original, maxTranspilers);
+			return PatchFunctions.ApplyTranspilers(original, generator ?? CreateILGenerator(original), maxTranspilers).ToList();
 		}
 
 		/// <summary>Returns the methods current list of code instructions after all existing transpilers have been applied</summary>
@@ -301,7 +302,7 @@ namespace HarmonyLib
 		public static List<CodeInstruction> GetCurrentInstructions(MethodBase original, out ILGenerator generator, int maxTranspilers = int.MaxValue)
 		{
 			generator = CreateILGenerator(original);
-			return MethodCopier.GetInstructions(generator, original, maxTranspilers);
+			return PatchFunctions.ApplyTranspilers(original, generator, maxTranspilers).ToList();
 		}
 
 		/// <summary>A low level way to read the body of a method. Used for quick searching in methods</summary>
@@ -310,8 +311,10 @@ namespace HarmonyLib
 		///
 		public static IEnumerable<KeyValuePair<OpCode, object>> ReadMethodBody(MethodBase method)
 		{
-			return MethodBodyReader.GetInstructions(CreateILGenerator(method), method)
-				.Select(instr => new KeyValuePair<OpCode, object>(instr.opcode, instr.operand));
+			var original = method.GetMethodPatcher().CopyOriginal();
+			if (original == null)
+				return null;
+			return new ILManipulator(original.Definition.Body).GetRawInstructions();
 		}
 
 		/// <summary>A low level way to read the body of a method. Used for quick searching in methods</summary>
@@ -321,8 +324,13 @@ namespace HarmonyLib
 		///
 		public static IEnumerable<KeyValuePair<OpCode, object>> ReadMethodBody(MethodBase method, ILGenerator generator)
 		{
-			return MethodBodyReader.GetInstructions(generator, method)
-				.Select(instr => new KeyValuePair<OpCode, object>(instr.opcode, instr.operand));
+			var original = method.GetMethodPatcher().CopyOriginal();
+			if (original == null)
+				return null;
+			var manipulator = new ILManipulator(original.Definition.Body);
+			// Force label generation
+			_ = manipulator.GetInstructions(generator);
+			return manipulator.GetRawInstructions();
 		}
 	}
 }
