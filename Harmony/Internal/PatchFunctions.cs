@@ -2,15 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
-using MonoMod.Utils;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
-using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLib
 {
@@ -77,10 +76,13 @@ namespace HarmonyLib
 
 				patchBody = ctx.Body;
 
-				// Make a cecil copy of the original method for convenience sake
-				// Here original can have no body, in which case we generate a wrapper that calls it
-				// Yes, it's not great, but it's better than hard crashing or giving no method to the user at all
-				var manipulator = original.HasMethodBody() ? GetManagedMethodManipulator(mi) : GetBodylessManipulator(mi);
+				var patcher = mi.GetMethodPatcher();
+				var dmd = patcher.CopyOriginal();
+
+				if (dmd == null)
+					throw new NullReferenceException($"Cannot reverse patch {mi.FullDescription()}: method patcher ({patcher.GetType().FullDescription()}) can't copy original method body");
+
+				var manipulator = new ILManipulator(dmd.Definition.Body);
 
 				// Copy over variables from the original code
 				ctx.Body.Variables.Clear();
@@ -108,27 +110,27 @@ namespace HarmonyLib
 			var replacement = hook.GetCurrentTarget() as MethodInfo;
 			PatchTools.RememberObject(standin.method, replacement);
 			return replacement;
+		}
 
-			static ILManipulator GetBodylessManipulator(MethodInfo original)
+		internal static IEnumerable<CodeInstruction> ApplyTranspilers(MethodBase methodBase, ILGenerator generator, int maxTranspilers = 0)
+		{
+			var patcher = methodBase.GetMethodPatcher();
+			var dmd = patcher.CopyOriginal();
+
+			if (dmd == null)
+				throw new NullReferenceException($"Cannot reverse patch {methodBase.FullDescription()}: method patcher ({patcher.GetType().FullDescription()}) can't copy original method body");
+
+			var manipulator = new ILManipulator(dmd.Definition.Body);
+
+			var info = methodBase.GetPatchInfo();
+			if (info is object)
 			{
-				var paramList = new List<Type>();
-				if (!original.IsStatic)
-					paramList.Add(original.GetThisParamType());
-				paramList.AddRange(original.GetParameters().Select(p => p.ParameterType));
-				var dmd = new DynamicMethodDefinition("OrigWrapper", original.ReturnType, paramList.ToArray());
-				var il = dmd.GetILGenerator();
-				for (var i = 0; i < paramList.Count; i++)
-					il.Emit(OpCodes.Ldarg, i);
-				il.Emit(OpCodes.Call, original);
-				il.Emit(OpCodes.Ret);
-				return new ILManipulator(dmd.Definition.Body);
+				var sortedTranspilers = GetSortedPatchMethods(methodBase, info.transpilers);
+				for (var i = 0; i < maxTranspilers && i < sortedTranspilers.Count; i++)
+					manipulator.AddTranspiler(sortedTranspilers[i]);
 			}
 
-			static ILManipulator GetManagedMethodManipulator(MethodInfo original)
-			{
-				var dmd = new DynamicMethodDefinition(original);
-				return new ILManipulator(dmd.Definition.Body);
-			}
+			return manipulator.GetInstructions(generator, methodBase);
 		}
 	}
 }

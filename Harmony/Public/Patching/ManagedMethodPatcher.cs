@@ -52,6 +52,12 @@ namespace HarmonyLib.Public.Patching
 			return ilHook.GetCurrentTarget();
 		}
 
+		/// <inheritdoc />
+		public override DynamicMethodDefinition CopyOriginal()
+		{
+			return new DynamicMethodDefinition(Original);
+		}
+
 		private void Manipulator(ILContext ctx)
 		{
 			hookBody = ctx.Body;

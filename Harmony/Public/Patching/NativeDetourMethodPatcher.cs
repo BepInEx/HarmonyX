@@ -92,6 +92,20 @@ namespace HarmonyLib.Public.Patching
 			return replacement;
 		}
 
+		/// <inheritdoc />
+		public override DynamicMethodDefinition CopyOriginal()
+		{
+			if (!(Original is MethodInfo mi))
+				return null;
+			var dmd = new DynamicMethodDefinition("OrigWrapper", returnType, argTypes);
+			var il = dmd.GetILGenerator();
+			for (var i = 0; i < argTypes.Length; i++)
+				il.Emit(OpCodes.Ldarg, i);
+			il.Emit(OpCodes.Call, mi);
+			il.Emit(OpCodes.Ret);
+			return dmd;
+		}
+
 		private Delegate CreateDelegate(Type delegateType, MethodBase mb)
 		{
 			if (mb is DynamicMethod dm)

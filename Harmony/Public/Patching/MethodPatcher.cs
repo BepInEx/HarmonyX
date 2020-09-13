@@ -51,5 +51,12 @@ namespace HarmonyLib.Public.Patching
 		/// <returns><see cref="MethodBase"/> of the hook, if it's different from `replacement`.</returns>
 		///
 		public abstract MethodBase DetourTo(MethodBase replacement);
+
+		/// <summary>
+		/// Creates a copy of the original method.
+		/// </summary>
+		/// <returns>Copy of the original method that is transpileable.</returns>
+		///
+		public abstract DynamicMethodDefinition CopyOriginal();
 	}
 }
