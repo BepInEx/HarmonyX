@@ -98,6 +98,7 @@ namespace HarmonyLib
 
 	/// <summary>The base class for all Harmony annotations (not meant to be used directly)</summary>
 	///
+	[JetBrains.Annotations.MeansImplicitUse]
 	public class HarmonyAttribute : Attribute
 	{
 		/// <summary>The common information for all attributes</summary>
