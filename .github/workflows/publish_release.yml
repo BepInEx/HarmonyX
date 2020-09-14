@@ -1,0 +1,45 @@
+name: Publish Release on GitHub
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Get Version
+      id: get_version
+      shell: bash
+      run: |
+        tag=${GITHUB_REF##*/}
+        echo Current branch: ${tag:1}
+        echo ::set-output name=version_num::${tag:1}
+    - name: Run build script
+      run: ./build.ps1 -Target Build
+      shell: powershell
+    - name: Create Release
+      id:  create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: ""
+        draft: false
+        prerelease: false
+    - name: Upload Release Asset
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./Harmony/bin/Release/HarmonyX.${{ steps.get_version.outputs.version_num }}.nupkg
+        asset_name: HarmonyX.${{ steps.get_version.outputs.version_num }}.nupkg
+        asset_content_type: application/zip
