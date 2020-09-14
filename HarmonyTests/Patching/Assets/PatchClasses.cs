@@ -488,6 +488,32 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public class ExplicitAttributesPatch
+	{
+		public static bool prefixed = false;
+		public static bool postfixed = false;
+
+		[HarmonyPatch(typeof(AttributesClass), "Method")]
+		[HarmonyPrefix]
+		public static void Patch1()
+		{
+			prefixed = true;
+		}
+
+		[HarmonyPatch(typeof(AttributesClass), "Method")]
+		[HarmonyPostfix]
+		public static void Patch2()
+		{
+			postfixed = true;
+		}
+
+		public static void ResetTest()
+		{
+			prefixed = false;
+			postfixed = false;
+		}
+	}
+
 	public class Class10
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]

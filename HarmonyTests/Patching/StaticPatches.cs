@@ -223,7 +223,7 @@ namespace HarmonyLibTests.Patching
 
 			(new AttributesClass()).Method("foo");
 			Assert.True(AttributesPatch.targeted, "TargetMethod was not executed");
-			Assert.True(AttributesPatch.postfixed, "Prefix was not executed");
+			Assert.True(AttributesPatch.prefixed, "Prefix was not executed");
 			Assert.True(AttributesPatch.postfixed, "Postfix was not executed");
 		}
 
@@ -401,6 +401,32 @@ namespace HarmonyLibTests.Patching
 
 			Assert.IsTrue(Class18Patch.prefixExecuted, "prefixExecuted");
 			Assert.AreEqual((float)1, color.r);
+		}
+
+		[Test]
+		public void Test_Explicit_Attributes()
+		{
+			var originalClass = typeof(AttributesClass);
+			Assert.NotNull(originalClass);
+
+			var originalMethod = originalClass.GetMethod("Method");
+			Assert.NotNull(originalMethod);
+
+			var instance = new Harmony("test");
+			Assert.NotNull(instance);
+
+			var patchClass = typeof(ExplicitAttributesPatch);
+			Assert.NotNull(patchClass);
+
+			ExplicitAttributesPatch.ResetTest();
+
+			var patcher = instance.CreateClassProcessor(patchClass, true);
+			Assert.NotNull(patcher);
+			Assert.NotNull(patcher.Patch());
+
+			(new AttributesClass()).Method("foo");
+			Assert.True(ExplicitAttributesPatch.prefixed, "Prefix was not executed");
+			Assert.True(ExplicitAttributesPatch.postfixed, "Postfix was not executed");
 		}
 	}
 }
