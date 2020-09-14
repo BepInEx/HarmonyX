@@ -28,7 +28,7 @@ Important aspects of HarmonyX include:
 * Patching feature parity with Harmony while reducing code duplication with MonoMod
 * Full interop with [MonoMod.RuntimeDetour](https://github.com/MonoMod/MonoMod/blob/master/README-RuntimeDetour.md): patches made with either can coexist
 * Easily extendable patching: [built-in support for native method patching](https://github.com/BepInEx/HarmonyX/wiki/Valid-patch-targets#native-methods-marked-extern) and possibility to extend to other patch targets (e.g. IL2CPP)
-* Fixes, changes and optimizations for game modding
+* Fixes, changes and optimizations aimed at Unity modding
 
 HarmonyX is powered by [MonoMod](https://github.com/MonoMod) and its runtime patching tools.
 
