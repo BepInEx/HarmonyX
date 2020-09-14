@@ -48,6 +48,7 @@
 	<ItemGroup>
 		<None Include="..\LICENSE" Pack="true" PackagePath="" />
 		<None Include="..\logo_mini.png" Pack="true" Visible="false" PackagePath="" />
+		<None Include="..\README.md" Pack="false" PackagePath="" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">

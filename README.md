@@ -11,14 +11,10 @@
 ***
 
 <p align="center">
-	A library for patching, replacing and decorating .NET and Mono methods during runtime. Now powered by MonoMod!
+	A library for patching, replacing and decorating .NET and Mono methods during runtime. Now powered by MonoMod.RuntimeDetour!
 </p>
 
 ***
-
-> **NOTE**
-> The library is still WIP, see [current roadmap](https://github.com/BepInEx/HarmonyX/issues/2) for more details.  
-> Note that this is a **fork** of Harmony 2 and not original version!
 
 ## About
 
@@ -28,15 +24,14 @@ HarmonyX is being developed primarily for use in game frameworks alongside MonoM
 
 Important aspects of HarmonyX include:
 
-* Better runtime support: .NET Standard 2, .NET Core 2, Mono shipped with some Unity games
-* Better platform and OS support: x86, x64, ARM
-* Active developer support
-* Patching feature parity with Harmony
-* New patch types with power of MonoMod: [support for native method patching](https://github.com/BepInEx/HarmonyX/wiki/Valid-patch-targets#native-methods-marked-extern)
+* Unity support first: builds for .NET Framework 3.5 and .NET Standard 2.0
+* Patching feature parity with Harmony while reducing code duplication with MonoMod
+* Full interop with [MonoMod.RuntimeDetour](https://github.com/MonoMod/MonoMod/blob/master/README-RuntimeDetour.md): patches made with either can coexist
+* Easily extendable patching: [built-in support for native method patching](https://github.com/BepInEx/HarmonyX/wiki/Valid-patch-targets#native-methods-marked-extern) and possibility to extend to other patch targets (e.g. IL2CPP)
 * Fixes, changes and optimizations for game modding
 
 HarmonyX is powered by [MonoMod](https://github.com/MonoMod) and its runtime patching tools.
 
 ## Documentation
 
-At the moment the basic documentation is available at [original Harmony docs](http://pardeike.github.io/Harmony).
+Check the documentation out at [HarmonyX wiki](https://github.com/BepInEx/HarmonyX/wiki).
