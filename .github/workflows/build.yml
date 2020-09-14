@@ -11,25 +11,32 @@ jobs:
       run: ./build.ps1 -Target Test
   build:
     runs-on: windows-latest
-    if: github.ref == 'refs/heads/master'
     needs: test
 
     steps:
     - uses: actions/checkout@v1
+    
     - name: Make repo pushable
       env:
         GITHUB_USER: ${{ secrets.GITHUB_USER }}
         GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
       shell: bash
       run: git remote set-url --push origin https://$GITHUB_USER:$GITHUB_PAT@github.com/$GITHUB_REPOSITORY.git
+      
     - name: Run build script
+      run: ./build.ps1 -Target Build
+      
+    - name: Create a release tag
+      if: github.ref == 'refs/heads/master'
       env:
         NUGET_KEY: ${{ secrets.NUGET_KEY }}
       run: ./build.ps1 -Target Publish -ScriptArgs "-nugetKey=""${env:NUGET_KEY}"""
+      
     - name: Get target file
       id: getfilename
       shell: bash
       run: echo "::set-output name=file::$(ls ./Harmony/bin/Release/HarmonyX*.nupkg)"
+      
     - uses: actions/upload-artifact@v1
       with:
         path: ${{ steps.getfilename.outputs.file }}
