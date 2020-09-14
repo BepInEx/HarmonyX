@@ -29,9 +29,17 @@ namespace HarmonyLib
 
 		/// <summary>Creates a patch class processor by pointing out a class. Similar to PatchAll() but without searching through all classes.</summary>
 		/// <param name="instance">The Harmony instance</param>
-		/// <param name="type">The class to process (need to have at least a [HarmonyPatch] attribute)</param>
+		/// <param name="type">The class to process (need to have at least a [HarmonyPatch] attribute if allowUnannotatedType is set to <b>false</b>)</param>
 		///
-		public PatchClassProcessor(Harmony instance, Type type)
+		// ReSharper disable once IntroduceOptionalParameters.Global => cannot rewrite public ctor for binary compatibility with Harmony 2
+		public PatchClassProcessor(Harmony instance, Type type): this(instance, type, false) {}
+
+		/// <summary>Creates a patch class processor by pointing out a class. Similar to PatchAll() but without searching through all classes.</summary>
+		/// <param name="instance">The Harmony instance</param>
+		/// <param name="type">The class to process (need to have at least a [HarmonyPatch] attribute if allowUnannotatedType is set to <b>false</b>)</param>
+		/// <param name="allowUnannotatedType">If <b>true</b>, the type doesn't need to have any <see cref="HarmonyPatch"/> attributes present for processing</param>
+		///
+		public PatchClassProcessor(Harmony instance, Type type, bool allowUnannotatedType)
 		{
 			if (instance is null)
 				throw new ArgumentNullException(nameof(instance));
@@ -42,7 +50,7 @@ namespace HarmonyLib
 			containerType = type;
 
 			var harmonyAttributes = HarmonyMethodExtensions.GetFromType(type);
-			if (harmonyAttributes is null || harmonyAttributes.Count == 0)
+			if (!allowUnannotatedType && (harmonyAttributes is null || harmonyAttributes.Count == 0))
 				return;
 
 			containerAttributes = HarmonyMethod.Merge(harmonyAttributes);

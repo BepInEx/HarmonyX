@@ -12,10 +12,6 @@ namespace HarmonyLib
 	///
 	public class Harmony
 	{
-		/// <summary>The unique identifier</summary>
-		///
-		public string Id { get; private set; }
-
 		/// <summary>Set to true before instantiating Harmony to debug Harmony or use an environment variable to set HARMONY_DEBUG to '1' like this: cmd /C "set HARMONY_DEBUG=1 &amp;&amp; game.exe"</summary>
 		/// <remarks>This is for full debugging. To debug only specific patches, use the <see cref="HarmonyDebug"/> attribute</remarks>
 		///
@@ -74,6 +70,10 @@ namespace HarmonyLib
 #pragma warning restore 618
 		}
 
+		/// <summary>The unique identifier</summary>
+		///
+		public string Id { get; }
+
 		/// <summary>Searches the current assembly for Harmony annotations and uses them to create patches</summary>
 		///
 		public void PatchAll()
@@ -101,6 +101,16 @@ namespace HarmonyLib
 			return new PatchClassProcessor(this, type);
 		}
 
+		/// <summary>Creates a patch class processor from an annotated class</summary>
+		/// <param name="type">The class/type</param>
+		/// <param name="allowUnannotatedType">If <b>true</b>, the type doesn't need to have any <see cref="HarmonyPatch"/> attributes present for processing</param>
+		/// <returns>A new <see cref="PatchClassProcessor"/> instance</returns>
+		///
+		public PatchClassProcessor CreateClassProcessor(Type type, bool allowUnannotatedType)
+		{
+			return new PatchClassProcessor(this, type, allowUnannotatedType);
+		}
+
 		/// <summary>Creates a reverse patcher for one of your stub methods</summary>
 		/// <param name="original">The original method/constructor</param>
 		/// <param name="standin">The stand-in stub method as <see cref="HarmonyMethod"/></param>
@@ -117,6 +127,14 @@ namespace HarmonyLib
 		public void PatchAll(Assembly assembly)
 		{
 			AccessTools.GetTypesFromAssembly(assembly).Do(type => CreateClassProcessor(type).Patch());
+		}
+
+		/// <summary>Searches the given type for Harmony annotation and uses them to create patches</summary>
+		/// <param name="type">The type to search</param>
+		///
+		public void PatchAll(Type type)
+		{
+			CreateClassProcessor(type, true).Patch();
 		}
 
 		/// <summary>Creates patches by manually specifying the methods</summary>
@@ -154,7 +172,10 @@ namespace HarmonyLib
 		///
 		public void UnpatchAll(string harmonyID = null)
 		{
-			bool IDCheck(Patch patchInfo) => harmonyID is null || patchInfo.owner == harmonyID;
+			bool IDCheck(Patch patchInfo)
+			{
+				return harmonyID is null || patchInfo.owner == harmonyID;
+			}
 
 			var originals = GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
 			foreach (var original in originals)
@@ -170,6 +191,13 @@ namespace HarmonyLib
 				if (hasBody)
 					info.Finalizers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
 			}
+		}
+
+		/// <summary>Unpatches all methods that were patched by this Harmony instance's ID. Unpatching is done by repatching methods without patches of this instance.</summary>
+		///
+		public void UnpatchSelf()
+		{
+			UnpatchAll(Id);
 		}
 
 		/// <summary>Unpatches a method by patching it with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
@@ -237,6 +265,28 @@ namespace HarmonyLib
 		public static Dictionary<string, Version> VersionInfo(out Version currentVersion)
 		{
 			return PatchProcessor.VersionInfo(out currentVersion);
+		}
+
+		/// <summary>Creates a new Harmony instance and applies all patches specified in the type</summary>
+		/// <param name="type">The type to scan for patches.</param>
+		/// <param name="harmonyInstanceId">The ID for the Harmony instance to create, which will be used.</param>
+		///
+		public static Harmony CreateAndPatchAll(Type type, string harmonyInstanceId = null)
+		{
+			var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
+			harmony.PatchAll(type);
+			return harmony;
+		}
+
+		/// <summary>Applies all patches specified in the assembly</summary>
+		/// <param name="assembly">The assembly to scan.</param>
+		/// <param name="harmonyInstanceId">The ID for the Harmony instance to create, which will be used.</param>
+		///
+		public static Harmony CreateAndPatchAll(Assembly assembly, string harmonyInstanceId = null)
+		{
+			var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
+			harmony.PatchAll(assembly);
+			return harmony;
 		}
 	}
 }
