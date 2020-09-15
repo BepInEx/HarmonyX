@@ -166,7 +166,7 @@ namespace HarmonyLib.Public.Patching
 		/// <param name="sender">Not used</param>
 		/// <param name="args">Patch resolver arguments</param>
 		///
-		public static void TryResolve(object sender, PatchManager.PatcherResolverEeventArgs args)
+		public static void TryResolve(object sender, PatchManager.PatcherResolverEventArgs args)
 		{
 			if (args.Original.GetMethodBody() == null)
 				args.MethodPatcher = new NativeDetourMethodPatcher(args.Original);

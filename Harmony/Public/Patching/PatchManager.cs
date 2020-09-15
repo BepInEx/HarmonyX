@@ -27,11 +27,11 @@ namespace HarmonyLib.Public.Patching
 		/// <remarks>
 		/// When a method is to be patched, this resolver event is called once on the method to determine which
 		/// <see cref="MethodPatcher"/> backend to use in order to patch the method.
-		/// To make Harmony use the specified backend, set <see cref="PatcherResolverEeventArgs.MethodPatcher"/> to an
+		/// To make Harmony use the specified backend, set <see cref="PatcherResolverEventArgs.MethodPatcher"/> to an
 		/// instance of the method patcher backend to use.
 		/// </remarks>
 		///
-		public static event EventHandler<PatcherResolverEeventArgs> ResolvePatcher;
+		public static event EventHandler<PatcherResolverEventArgs> ResolvePatcher;
 
 		/// <summary>
 		/// Creates or gets an existing instance of <see cref="MethodPatcher"/> that handles patching the method.
@@ -46,7 +46,7 @@ namespace HarmonyLib.Public.Patching
 			{
 				if (MethodPatchers.TryGetValue(methodBase, out var methodPatcher))
 					return methodPatcher;
-				var args = new PatcherResolverEeventArgs {Original = methodBase};
+				var args = new PatcherResolverEventArgs {Original = methodBase};
 				ResolvePatcher?.Invoke(null, args);
 				if (args.MethodPatcher == null)
 					throw new NullReferenceException($"No suitable patcher found for {methodBase.FullDescription()}");
@@ -106,7 +106,7 @@ namespace HarmonyLib.Public.Patching
 		/// Patcher resolve event arguments.
 		/// </summary>
 		///
-		public class PatcherResolverEeventArgs : EventArgs
+		public class PatcherResolverEventArgs : EventArgs
 		{
 			/// <summary>
 			/// Original method that is to be patched.
