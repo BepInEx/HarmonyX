@@ -18,7 +18,8 @@ namespace HarmonyLib
 	{
 		/// <summary>Shortcut for <see cref="BindingFlags"/> to simplify the use of reflections and make it work for any access level</summary>
 		///
-		public static BindingFlags all = BindingFlags.Public
+		// Note: This should a be const, but changing from static (readonly) to const breaks binary compatibility.
+		public static readonly BindingFlags all = BindingFlags.Public
 			| BindingFlags.NonPublic
 			| BindingFlags.Instance
 			| BindingFlags.Static
@@ -29,7 +30,8 @@ namespace HarmonyLib
 
 		/// <summary>Shortcut for <see cref="BindingFlags"/> to simplify the use of reflections and make it work for any access level but only within the current type</summary>
 		///
-		public static BindingFlags allDeclared = all | BindingFlags.DeclaredOnly;
+		// Note: This should a be const, but changing from static (readonly) to const breaks binary compatibility.
+		public static readonly BindingFlags allDeclared = all | BindingFlags.DeclaredOnly;
 
 		/// <summary>Gets a type by name. Prefers a full name with namespace but falls back to the first type matching the name otherwise</summary>
 		/// <param name="name">The name</param>
