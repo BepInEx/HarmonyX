@@ -57,6 +57,7 @@ namespace HarmonyLib.Tools
         private static void OnMessage(object sender, Logger.LogEventArgs e)
         {
             Writer.WriteLine($"[{e.LogChannel}] {e.Message}");
+            Writer.Flush();
         }
     }
 
