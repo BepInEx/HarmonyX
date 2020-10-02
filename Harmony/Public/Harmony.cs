@@ -174,7 +174,7 @@ namespace HarmonyLib
 		{
 			if (harmonyID == null)
 				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called with harmonyID=null - This will remove ALL HARMONY PATCHES. " +
-																	  "If you want to only unpatch patches created by this instance, pass the Id of this instance as an argument.");
+				                                         "If you want to only unpatch patches created by this instance (" + Id + "), pass the Id of this instance as an argument.");
 
 			bool IDCheck(Patch patchInfo)
 			{
