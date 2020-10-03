@@ -1608,8 +1608,6 @@ namespace HarmonyLib
 		/// </summary>
 		static readonly Dictionary<Type, FastInvokeHandler> addHandlerCache = new Dictionary<Type, FastInvokeHandler>();
 
-		static readonly ReaderWriterLockSlim addHandlerCacheLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
-
 		/// <summary>Makes a deep copy of any object</summary>
 		/// <typeparam name="T">The type of the instance that should be created</typeparam>
 		/// <param name="source">The original object</param>
@@ -1641,6 +1639,18 @@ namespace HarmonyLib
 		///
 		public static object MakeDeepCopy(object source, Type resultType, Func<string, Traverse, Traverse, object> processor = null, string pathRoot = "")
 		{
+			static bool TryGetHandler(Type resultType, out FastInvokeHandler handler)
+			{
+				lock (addHandlerCache)
+					return addHandlerCache.TryGetValue(resultType, out handler);
+			}
+
+			static void SetHandler(Type resultType, FastInvokeHandler handler)
+			{
+				lock (addHandlerCache)
+					addHandlerCache[resultType] = handler;
+			}
+
 			if (source is null || resultType is null)
 				return null;
 
@@ -1655,44 +1665,30 @@ namespace HarmonyLib
 
 			if (type.IsGenericType && resultType.IsGenericType)
 			{
-				addHandlerCacheLock.EnterUpgradeableReadLock();
-				try
+				if (!TryGetHandler(resultType, out var addInvoker))
 				{
-					if (!addHandlerCache.TryGetValue(resultType, out var addInvoker))
+					var addOperation = FirstMethod(resultType, m => m.Name == "Add" && m.GetParameters().Length == 1);
+					if (addOperation is object)
 					{
-						var addOperation = FirstMethod(resultType, m => m.Name == "Add" && m.GetParameters().Length == 1);
-						if (addOperation is object)
-						{
-							addInvoker = MethodInvoker.GetHandler(addOperation);
-						}
-						addHandlerCacheLock.EnterWriteLock();
-						try
-						{
-							addHandlerCache[resultType] = addInvoker;
-						}
-						finally
-						{
-							addHandlerCacheLock.ExitWriteLock();
-						}
+						addInvoker = MethodInvoker.GetHandler(addOperation);
 					}
-					if (addInvoker != null)
-					{
-						var addableResult = Activator.CreateInstance(resultType);
-						var newElementType = resultType.GetGenericArguments()[0];
-						var i = 0;
-						foreach (var element in source as IEnumerable)
-						{
-							var iStr = (i++).ToString();
-							var path = pathRoot.Length > 0 ? pathRoot + "." + iStr : iStr;
-							var newElement = MakeDeepCopy(element, newElementType, processor, path);
-							_ = addInvoker(addableResult, new object[] { newElement });
-						}
-						return addableResult;
-					}
+
+					SetHandler(resultType, addInvoker);
 				}
-				finally
+
+				if (addInvoker != null)
 				{
-					addHandlerCacheLock.ExitUpgradeableReadLock();
+					var addableResult = Activator.CreateInstance(resultType);
+					var newElementType = resultType.GetGenericArguments()[0];
+					var i = 0;
+					foreach (var element in source as IEnumerable)
+					{
+						var iStr = (i++).ToString();
+						var path = pathRoot.Length > 0 ? pathRoot + "." + iStr : iStr;
+						var newElement = MakeDeepCopy(element, newElementType, processor, path);
+						_ = addInvoker(addableResult, new object[] {newElement});
+					}
+					return addableResult;
 				}
 			}
 
