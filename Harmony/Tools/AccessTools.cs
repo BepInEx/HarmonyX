@@ -1552,13 +1552,13 @@ namespace HarmonyLib
 		/// <summary>True if the current runtime is .NET Framework, false otherwise (.NET Core or Mono, although latter isn't guaranteed)</summary>
 		///
 		public static bool IsNetFrameworkRuntime { get; } =
-			TypeByName("System.Runtime.InteropServices.RuntimeInformation")?.GetProperty("FrameworkDescription")
+			Type.GetType("System.Runtime.InteropServices.RuntimeInformation", false)?.GetProperty("FrameworkDescription")
 			.GetValue(null, null).ToString().StartsWith(".NET Framework") ?? IsMonoRuntime is false;
 
 		/// <summary>True if the current runtime is .NET Core, false otherwise (Mono or .NET Framework)</summary>
 		///
 		public static bool IsNetCoreRuntime { get; } =
-			TypeByName("System.Runtime.InteropServices.RuntimeInformation")?.GetProperty("FrameworkDescription")
+			Type.GetType("System.Runtime.InteropServices.RuntimeInformation", false)?.GetProperty("FrameworkDescription")
 			.GetValue(null, null).ToString().StartsWith(".NET Core") ?? false;
 
 		/// <summary>Throws a missing member runtime exception</summary>
