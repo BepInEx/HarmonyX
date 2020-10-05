@@ -134,13 +134,12 @@ namespace HarmonyLib.Public.Patching
 
 			var orig = Original;
 
-			var dmd = new DynamicMethodDefinition($"NativeDetour<{orig.GetID(simple: true)}>", returnType, argTypes);
 			lock (CounterLock)
 			{
-				dmd.Definition.Name += $"?{counter}";
 				newOriginal = counter;
 				counter++;
 			}
+			var dmd = new DynamicMethodDefinition($"NativeDetour_Wrapper<{orig.GetID(simple: true)}>?{newOriginal}", returnType, argTypes);
 
 			var def = dmd.Definition;
 			for (var i = 0; i < argTypeNames.Length; i++)
@@ -148,7 +147,7 @@ namespace HarmonyLib.Public.Patching
 
 			var il = dmd.GetILGenerator();
 
-			il.Emit(OpCodes.Ldc_I4, dmd.GetHashCode());
+			il.Emit(OpCodes.Ldc_I4, newOriginal);
 			il.Emit(OpCodes.Call, GetTrampolineMethod);
 			for (var i = 0; i < argTypes.Length; i++)
 				il.Emit(OpCodes.Ldarg, i);
