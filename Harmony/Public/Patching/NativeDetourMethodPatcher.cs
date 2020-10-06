@@ -25,7 +25,7 @@ namespace HarmonyLib.Public.Patching
 		private string[] argTypeNames;
 		private Type[] argTypes;
 
-		private int currentOriginal, newOriginal;
+		private int currentOriginal = -1, newOriginal;
 		private MethodInfo invokeTrampolineMethod;
 		private NativeDetour nativeDetour;
 		private Type returnType;
@@ -87,7 +87,8 @@ namespace HarmonyLib.Public.Patching
 
 			lock (TrampolineCache)
 			{
-				TrampolineCache.Remove(currentOriginal);
+				if (currentOriginal >= 0)
+					TrampolineCache.Remove(currentOriginal);
 				currentOriginal = newOriginal;
 				TrampolineCache[currentOriginal] = CreateDelegate(trampolineDelegateType,
 					nativeDetour.GenerateTrampoline(invokeTrampolineMethod));
@@ -139,6 +140,7 @@ namespace HarmonyLib.Public.Patching
 				newOriginal = counter;
 				counter++;
 			}
+
 			var dmd = new DynamicMethodDefinition($"NativeDetour_Wrapper<{orig.GetID(simple: true)}>?{newOriginal}", returnType, argTypes);
 
 			var def = dmd.Definition;
