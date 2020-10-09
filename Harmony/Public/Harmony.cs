@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Tools;
 
 namespace HarmonyLib
@@ -18,6 +19,11 @@ namespace HarmonyLib
 		[Obsolete("Use HarmonyFileLog.Enabled instead")]
 		// ReSharper disable once InconsistentNaming
 		public static bool DEBUG;
+
+		static Harmony()
+		{
+			StackTraceFixes.Install();
+		}
 
 		/// <summary>Creates a new Harmony instance</summary>
 		/// <param name="id">A unique identifier (you choose your own)</param>

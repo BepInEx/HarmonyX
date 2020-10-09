@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Reflection;
-using HarmonyLib.Internal.Util;
+using HarmonyLib.Tools;
 using MonoMod.RuntimeDetour;
 
 namespace HarmonyLib.Internal.RuntimeFixes
@@ -28,18 +27,24 @@ namespace HarmonyLib.Internal.RuntimeFixes
             if (_applied)
                 return;
 
-            var refreshDet = new Detour(AccessTools.Method(AccessTools.Inner(typeof(ILHook), "Context"), "Refresh"),
-                                        AccessTools.Method(typeof(StackTraceFixes), nameof(OnILChainRefresh)));
-            _origRefresh = refreshDet.GenerateTrampoline<Action<object>>();
-            
-            var getMethodDet = new Detour(AccessTools.Method(typeof(StackFrame), nameof(StackFrame.GetMethod)),
-                     AccessTools.Method(typeof(StackTraceFixes), nameof(GetMethodFix)));
-            _origGetMethod = getMethodDet.GenerateTrampoline<Func<StackFrame, MethodBase>>();
+            try
+            {
+	            var refreshDet = new Detour(AccessTools.Method(AccessTools.Inner(typeof(ILHook), "Context"), "Refresh"),
+		            AccessTools.Method(typeof(StackTraceFixes), nameof(OnILChainRefresh)));
+	            _origRefresh = refreshDet.GenerateTrampoline<Action<object>>();
 
-            var nat = new NativeDetour(AccessTools.Method(typeof(Assembly), nameof(Assembly.GetExecutingAssembly)),
-                                       AccessTools.Method(typeof(StackTraceFixes), nameof(GetAssemblyFix)));
-            _realGetAss = nat.GenerateTrampoline<Func<Assembly>>();
+	            var getMethodDet = new Detour(AccessTools.Method(typeof(StackFrame), nameof(StackFrame.GetMethod)),
+		            AccessTools.Method(typeof(StackTraceFixes), nameof(GetMethodFix)));
+	            _origGetMethod = getMethodDet.GenerateTrampoline<Func<StackFrame, MethodBase>>();
 
+	            var nat = new NativeDetour(AccessTools.Method(typeof(Assembly), nameof(Assembly.GetExecutingAssembly)),
+		            AccessTools.Method(typeof(StackTraceFixes), nameof(GetAssemblyFix)));
+	            _realGetAss = nat.GenerateTrampoline<Func<Assembly>>();
+            }
+            catch (Exception e)
+            {
+	            Logger.LogText(Logger.LogChannel.Error, $"Failed to apply stack trace fix: ({e.GetType().FullName}) {e.Message}");
+            }
             _applied = true;
         }
 
