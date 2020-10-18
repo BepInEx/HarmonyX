@@ -42,6 +42,7 @@ namespace HarmonyLib.Internal.Patching
 
 		private readonly IEnumerable<RawInstruction> codeInstructions;
 		private readonly List<MethodInfo> transpilers = new List<MethodInfo>();
+		private readonly Dictionary<VariableDefinition, SRE.LocalBuilder> localsCache = new Dictionary<VariableDefinition, SRE.LocalBuilder>();
 
 		static ILManipulator()
 		{
@@ -69,6 +70,14 @@ namespace HarmonyLib.Internal.Patching
 		}
 
 		public MethodBody Body { get; }
+
+		private SRE.LocalBuilder ResolveLocal(Func<VariableDefinition, SRE.LocalBuilder> getLocal,
+			VariableDefinition varDef)
+		{
+			if (localsCache.TryGetValue(varDef, out var local))
+				return local;
+			return localsCache[varDef] = getLocal(varDef);
+		}
 
 		private int GetTarget(MethodBody body, object insOp)
 		{
@@ -257,7 +266,7 @@ namespace HarmonyLib.Internal.Patching
 					case SRE.OperandType.ShortInlineVar:
 					{
 						if (unresolvedInstruction.Operand is VariableDefinition varDef)
-							unresolvedInstruction.Instruction.operand = getLocal(varDef);
+							unresolvedInstruction.Instruction.operand = ResolveLocal(getLocal, varDef);
 					}
 						break;
 					case SRE.OperandType.InlineSwitch when unresolvedInstruction.Operand is CodeInstruction[] targets:
