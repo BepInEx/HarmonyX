@@ -568,6 +568,18 @@ namespace HarmonyLib
 		}
 	}
 
+	/// <summary>A Harmony attribute</summary>
+	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+	public class HarmonyWrapSafe : HarmonyAttribute
+	{
+		/// <summary>If specified on a prefix, postfix or a finalizer, the method will be automatically wrapped into try/catch.</summary>
+		///
+		public HarmonyWrapSafe()
+		{
+			info.wrapTryCatch = true;
+		}
+	}
+
 	/// <summary>Specifies the Prepare function in a patch class</summary>
 	///
 	[AttributeUsage(AttributeTargets.Method)]

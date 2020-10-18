@@ -65,7 +65,7 @@ namespace HarmonyLib.Public.Patching
 
 			static List<PatchContext> Sort(MethodBase original, Patch[] patches)
 				=> PatchFunctions.GetSortedPatchMethodsAsPatches(original, patches)
-					.Select(p => new PatchContext {method = p.GetMethod(original), wrapTryCatch = true})
+					.Select(p => new PatchContext {method = p.GetMethod(original), wrapTryCatch = p.wrapTryCatch})
 					.ToList();
 
 			// debug is useless; debug logs passed on-demand

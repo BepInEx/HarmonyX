@@ -9,7 +9,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 namespace HarmonyLib
 {
 	/// <summary>Patch serialization</summary>
-	/// 
+	///
 	internal static class PatchInfoSerialization
 	{
 		class Binder : SerializationBinder
@@ -81,28 +81,28 @@ namespace HarmonyLib
 	}
 
 	/// <summary>Serializable patch information</summary>
-	/// 
+	///
 	[Serializable]
 	public class PatchInfo
 	{
 		/// <summary>Prefixes as an array of <see cref="Patch"/></summary>
-		/// 
+		///
 		public Patch[] prefixes = new Patch[0];
 
 		/// <summary>Postfixes as an array of <see cref="Patch"/></summary>
-		/// 
+		///
 		public Patch[] postfixes = new Patch[0];
 
 		/// <summary>Transpilers as an array of <see cref="Patch"/></summary>
-		/// 
+		///
 		public Patch[] transpilers = new Patch[0];
 
 		/// <summary>Finalizers as an array of <see cref="Patch"/></summary>
-		/// 
+		///
 		public Patch[] finalizers = new Patch[0];
 
 		/// <summary>Returns if any of the patches wants debugging turned on</summary>
-		/// 
+		///
 		public bool Debugging => prefixes.Any(p => p.debug) || postfixes.Any(p => p.debug) || transpilers.Any(p => p.debug) || finalizers.Any(p => p.debug);
 
 		/// <summary>Adds prefixes</summary>
@@ -247,40 +247,46 @@ namespace HarmonyLib
 	}
 
 	/// <summary>A serializable patch</summary>
-	/// 
+	///
 	[Serializable]
 	public class Patch : IComparable
 	{
 		/// <summary>Zero-based index</summary>
-		/// 
+		///
 		public readonly int index;
 
 		/// <summary>The owner (Harmony ID)</summary>
-		/// 
+		///
 #pragma warning disable CA2235
 		public readonly string owner;
 #pragma warning restore CA2235
 
 		/// <summary>The priority, see <see cref="Priority"/></summary>
-		/// 
+		///
 		public readonly int priority;
 
 		/// <summary>Keep this patch before the patches indicated in the list of Harmony IDs</summary>
-		/// 
+		///
 #pragma warning disable CA2235
 		public readonly string[] before;
 #pragma warning restore CA2235
 
 		/// <summary>Keep this patch after the patches indicated in the list of Harmony IDs</summary>
-		/// 
+		///
 #pragma warning disable CA2235
 		public readonly string[] after;
 #pragma warning restore CA2235
 
 		/// <summary>A flag that will log the replacement method via <see cref="FileLog"/> every time this patch is used to build the replacement, even in the future</summary>
-		/// 
+		///
 #pragma warning disable CA2235
 		public readonly bool debug;
+#pragma warning restore CA2235
+
+		/// <summary>Whether to wrap the patch into a general try/catch that logs the error</summary>
+		///
+#pragma warning disable CA2235
+		public readonly bool wrapTryCatch;
 #pragma warning restore CA2235
 
 		[NonSerialized]
@@ -291,7 +297,7 @@ namespace HarmonyLib
 #pragma warning restore CA2235
 
 		/// <summary>The method of the static patch method</summary>
-		/// 
+		///
 		public MethodInfo PatchMethod
 		{
 			get
@@ -337,11 +343,35 @@ namespace HarmonyLib
 		}
 
 		/// <summary>Creates a patch</summary>
+		/// <param name="patch">The method of the patch</param>
+		/// <param name="index">Zero-based index</param>
+		/// <param name="owner">An owner (Harmony ID)</param>
+		/// <param name="priority">The priority, see <see cref="Priority"/></param>
+		/// <param name="before">A list of Harmony IDs for patches that should run after this patch</param>
+		/// <param name="after">A list of Harmony IDs for patches that should run before this patch</param>
+		/// <param name="debug">A flag that will log the replacement method via <see cref="FileLog"/> every time this patch is used to build the replacement, even in the future</param>
+		/// <param name="wrapTryCatch">Whether to wrap the patch into a general try/catch that logs the error</param>
+		///
+		public Patch(MethodInfo patch, int index, string owner, int priority, string[] before, string[] after, bool debug, bool wrapTryCatch)
+		{
+			if (patch is DynamicMethod) throw new Exception($"Cannot directly reference dynamic method \"{patch.FullDescription()}\" in Harmony. Use a factory method instead that will return the dynamic method.");
+
+			this.index = index;
+			this.owner = owner;
+			this.priority = priority == -1 ? Priority.Normal : priority;
+			this.before = before ?? new string[0];
+			this.after = after ?? new string[0];
+			this.debug = debug;
+			this.wrapTryCatch = wrapTryCatch;
+			PatchMethod = patch;
+		}
+
+		/// <summary>Creates a patch</summary>
 		/// <param name="method">The method of the patch</param>
 		/// <param name="index">Zero-based index</param>
 		/// <param name="owner">An owner (Harmony ID)</param>
 		public Patch(HarmonyMethod method, int index, string owner)
-			: this(method.method, index, owner, method.priority, method.before, method.after, method.debug ?? false) { }
+			: this(method.method, index, owner, method.priority, method.before, method.after, method.debug ?? false, method.wrapTryCatch) { }
 
 		/// <summary>Get the patch method or a DynamicMethod if original patch method is a patch factory</summary>
 		/// <param name="original">The original method/constructor</param>

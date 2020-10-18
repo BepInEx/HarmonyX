@@ -7,56 +7,60 @@ namespace HarmonyLib
 {
 
 	/// <summary>A wrapper around a method to use it as a patch (for example a Prefix)</summary>
-	/// 
+	///
 	public class HarmonyMethod
 	{
 		/// <summary>The original method</summary>
-		/// 
+		///
 		public MethodInfo method; // need to be called 'method'
 
 		/// <summary>Class/type declaring this patch</summary>
-		/// 
+		///
 		public Type declaringType;
 
 		/// <summary>Patch method name</summary>
-		/// 
+		///
 		public string methodName;
 
 		/// <summary>Optional patch <see cref="MethodType"/></summary>
-		/// 
+		///
 		public MethodType? methodType;
 
 		/// <summary>Array of argument types of the patch method</summary>
-		/// 
+		///
 		public Type[] argumentTypes;
 
 		/// <summary><see cref="Priority"/> of the patch</summary>
-		/// 
+		///
 		public int priority = -1;
 
 		/// <summary>Install this patch before patches with these Harmony IDs</summary>
-		/// 
+		///
 		public string[] before;
 
 		/// <summary>Install this patch after patches with these Harmony IDs</summary>
-		/// 
+		///
 		public string[] after;
 
 		/// <summary>Reverse patch type, see <see cref="HarmonyReversePatchType"/></summary>
-		/// 
+		///
 		public HarmonyReversePatchType? reversePatchType;
 
 		/// <summary>Create debug output for this patch</summary>
-		/// 
+		///
 		public bool? debug;
 
 		/// <summary>Whether to use <see cref="MethodDispatchType.Call"/> (<c>true</c>) or <see cref="MethodDispatchType.VirtualCall"/> (<c>false</c>) mechanics
 		/// for <see cref="HarmonyDelegate"/>-attributed delegate</summary>
-		/// 
+		///
 		public bool nonVirtualDelegate;
 
+		/// <summary>Whether to wrap the patch itself into a try/catch.</summary>
+		///
+		public bool wrapTryCatch;
+
 		/// <summary>Default constructor</summary>
-		/// 
+		///
 		public HarmonyMethod()
 		{
 		}
@@ -173,7 +177,7 @@ namespace HarmonyLib
 	}
 
 	/// <summary>Annotation extensions</summary>
-	/// 
+	///
 	public static class HarmonyMethodExtensions
 	{
 		internal static void SetValue(Traverse trv, string name, object val)
