@@ -28,6 +28,16 @@ namespace HarmonyLib
 			return new PatchSorter(patches, debug).Sort(original);
 		}
 
+		/// <summary>Sorts patch methods by their priority rules</summary>
+		/// <param name="original">The original method</param>
+		/// <param name="patches">Patches to sort</param>
+		/// <returns>The sorted patch methods</returns>
+		///
+		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches)
+		{
+			return new PatchSorter(patches).SortAsPatches(original);
+		}
+
 		/// <summary>Creates new replacement method with the latest patches and detours the original method</summary>
 		/// <param name="original">The original method</param>
 		/// <param name="patchInfo">Information describing the patches</param>

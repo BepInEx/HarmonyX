@@ -17,6 +17,12 @@ namespace HarmonyLib.Public.Patching
 	///
 	public static class HarmonyManipulator
 	{
+		internal class PatchContext
+		{
+			public MethodInfo method;
+			public bool wrapTryCatch;
+		}
+
 		private static readonly string INSTANCE_PARAM = "__instance";
 		private static readonly string ORIGINAL_METHOD_PARAM = "__originalMethod";
 		private static readonly string RUN_ORIGINAL_PARAM = "__runOriginal";
@@ -32,9 +38,19 @@ namespace HarmonyLib.Public.Patching
 		private static readonly MethodInfo GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle",
 			new[] {typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle)});
 
-		private static void SortPatches(MethodBase original, PatchInfo patchInfo, out List<MethodInfo> prefixes,
-			out List<MethodInfo> postfixes, out List<MethodInfo> transpilers,
-			out List<MethodInfo> finalizers)
+		private static MethodInfo LogPatchExceptionMethod =
+			AccessTools.Method(typeof(HarmonyManipulator), nameof(LogPatchException));
+
+		private static void LogPatchException(object errorObject, string patch)
+		{
+			Logger.LogText(Logger.LogChannel.Error, $"Error while running {patch}. Error: {errorObject}");
+		}
+
+		private static void SortPatches(MethodBase original, PatchInfo patchInfo,
+			out List<PatchContext> prefixes,
+			out List<PatchContext> postfixes,
+			out List<PatchContext> transpilers,
+			out List<PatchContext> finalizers)
 		{
 			Patch[] prefixesArr, postfixesArr, transpilersArr, finalizersArr;
 
@@ -47,11 +63,16 @@ namespace HarmonyLib.Public.Patching
 				finalizersArr = patchInfo.finalizers.ToArray();
 			}
 
+			static List<PatchContext> Sort(MethodBase original, Patch[] patches)
+				=> PatchFunctions.GetSortedPatchMethodsAsPatches(original, patches)
+					.Select(p => new PatchContext {method = p.GetMethod(original), wrapTryCatch = true})
+					.ToList();
+
 			// debug is useless; debug logs passed on-demand
-			prefixes = PatchFunctions.GetSortedPatchMethods(original, prefixesArr);
-			postfixes = PatchFunctions.GetSortedPatchMethods(original, postfixesArr);
-			transpilers = PatchFunctions.GetSortedPatchMethods(original, transpilersArr);
-			finalizers = PatchFunctions.GetSortedPatchMethods(original, finalizersArr);
+			prefixes = Sort(original, prefixesArr);
+			postfixes = Sort(original, postfixesArr);
+			transpilers = Sort(original, transpilersArr);
+			finalizers = Sort(original, finalizersArr);
 		}
 
 		/// <summary>
@@ -77,13 +98,13 @@ namespace HarmonyLib.Public.Patching
 				sb.AppendLine(
 					$"Patching {original.FullDescription()} with {sortedPrefixes.Count} prefixes, {sortedPostfixes.Count} postfixes, {sortedTranspilers.Count} transpilers, {sortedFinalizers.Count} finalizers");
 
-				void Print(List<MethodInfo> list, string type)
+				void Print(ICollection<PatchContext> list, string type)
 				{
 					if (list.Count == 0)
 						return;
 					sb.AppendLine($"{list.Count} {type}:");
 					foreach (var fix in list)
-						sb.AppendLine($"* {fix.FullDescription()}");
+						sb.AppendLine($"* {fix.method.FullDescription()}");
 				}
 
 				Print(sortedPrefixes, "prefixes");
@@ -97,7 +118,7 @@ namespace HarmonyLib.Public.Patching
 			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
 		}
 
-		private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<MethodInfo> transpilers)
+		private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<PatchContext> transpilers)
 		{
 			if (transpilers.Count == 0)
 				return;
@@ -108,8 +129,8 @@ namespace HarmonyLib.Public.Patching
 			var manipulator = new ILManipulator(ctx.Body);
 
 			// Add in all transpilers
-			foreach (var transpilerMethod in transpilers)
-				manipulator.AddTranspiler(transpilerMethod);
+			foreach (var transpiler in transpilers)
+				manipulator.AddTranspiler(transpiler.method);
 
 			// Write new manipulated code to our body
 			manipulator.WriteTo(ctx.Body, original);
@@ -143,7 +164,7 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		private static void WritePostfixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables, List<MethodInfo> postfixes)
+			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> postfixes)
 		{
 			// Postfix layout:
 			// Make return value (if needed) into a variable
@@ -171,10 +192,17 @@ namespace HarmonyLib.Public.Patching
 			if (returnValueVar != null)
 				il.Emit(OpCodes.Stloc, returnValueVar);
 
-			foreach (var postfix in postfixes.Where(p => p.ReturnType == typeof(void)))
+			foreach (var postfix in postfixes.Where(p => p.method.ReturnType == typeof(void)))
 			{
-				EmitCallParameter(il, original, postfix, variables, true);
-				il.Emit(OpCodes.Call, postfix);
+				var method = postfix.method;
+				var start = il.DeclareLabel();
+				il.MarkLabel(start);
+
+				EmitCallParameter(il, original, method, variables, true);
+				il.Emit(OpCodes.Call, method);
+
+				if (postfix.wrapTryCatch)
+					EmitTryCatchWrapper(il, method, start);
 			}
 
 			// Load the result for the final time, the chained postfixes will handle the rest
@@ -183,27 +211,48 @@ namespace HarmonyLib.Public.Patching
 
 			// If postfix returns a value, it must be chainable
 			// The first param is always the return of the previous
-			foreach (var postfix in postfixes.Where(p => p.ReturnType != typeof(void)))
+			foreach (var postfix in postfixes.Where(p => p.method.ReturnType != typeof(void)))
 			{
-				EmitCallParameter(il, original, postfix, variables, true);
-				il.Emit(OpCodes.Call, postfix);
+				var method = postfix.method;
 
-				var firstParam = postfix.GetParameters().FirstOrDefault();
+				// If we wrap into try/catch, we need to separate the code to keep the stack clean
+				if (postfix.wrapTryCatch)
+					il.Emit(OpCodes.Stloc, returnValueVar);
 
-				if (firstParam == null || postfix.ReturnType != firstParam.ParameterType)
+				var start = il.DeclareLabel();
+				il.MarkLabel(start);
+
+				if (postfix.wrapTryCatch)
+					il.Emit(OpCodes.Ldloc, returnValueVar);
+
+				EmitCallParameter(il, original, method, variables, true);
+				il.Emit(OpCodes.Call, method);
+
+				var firstParam = method.GetParameters().FirstOrDefault();
+
+				if (firstParam == null || method.ReturnType != firstParam.ParameterType)
 				{
 					if (firstParam != null)
 						throw new InvalidHarmonyPatchArgumentException(
-							$"Return type of pass through postfix {postfix.FullDescription()} does not match type of its first parameter",
-							original, postfix);
+							$"Return type of pass through postfix {method.FullDescription()} does not match type of its first parameter",
+							original, method);
 					throw new InvalidHarmonyPatchArgumentException(
-						$"Postfix patch {postfix.FullDescription()} must have `void` as return type", original, postfix);
+						$"Postfix patch {method.FullDescription()} must have `void` as return type", original, method);
+				}
+
+				if (postfix.wrapTryCatch)
+				{
+					// Store the result to clean the stack
+					il.Emit(OpCodes.Stloc, returnValueVar);
+					EmitTryCatchWrapper(il, method, start);
+					// Load the return value back onto the stack for the next postfix
+					il.Emit(OpCodes.Ldloc, returnValueVar);
 				}
 			}
 		}
 
 		private static void WritePrefixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables, List<MethodInfo> prefixes)
+			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> prefixes)
 		{
 			// Prefix layout:
 			// Make return value (if needed) into a variable
@@ -227,8 +276,8 @@ namespace HarmonyLib.Public.Patching
 			// A prefix that can modify control flow has one of the following:
 			// * It returns a boolean
 			// * It declares bool __runOriginal
-			var canModifyControlFlow = prefixes.Any(p => p.ReturnType == typeof(bool) ||
-			                                             p.GetParameters()
+			var canModifyControlFlow = prefixes.Any(p => p.method.ReturnType == typeof(bool) ||
+			                                             p.method.GetParameters()
 				                                             .Any(pp => pp.Name == RUN_ORIGINAL_PARAM &&
 				                                                        pp.ParameterType.OpenRefType() == typeof(bool)));
 
@@ -244,15 +293,19 @@ namespace HarmonyLib.Public.Patching
 
 			foreach (var prefix in prefixes)
 			{
-				EmitCallParameter(il, original, prefix, variables, false);
-				il.Emit(OpCodes.Call, prefix);
+				var method = prefix.method;
+				var start = il.DeclareLabel();
+				il.MarkLabel(start);
 
-				if (!AccessTools.IsVoid(prefix.ReturnType))
+				EmitCallParameter(il, original, method, variables, false);
+				il.Emit(OpCodes.Call, method);
+
+				if (!AccessTools.IsVoid(method.ReturnType))
 				{
-					if (prefix.ReturnType != typeof(bool))
+					if (method.ReturnType != typeof(bool))
 						throw new InvalidHarmonyPatchArgumentException(
-							$"Prefix patch {prefix.FullDescription()} has return type {prefix.ReturnType}, but only `bool` or `void` are permitted",
-							original, prefix);
+							$"Prefix patch {method.FullDescription()} has return type {method.ReturnType}, but only `bool` or `void` are permitted",
+							original, method);
 
 					if (canModifyControlFlow)
 					{
@@ -262,6 +315,9 @@ namespace HarmonyLib.Public.Patching
 						il.Emit(OpCodes.Stloc, runOriginal);
 					}
 				}
+
+				if (prefix.wrapTryCatch)
+					EmitTryCatchWrapper(il, method, start);
 			}
 
 			if (!canModifyControlFlow)
@@ -282,7 +338,7 @@ namespace HarmonyLib.Public.Patching
 
 		private static void WriteFinalizers(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
 			Dictionary<string, VariableDefinition> variables,
-			List<MethodInfo> finalizers)
+			ICollection<PatchContext> finalizers)
 		{
 			// Finalizer layout:
 			// Create __exception variable to store exception info and a skip flag
@@ -311,7 +367,6 @@ namespace HarmonyLib.Public.Patching
 			il.Emit(OpCodes.Ldc_I4_0);
 			il.Emit(OpCodes.Stloc, skipFinalizersVar);
 
-
 			il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
 
 			// Mark the original method return label here if it hasn't been yet
@@ -332,26 +387,21 @@ namespace HarmonyLib.Public.Patching
 
 				foreach (var finalizer in finalizers)
 				{
+					var method = finalizer.method;
 					var start = il.DeclareLabel();
 					il.MarkLabel(start);
 
-					EmitCallParameter(il, original, finalizer, variables, false);
-					il.Emit(OpCodes.Call, finalizer);
+					EmitCallParameter(il, original, method, variables, false);
+					il.Emit(OpCodes.Call, method);
 
-					if (finalizer.ReturnType != typeof(void))
+					if (method.ReturnType != typeof(void))
 					{
 						il.Emit(OpCodes.Stloc, variables[EXCEPTION_VAR]);
 						canRethrow = false;
 					}
 
-					if (suppressExceptions)
-					{
-						var exBlock = il.BeginExceptionBlock(start);
-
-						il.BeginHandler(exBlock, ExceptionHandlerType.Catch, typeof(object));
-						il.Emit(OpCodes.Pop);
-						il.EndExceptionBlock(exBlock);
-					}
+					if (suppressExceptions || finalizer.wrapTryCatch)
+						EmitTryCatchWrapper(il, method, start);
 				}
 
 				return canRethrow;
@@ -409,8 +459,10 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		private static void MakePatched(MethodBase original, ILContext ctx,
-			List<MethodInfo> prefixes, List<MethodInfo> postfixes,
-			List<MethodInfo> transpilers, List<MethodInfo> finalizers)
+			List<PatchContext> prefixes,
+			List<PatchContext> postfixes,
+			List<PatchContext> transpilers,
+			List<PatchContext> finalizers)
 		{
 			try
 			{
@@ -435,10 +487,12 @@ namespace HarmonyLib.Public.Patching
 
 				// Collect state variables
 				foreach (var nfix in prefixes.Union(postfixes).Union(finalizers))
-					if (nfix.DeclaringType != null && variables.ContainsKey(nfix.DeclaringType.FullName) == false)
+					if (nfix.method.DeclaringType != null && variables.ContainsKey(nfix.method.DeclaringType.FullName) == false)
 						foreach (var patchParam in nfix
-							.GetParameters().Where(patchParam => patchParam.Name == STATE_VAR))
-							variables[nfix.DeclaringType.FullName] =
+							.method
+							.GetParameters()
+							.Where(patchParam => patchParam.Name == STATE_VAR))
+							variables[nfix.method.DeclaringType.FullName] =
 								il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 
 				WritePrefixes(il, original, returnLabel, variables, prefixes);
@@ -481,6 +535,17 @@ namespace HarmonyLib.Public.Patching
 			if (type == typeof(long)) return OpCodes.Ldind_I8;
 
 			return OpCodes.Ldind_Ref;
+		}
+
+		private static void EmitTryCatchWrapper(ILEmitter il, MethodInfo target, ILEmitter.Label start)
+		{
+			var exBlock = il.BeginExceptionBlock(start);
+			il.BeginHandler(exBlock, ExceptionHandlerType.Catch, typeof(object));
+			il.Emit(OpCodes.Ldstr, target.FullDescription());
+			il.Emit(OpCodes.Call, LogPatchExceptionMethod);
+			il.EndExceptionBlock(exBlock);
+			// Force proper closure in case nothing is emitted after the catch
+			il.Emit(OpCodes.Nop);
 		}
 
 		private static bool EmitOriginalBaseMethod(ILEmitter il, MethodBase original)

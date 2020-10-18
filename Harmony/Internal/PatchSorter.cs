@@ -41,8 +41,17 @@ namespace HarmonyLib
 		/// <returns>The sorted patch methods</returns>
 		internal List<MethodInfo> Sort(MethodBase original)
 		{
+			return SortAsPatches(original).Select(x => x.GetMethod(original)).ToList();
+		}
+
+		/// <summary>Sorts internal PatchSortingWrapper collection and caches the results.
+		/// After first run the result is provided from the cache.</summary>
+		/// <param name="original">The original method</param>
+		/// <returns>The sorted patch methods as <see cref="Patch"/> instance</returns>
+		internal Patch[] SortAsPatches(MethodBase original)
+		{
 			// Check if cache exists and the method was used before.
-			if (sortedPatchArray is object) return sortedPatchArray.Select(x => x.GetMethod(original)).ToList();
+			if (sortedPatchArray is object) return sortedPatchArray;
 
 			// Initialize internal structures used for sorting.
 			handledPatches = new HashSet<PatchSortingWrapper>();
@@ -82,7 +91,7 @@ namespace HarmonyLib
 			handledPatches = null;
 			waitingList = null;
 			patches = null;
-			return sortedPatchArray.Select(x => x.GetMethod(original)).ToList();
+			return sortedPatchArray;
 		}
 
 		/// <summary>Checks if the sorter was created with the same patch list and as a result can be reused to

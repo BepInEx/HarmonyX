@@ -186,6 +186,11 @@ namespace HarmonyLib.Internal.Util
             IL.InsertBefore(Target, SetOpenLabelsTo(IL.Create(opcode, arg)));
         }
 
+        public void Emit(OpCode opcode, string arg)
+        {
+	        IL.InsertBefore(Target, SetOpenLabelsTo(IL.Create(opcode, arg)));
+        }
+
         public void Emit(OpCode opcode, FieldInfo fInfo)
         {
             IL.InsertBefore(Target, SetOpenLabelsTo(IL.Create(opcode, IL.Import(fInfo))));
