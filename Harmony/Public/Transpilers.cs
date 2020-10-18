@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using MonoMod.Utils;
+using MonoMod.Utils.Cil;
 
 namespace HarmonyLib
 {
@@ -131,6 +132,28 @@ namespace HarmonyLib
 			yield return new CodeInstruction(OpCodes.Ldstr, text);
 			yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(FileLog), nameof(FileLog.Log)));
 			foreach (var instruction in instructions) yield return instruction;
+		}
+
+		/// <summary>A transpiler that replaces the entire body of the method with another one</summary>
+		/// <param name="replacement">The replacement method. It's up to the caller of this transpiler to make sure that the signatures match.</param>
+		/// <param name="ilGenerator"><see cref="ILGenerator"/> of the patch. This is passed via transpiler.</param>
+		/// <returns>A collection of <see cref="CodeInstruction"/> that contains instructions of replacement method.</returns>
+		/// <exception cref="ArgumentException">The replacement method is not a managed method that contains any IL.</exception>
+		/// <remarks>This transpiler has a side effect of clearing up all previous locals and previous transpilers.
+		/// Use <see cref="HarmonyPriority"/> to run this transpiler as early as possible.</remarks>
+		public static IEnumerable<CodeInstruction> ReplaceWith(MethodBase replacement, ILGenerator ilGenerator)
+		{
+			var body = replacement.GetMethodBody();
+			if (body == null)
+				throw new ArgumentException("Replacement method must be a managed method", nameof(replacement));
+
+			// Currently HarmonyX is based on DMD which always uses a special ILGenerator wrapper for CecilILGenerator
+			var gen = Traverse.Create(ilGenerator).Field("Target").GetValue<CecilILGenerator>();
+			// Clear all existing vars; this is fine for HarmonyX because of how it works
+			gen.IL.Body.Variables.Clear();
+
+			// Create a copy of replacement and reinsert back the locals correctly
+			return PatchProcessor.GetOriginalInstructions(replacement, ilGenerator);
 		}
 	}
 }
