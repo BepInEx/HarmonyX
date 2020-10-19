@@ -71,14 +71,6 @@ namespace HarmonyLib.Internal.Patching
 
 		public MethodBody Body { get; }
 
-		private SRE.LocalBuilder ResolveLocal(Func<VariableDefinition, SRE.LocalBuilder> getLocal,
-			VariableDefinition varDef)
-		{
-			if (localsCache.TryGetValue(varDef, out var local))
-				return local;
-			return localsCache[varDef] = getLocal(varDef);
-		}
-
 		private int GetTarget(MethodBody body, object insOp)
 		{
 			if (insOp is ILLabel lab)
@@ -255,6 +247,12 @@ namespace HarmonyLib.Internal.Patching
 		private IEnumerable<RawInstruction> Prepare(Func<VariableDefinition, SRE.LocalBuilder> getLocal,
 			Func<SRE.Label> defineLabel)
 		{
+			// First resolve all variables properly so that they are all defined in case of (st|ld)loc_N is used
+			// This is especially useful
+			localsCache.Clear();
+			foreach (var variableDefinition in Body.Variables)
+				localsCache[variableDefinition] = getLocal(variableDefinition);
+
 			foreach (var unresolvedInstruction in codeInstructions)
 			{
 				// Set operand to the same as the IL operand (in most cases they are the same)
@@ -266,7 +264,7 @@ namespace HarmonyLib.Internal.Patching
 					case SRE.OperandType.ShortInlineVar:
 					{
 						if (unresolvedInstruction.Operand is VariableDefinition varDef)
-							unresolvedInstruction.Instruction.operand = ResolveLocal(getLocal, varDef);
+							unresolvedInstruction.Instruction.operand = localsCache[varDef];
 					}
 						break;
 					case SRE.OperandType.InlineSwitch when unresolvedInstruction.Operand is CodeInstruction[] targets:
