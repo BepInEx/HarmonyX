@@ -37,7 +37,7 @@ namespace HarmonyLib
 		internal static Exception Create(Exception ex, MethodBody body)
 		{
 			var match = Regex.Match(ex.Message.TrimEnd(), "Reason: Invalid IL code in.+: IL_(\\d{4}): (.+)$");
-			if (match.Success is false) return ex;
+			if (match.Success is false) return new HarmonyException("IL Compile Error (unknown location)", ex);
 
 			var finalInstructions = ILManipulator.GetInstructions(body) ?? new Dictionary<int, CodeInstruction>();
 
