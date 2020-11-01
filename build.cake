@@ -47,7 +47,14 @@ Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-    DotNetCoreTest();
+	var testTargets = new [] { "net35", "net45", "netcoreapp3" };
+	foreach (var target in testTargets)
+	{
+	    Information($"Testing {target}");
+		DotNetCoreTest("./HarmonyTests/HarmonyTests.csproj", new DotNetCoreTestSettings {
+			Framework = target
+		});
+	}
 });
 
 Task("Publish")
