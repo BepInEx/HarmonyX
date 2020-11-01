@@ -198,8 +198,9 @@ namespace HarmonyLib.Public.Patching
 				var start = il.DeclareLabel();
 				il.MarkLabel(start);
 
-				EmitCallParameter(il, original, method, variables, true);
+				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar);
 				il.Emit(OpCodes.Call, method);
+				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 
 				if (postfix.wrapTryCatch)
 					EmitTryCatchWrapper(il, method, start);
@@ -225,8 +226,9 @@ namespace HarmonyLib.Public.Patching
 				if (postfix.wrapTryCatch)
 					il.Emit(OpCodes.Ldloc, returnValueVar);
 
-				EmitCallParameter(il, original, method, variables, true);
+				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar);
 				il.Emit(OpCodes.Call, method);
+				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 
 				var firstParam = method.GetParameters().FirstOrDefault();
 
@@ -297,8 +299,9 @@ namespace HarmonyLib.Public.Patching
 				var start = il.DeclareLabel();
 				il.MarkLabel(start);
 
-				EmitCallParameter(il, original, method, variables, false);
+				EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar);
 				il.Emit(OpCodes.Call, method);
+				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 
 				if (!AccessTools.IsVoid(method.ReturnType))
 				{
@@ -391,8 +394,9 @@ namespace HarmonyLib.Public.Patching
 					var start = il.DeclareLabel();
 					il.MarkLabel(start);
 
-					EmitCallParameter(il, original, method, variables, false);
+					EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar);
 					il.Emit(OpCodes.Call, method);
+					EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 
 					if (method.ReturnType != typeof(void))
 					{
@@ -548,6 +552,15 @@ namespace HarmonyLib.Public.Patching
 			il.Emit(OpCodes.Nop);
 		}
 
+		private static void EmitResultUnbox(ILEmitter il, MethodBase original, VariableDefinition tmp, VariableDefinition result)
+		{
+			if (tmp == null)
+				return;
+			il.Emit(OpCodes.Ldloc, tmp);
+			il.Emit(OpCodes.Unbox_Any, AccessTools.GetReturnedType(original));
+			il.Emit(OpCodes.Stloc, result);
+		}
+
 		private static bool EmitOriginalBaseMethod(ILEmitter il, MethodBase original)
 		{
 			if (original is MethodInfo method)
@@ -563,8 +576,10 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
-			Dictionary<string, VariableDefinition> variables, bool allowFirsParamPassthrough)
+			Dictionary<string, VariableDefinition> variables, bool allowFirsParamPassthrough,
+			out VariableDefinition tmpObjectVar)
 		{
+			tmpObjectVar = null;
 			var isInstance = original.IsStatic is false;
 			var originalParameters = original.GetParameters();
 			var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
@@ -662,7 +677,20 @@ namespace HarmonyLib.Public.Patching
 						throw new Exception(
 							$"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName} for method {original.FullDescription()}");
 					var ldlocCode = patchParam.ParameterType.IsByRef && !returnType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
+					if (returnType.IsValueType && patchParam.ParameterType == typeof(object).MakeByRefType()) ldlocCode = OpCodes.Ldloc;
 					il.Emit(ldlocCode, variables[RESULT_VAR]);
+					if (returnType.IsValueType)
+					{
+						if (patchParam.ParameterType == typeof(object))
+							il.Emit(OpCodes.Box, returnType);
+						else if (patchParam.ParameterType == typeof(object).MakeByRefType())
+						{
+							il.Emit(OpCodes.Box, returnType);
+							tmpObjectVar = il.DeclareVariable(typeof(object));
+							il.Emit(OpCodes.Stloc, tmpObjectVar);
+							il.Emit(OpCodes.Ldloca, tmpObjectVar);
+						}
+					}
 					continue;
 				}
 
