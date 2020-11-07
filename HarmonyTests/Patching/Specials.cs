@@ -42,6 +42,21 @@ namespace HarmonyLibTests.Patching
 		*/
 
 		[Test]
+		public void Test_Patch_With_Module_Call()
+		{
+			var testMethod = ModuleLevelCall.CreateTestMethod();
+			Assert.AreEqual(0, testMethod());
+
+			var instance = new Harmony("special-case-module-call");
+			Assert.NotNull(instance);
+			var postfix = AccessTools.Method(typeof(ModuleLevelCall), nameof(ModuleLevelCall.Postfix));
+			Assert.NotNull(postfix);
+
+			instance.Patch(testMethod.Method, postfix: new HarmonyMethod(postfix));
+			Assert.AreEqual(1, testMethod());
+		}
+
+		[Test]
 		public void Test_Patch_ConcreteClass()
 		{
 			var instance = new Harmony("special-case-1");

@@ -1,9 +1,14 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Mono.Cecil;
+using MethodAttributes = Mono.Cecil.MethodAttributes;
+using TypeAttributes = Mono.Cecil.TypeAttributes;
 
 namespace HarmonyLibTests.Assets
 {
@@ -34,6 +39,46 @@ namespace HarmonyLibTests.Assets
 		public string Method()
 		{
 			throw new Exception();
+		}
+	}
+
+	public static class ModuleLevelCall
+	{
+		public static Func<int> CreateTestMethod()
+		{
+			using var ad = AssemblyDefinition.CreateAssembly(
+				new AssemblyNameDefinition($"CreateTestMethod{Guid.NewGuid().ToString()}", new Version(1, 0)), "MainModule.dll",
+				ModuleKind.Dll);
+
+			var moduleType = ad.MainModule.Types.First(m => m.Name == "<Module>");
+
+			var testMethod = new MethodDefinition("ModuleTest", MethodAttributes.Static | MethodAttributes.Public, ad.MainModule.ImportReference(typeof(int)));
+			moduleType.Methods.Add(testMethod);
+			var il = testMethod.Body.GetILProcessor();
+			il.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4, 0);
+			il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+
+			var testType = new TypeDefinition("TestNamespace", "TestType", TypeAttributes.Public, ad.MainModule.ImportReference(typeof(object)));
+			ad.MainModule.Types.Add(testType);
+
+			var mainMethod = new MethodDefinition("MainTest", MethodAttributes.Public | MethodAttributes.Static, ad.MainModule.ImportReference(typeof(int)));
+			testType.Methods.Add(mainMethod);
+
+			il = mainMethod.Body.GetILProcessor();
+			il.Emit(Mono.Cecil.Cil.OpCodes.Call, testMethod);
+			il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+
+			using var ms = new MemoryStream();
+			ad.Write(ms);
+
+			var ass = Assembly.Load(ms.ToArray());
+			var m = AccessTools.Method(ass.GetType("TestNamespace.TestType"), "MainTest");
+			return (Func<int>) Delegate.CreateDelegate(typeof(Func<int>), m);
+		}
+
+		public static int Postfix(int result)
+		{
+			return 1;
 		}
 	}
 
