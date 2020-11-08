@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
 using HarmonyLib.Public.Patching;
+using HarmonyLib.Tools;
 
 namespace HarmonyLib
 {
@@ -130,10 +131,7 @@ namespace HarmonyLib
 				throw new NullReferenceException($"Null method for {instance.Id}");
 
 			if (original.IsDeclaredMember() is false)
-			{
-				var declaredMember = original.GetDeclaredMember();
-				throw new ArgumentException($"You can only patch implemented methods/constructors. Path the declared method {declaredMember.FullDescription()} instead.");
-			}
+				Logger.Log(Logger.LogChannel.Warn, () => $"{instance.Id}: You should only patch implemented methods/constructors to avoid issues. Path the declared method {original.GetDeclaredMember().FullDescription()} instead of {original.FullDescription()}.");
 
 			lock (locker)
 			{
