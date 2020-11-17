@@ -34,9 +34,29 @@ namespace HarmonyLibTests.Assets
 		}
 	}*/
 
+	public static class MultiAttributePatch
+	{
+		public static int callCount = 0;
+
+		[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method))]
+		[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method2))]
+		[HarmonyPrefix]
+		public static bool Prefix(ref string __result)
+		{
+			callCount++;
+			__result = "";
+			return false;
+		}
+	}
+
 	public class DeadEndCode
 	{
 		public string Method()
+		{
+			throw new Exception();
+		}
+
+		public string Method2()
 		{
 			throw new Exception();
 		}

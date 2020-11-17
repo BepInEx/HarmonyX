@@ -41,6 +41,21 @@ namespace HarmonyLibTests.Patching
 		}
 		*/
 
+		[Test, NonParallelizable]
+		public void Test_Multiple_Attributes()
+		{
+			MultiAttributePatch.callCount = 0;
+			var instance = new Harmony("special-case-multi-attribute");
+			Assert.NotNull(instance);
+			instance.PatchAll(typeof(MultiAttributePatch));
+
+			var testObject = new DeadEndCode();
+			Assert.NotNull(testObject);
+			Assert.DoesNotThrow(() => testObject.Method(), "Test method 1 wasn't patched");
+			Assert.DoesNotThrow(() => testObject.Method2(), "Test method 2 wasn't patched");
+			Assert.AreEqual(2, MultiAttributePatch.callCount);
+		}
+
 		[Test]
 		public void Test_Patch_With_Module_Call()
 		{

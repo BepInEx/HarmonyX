@@ -47,7 +47,7 @@ namespace HarmonyLib
 		internal static List<AttributePatch> GetPatchMethods(Type type)
 		{
 			return AccessTools.GetDeclaredMethods(type)
-				.Select(method => AttributePatch.Create(method))
+				.SelectMany(AttributePatch.Create)
 				.Where(attributePatch => attributePatch is object)
 				.ToList();
 		}

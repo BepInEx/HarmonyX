@@ -84,7 +84,7 @@ namespace HarmonyLib
 		internal HarmonyPatchType? type;
 
 		static readonly string harmonyAttributeName = typeof(HarmonyAttribute).FullName;
-		internal static AttributePatch Create(MethodInfo patch)
+		internal static List<AttributePatch> Create(MethodInfo patch)
 		{
 			if (patch is null)
 				throw new NullReferenceException("Patch method cannot be null");
@@ -107,10 +107,17 @@ namespace HarmonyLib
 				})
 				.Select(harmonyInfo => AccessTools.MakeDeepCopy<HarmonyMethod>(harmonyInfo))
 				.ToList();
-			var info = HarmonyMethod.Merge(list);
-			info.method = patch;
 
-			return new AttributePatch() { info = info, type = type };
+			var completeMethods = list.Where(x => x.declaringType != null && x.methodName != null).ToList();
+			var info = HarmonyMethod.Merge(list);
+
+			if (list.All(i => i.declaringType != info.declaringType && i.methodName != info.methodName))
+				completeMethods.Add(info);
+
+			foreach (var completeMethod in completeMethods)
+				completeMethod.method = patch;
+
+			return completeMethods.Select(i => new AttributePatch() { info = i, type = type }).ToList();
 		}
 
 		static HarmonyPatchType? GetPatchType(string methodName, object[] allAttributes)
