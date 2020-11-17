@@ -1,4 +1,5 @@
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 
 namespace HarmonyLibTests.Assets
@@ -58,6 +59,7 @@ namespace HarmonyLibTests.Assets
 		private Inner[] field6 = new Inner[] { new Inner { x = 11 }, new Inner { x = 22 } };
 		private InnerStruct field7 = new InnerStruct { x = 999 };
 		private List<InnerStruct> field8 = new List<InnerStruct> { new InnerStruct { x = 11 }, new InnerStruct { x = 22 } };
+		internal DayOfWeek field9 = DayOfWeek.Saturday;
 
 		private int _property = 314159;
 
@@ -119,10 +121,23 @@ namespace HarmonyLibTests.Assets
 
 	public struct AccessToolsStruct : IAccessToolsType
 	{
+		private enum InnerEnum : byte
+		{
+			A = 1,
+			B = 2,
+			C = 4,
+		}
+
+		public static Enum NewInnerEnum(byte b)
+		{
+			return (InnerEnum)b;
+		}
+
 		public string structField1;
 		private readonly int structField2;
 		private static int structField3 = -123;
 		public static readonly string structField4 = "structField4orig";
+		private InnerEnum structField5;
 
 		public int Property1 { get; set; }
 
@@ -141,6 +156,7 @@ namespace HarmonyLibTests.Assets
 		{
 			structField1 = "structField1orig";
 			structField2 = -666;
+			structField5 = InnerEnum.B;
 			Property1 = 161803;
 			Property2 = "1.61803";
 		}
@@ -151,6 +167,43 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 #pragma warning restore CS0169, CS0414, IDE0044, IDE0051, IDE0052
+
+	public static class AccessToolsCreateInstance
+	{
+		// Has default public parameterless constructor.
+		public class NoConstructor
+		{
+			public bool constructorCalled = true;
+		}
+
+		// Does NOT have a default public parameterless constructor (or any parameterless constructor for that matter).
+		public class OnlyNonParameterlessConstructor
+		{
+			public bool constructorCalled = true;
+
+			public OnlyNonParameterlessConstructor(int _)
+			{
+			}
+		}
+
+		public class PublicParameterlessConstructor
+		{
+			public bool constructorCalled = true;
+
+			public PublicParameterlessConstructor()
+			{
+			}
+		}
+
+		public class InternalParameterlessConstructor
+		{
+			public bool constructorCalled = true;
+
+			internal InternalParameterlessConstructor()
+			{
+			}
+		}
+	}
 
 	public static class AccessToolsMethodDelegate
 	{
