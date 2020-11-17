@@ -84,7 +84,7 @@ namespace HarmonyLib
 		internal HarmonyPatchType? type;
 
 		static readonly string harmonyAttributeName = typeof(HarmonyAttribute).FullName;
-		internal static List<AttributePatch> Create(MethodInfo patch)
+		internal static IEnumerable<AttributePatch> Create(MethodInfo patch)
 		{
 			if (patch is null)
 				throw new NullReferenceException("Patch method cannot be null");
@@ -93,7 +93,7 @@ namespace HarmonyLib
 			var methodName = patch.Name;
 			var type = GetPatchType(methodName, allAttributes);
 			if (type is null)
-				return null;
+				return Enumerable.Empty<AttributePatch>();
 
 			if (type != HarmonyPatchType.ReversePatch && patch.IsStatic is false)
 				throw new ArgumentException("Patch method " + patch.FullDescription() + " must be static");
@@ -108,11 +108,15 @@ namespace HarmonyLib
 				.Select(harmonyInfo => AccessTools.MakeDeepCopy<HarmonyMethod>(harmonyInfo))
 				.ToList();
 
-			var completeMethods = list.Where(x => x.declaringType != null && x.methodName != null).ToList();
 			var info = HarmonyMethod.Merge(list);
 
-			if (list.All(i => i.declaringType != info.declaringType && i.methodName != info.methodName))
-				completeMethods.Add(info);
+			static bool Same(HarmonyMethod m1, HarmonyMethod m2) =>
+				m1.declaringType == m2.declaringType && m1.methodName == m2.methodName;
+
+			var completeMethods = list.Where(m =>
+				m.declaringType != null && m.methodName != null &&
+				!Same(m, info)).ToList();
+			completeMethods.Add(info);
 
 			foreach (var completeMethod in completeMethods)
 				completeMethod.method = patch;
