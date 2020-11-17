@@ -253,7 +253,7 @@ namespace HarmonyLib.Public.Patching
 			}
 		}
 
-		private static void WritePrefixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
+		private static bool WritePrefixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
 			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> prefixes)
 		{
 			// Prefix layout:
@@ -262,7 +262,7 @@ namespace HarmonyLib.Public.Patching
 			// If method returns a value, add additional logic to allow skipping original method
 
 			if (prefixes.Count == 0)
-				return;
+				return false;
 
 			Logger.Log(Logger.LogChannel.Info, () => "Writing prefixes");
 
@@ -324,22 +324,24 @@ namespace HarmonyLib.Public.Patching
 			}
 
 			if (!canModifyControlFlow)
-				return;
+				return false;
 
 			// If runOriginal is false, branch automatically to the end
 			il.Emit(OpCodes.Ldloc, runOriginal);
 			il.Emit(OpCodes.Brfalse, postProcessTarget);
 
 			if (returnValueVar == null)
-				return;
+				return true;
 
 			// Finally, load return value onto stack at the end
 			il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
 			il.MarkLabel(postProcessTarget);
 			il.Emit(OpCodes.Ldloc, returnValueVar);
+
+			return true;
 		}
 
-		private static void WriteFinalizers(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
+		private static bool WriteFinalizers(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
 			Dictionary<string, VariableDefinition> variables,
 			ICollection<PatchContext> finalizers)
 		{
@@ -356,7 +358,7 @@ namespace HarmonyLib.Public.Patching
 			// End catch block
 
 			if (finalizers.Count == 0)
-				return;
+				return false;
 
 			Logger.Log(Logger.LogChannel.Info, () => "Writing finalizers");
 
@@ -460,6 +462,8 @@ namespace HarmonyLib.Public.Patching
 
 			if (returnValueVar != null)
 				il.Emit(OpCodes.Ldloc, returnValueVar);
+
+			return true;
 		}
 
 		private static void MakePatched(MethodBase original, ILContext ctx,
@@ -499,16 +503,17 @@ namespace HarmonyLib.Public.Patching
 							variables[nfix.method.DeclaringType.FullName] =
 								il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 
-				WritePrefixes(il, original, returnLabel, variables, prefixes);
+				var modifiesControlFlow = false;
+				modifiesControlFlow |= WritePrefixes(il, original, returnLabel, variables, prefixes);
 				WritePostfixes(il, original, returnLabel, variables, postfixes);
-				WriteFinalizers(il, original, returnLabel, variables, finalizers);
+				modifiesControlFlow |= WriteFinalizers(il, original, returnLabel, variables, finalizers);
 
 				// Mark return label in case it hasn't been marked yet and close open labels to return
 				il.MarkLabel(returnLabel);
 				var lastInstruction = il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
 
 				// If we have finalizers, ensure the return label is `ret` and not `nop`
-				if (finalizers.Count > 0)
+				if (modifiesControlFlow)
 					lastInstruction.OpCode = OpCodes.Ret;
 
 				Logger.Log(Logger.LogChannel.IL,
