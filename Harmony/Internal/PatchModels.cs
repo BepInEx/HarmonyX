@@ -111,10 +111,10 @@ namespace HarmonyLib
 			var info = HarmonyMethod.Merge(list);
 
 			static bool Same(HarmonyMethod m1, HarmonyMethod m2) =>
-				m1.declaringType == m2.declaringType && m1.methodName == m2.methodName;
+				m1.GetDeclaringType() == m2.GetDeclaringType() && m1.methodName == m2.methodName;
 
 			var completeMethods = list.Where(m =>
-				m.declaringType != null && m.methodName != null &&
+				m.GetDeclaringType() != null && m.methodName != null &&
 				!Same(m, info)).ToList();
 			completeMethods.Add(info);
 
