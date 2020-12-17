@@ -168,11 +168,19 @@ namespace HarmonyLib
 		// used for error reporting
 		internal string Description()
 		{
-			var cName = declaringType is object ? declaringType.FullName : "undefined";
+			var cName = declaringType is object ? declaringType.FullName : assemblyQualifiedDeclaringTypeName is object ? assemblyQualifiedDeclaringTypeName : "undefined";
 			var mName = methodName ?? "undefined";
 			var tName = methodType.HasValue ? methodType.Value.ToString() : "undefined";
 			var aName = argumentTypes is object ? argumentTypes.Description() : "undefined";
 			return $"(class={cName}, methodname={mName}, type={tName}, args={aName})";
+		}
+		
+		internal string assemblyQualifiedDeclaringTypeName;
+		internal Type GetDeclaringType()
+		{
+			if (declaringType == null && assemblyQualifiedDeclaringTypeName != null)
+				declaringType = Type.GetType(assemblyQualifiedDeclaringTypeName, true);
+			return declaringType;
 		}
 	}
 

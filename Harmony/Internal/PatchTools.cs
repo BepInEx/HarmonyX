@@ -61,23 +61,23 @@ namespace HarmonyLib
 					case MethodType.Normal:
 						if (attr.methodName is null)
 							return null;
-						return AccessTools.DeclaredMethod(attr.declaringType, attr.methodName, attr.argumentTypes);
+						return AccessTools.DeclaredMethod(attr.GetDeclaringType(), attr.methodName, attr.argumentTypes);
 
 					case MethodType.Getter:
 						if (attr.methodName is null)
 							return null;
-						return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetGetMethod(true);
+						return AccessTools.DeclaredProperty(attr.GetDeclaringType(), attr.methodName).GetGetMethod(true);
 
 					case MethodType.Setter:
 						if (attr.methodName is null)
 							return null;
-						return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName).GetSetMethod(true);
+						return AccessTools.DeclaredProperty(attr.GetDeclaringType(), attr.methodName).GetSetMethod(true);
 
 					case MethodType.Constructor:
-						return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
+						return AccessTools.DeclaredConstructor(attr.GetDeclaringType(), attr.argumentTypes);
 
 					case MethodType.StaticConstructor:
-						return AccessTools.GetDeclaredConstructors(attr.declaringType)
+						return AccessTools.GetDeclaredConstructors(attr.GetDeclaringType())
 							.Where(c => c.IsStatic)
 							.FirstOrDefault();
 				}

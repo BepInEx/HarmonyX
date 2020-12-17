@@ -136,8 +136,9 @@ namespace HarmonyLib
 				{
 					var note = "You cannot combine TargetMethod, TargetMethods or PatchAll with individual annotations";
 					var info = patchMethod.info;
-					if (info.declaringType is object)
-						throw new ArgumentException($"{note} [{info.declaringType.FullDescription()}]");
+					var declaringType = info.GetDeclaringType();
+					if (declaringType is object)
+						throw new ArgumentException($"{note} [{declaringType.FullDescription()}]");
 					if (info.methodName is object)
 						throw new ArgumentException($"{note} [{info.methodName}]");
 					if (info.methodType.HasValue && info.methodType.Value != MethodType.Normal)
@@ -213,7 +214,7 @@ namespace HarmonyLib
 			var isPatchAll = containerType.GetCustomAttributes(true).Any(a => a.GetType().FullName == typeof(HarmonyPatchAll).FullName);
 			if (isPatchAll)
 			{
-				var type = containerAttributes.declaringType;
+				var type = containerAttributes.GetDeclaringType();
 				if (type is null)
 					throw new ArgumentException($"Using {typeof(HarmonyPatchAll).FullName} requires an additional attribute for specifying the Class/Type");
 

@@ -168,6 +168,22 @@ namespace HarmonyLib
 			info.methodName = methodName;
 			ParseSpecialArguments(argumentTypes, argumentVariations);
 		}
+		
+		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
+		/// <param name="assemblyQualifiedDeclaringType">Assembly-qualified name of the declaring class/type</param>
+		/// <param name="methodName">The name of the method, property or constructor to patch</param>
+		/// <param name="methodType">The <see cref="MethodType"/></param>
+		/// <param name="argumentTypes">An array of argument types to target overloads</param>
+		/// <param name="argumentVariations">Array of <see cref="ArgumentType"/></param>
+		///
+		public HarmonyPatch(string assemblyQualifiedDeclaringType, string methodName, MethodType? methodType = null, Type[] argumentTypes = null, ArgumentType[] argumentVariations = null)
+		{
+			info.assemblyQualifiedDeclaringTypeName = assemblyQualifiedDeclaringType;
+			info.methodName = methodName;
+			info.methodType = methodType;
+			if (argumentTypes != null)
+				ParseSpecialArguments(argumentTypes, argumentVariations);
+		}
 
 		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
 		/// <param name="declaringType">The declaring class/type</param>
