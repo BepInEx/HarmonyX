@@ -198,9 +198,10 @@ namespace HarmonyLib.Public.Patching
 				var start = il.DeclareLabel();
 				il.MarkLabel(start);
 
-				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar);
+				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
 				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
+				EmitArgUnbox(il, tmpBoxVars);
 
 				if (postfix.wrapTryCatch)
 					EmitTryCatchWrapper(il, method, start);
@@ -226,9 +227,10 @@ namespace HarmonyLib.Public.Patching
 				if (postfix.wrapTryCatch)
 					il.Emit(OpCodes.Ldloc, returnValueVar);
 
-				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar);
+				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
 				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
+				EmitArgUnbox(il, tmpBoxVars);
 
 				var firstParam = method.GetParameters().FirstOrDefault();
 
@@ -299,9 +301,10 @@ namespace HarmonyLib.Public.Patching
 				var start = il.DeclareLabel();
 				il.MarkLabel(start);
 
-				EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar);
+				EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
 				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
+				EmitArgUnbox(il, tmpBoxVars);
 
 				if (!AccessTools.IsVoid(method.ReturnType))
 				{
@@ -396,9 +399,10 @@ namespace HarmonyLib.Public.Patching
 					var start = il.DeclareLabel();
 					il.MarkLabel(start);
 
-					EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar);
+					EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar, out var tmpBoxVars);
 					il.Emit(OpCodes.Call, method);
 					EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
+					EmitArgUnbox(il, tmpBoxVars);
 
 					if (method.ReturnType != typeof(void))
 					{
@@ -566,6 +570,23 @@ namespace HarmonyLib.Public.Patching
 			il.Emit(OpCodes.Stloc, result);
 		}
 
+		private static void EmitArgUnbox(ILEmitter il, List<ArgumentBoxInfo> boxInfo)
+		{
+			if (boxInfo == null)
+				return;
+			foreach (var info in boxInfo)
+			{
+				if (info.isByRef)
+					il.Emit(OpCodes.Ldarg, info.index);
+				il.Emit(OpCodes.Ldloc, info.tmpVar);
+				il.Emit(OpCodes.Unbox_Any, info.type);
+				if (info.isByRef)
+					il.Emit(OpCodes.Stobj, info.type);
+				else
+					il.Emit(OpCodes.Starg, info.index);
+			}
+		}
+
 		private static bool EmitOriginalBaseMethod(ILEmitter il, MethodBase original)
 		{
 			if (original is MethodInfo method)
@@ -580,11 +601,20 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
+		class ArgumentBoxInfo
+		{
+			public int index;
+			public VariableDefinition tmpVar;
+			public Type type;
+			public bool isByRef;
+		}
+
 		private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
 			Dictionary<string, VariableDefinition> variables, bool allowFirsParamPassthrough,
-			out VariableDefinition tmpObjectVar)
+			out VariableDefinition tmpObjectVar, out List<ArgumentBoxInfo> tmpBoxVars)
 		{
 			tmpObjectVar = null;
+			tmpBoxVars = new List<ArgumentBoxInfo>();
 			var isInstance = original.IsStatic is false;
 			var originalParameters = original.GetParameters();
 			var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
@@ -769,28 +799,70 @@ namespace HarmonyLib.Public.Patching
 				// 3 ref/out  -> normal  : LDARG, LDIND_x
 				// 4 ref/out  -> ref/out : LDARG
 				//
-				var originalIsNormal = originalParameters[idx].IsOut is false &&
-				                       originalParameters[idx].ParameterType.IsByRef is false;
-				var patchIsNormal = patchParam.IsOut is false && patchParam.ParameterType.IsByRef is false;
+				var originalParamType = originalParameters[idx].ParameterType;
+				var originalParamElementType = originalParamType.IsByRef ? originalParamType.GetElementType() : originalParamType;
+				var patchParamType = patchParam.ParameterType;
+				var patchParamElementType = patchParamType.IsByRef ? patchParamType.GetElementType() : patchParamType;
+				var originalIsNormal = originalParameters[idx].IsOut is false && originalParamType.IsByRef is false;
+				var patchIsNormal = patchParam.IsOut is false && patchParamType.IsByRef is false;
+				var needsBoxing = originalParamElementType.IsValueType && patchParamElementType.IsValueType is false;
 				var patchArgIndex = idx + (isInstance ? 1 : 0);
 
 				// Case 1 + 4
 				if (originalIsNormal == patchIsNormal)
 				{
 					il.Emit(OpCodes.Ldarg, patchArgIndex);
+					if (needsBoxing)
+					{
+						if (patchIsNormal)
+							il.Emit(OpCodes.Box, originalParamElementType);
+						else
+						{
+							il.Emit(OpCodes.Ldobj, originalParamElementType);
+							il.Emit(OpCodes.Box, originalParamElementType);
+							var tmpBoxVar = il.DeclareVariable(patchParamType);
+							il.Emit(OpCodes.Stloc, tmpBoxVar);
+							il.Emit(OpCodes.Ldloca_S, tmpBoxVar);
+							tmpBoxVars.Add(new ArgumentBoxInfo { index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = true });
+						}
+					}
 					continue;
 				}
 
 				// Case 2
 				if (originalIsNormal && patchIsNormal is false)
 				{
-					il.Emit(OpCodes.Ldarga, patchArgIndex);
+					if (needsBoxing)
+					{
+						il.Emit(OpCodes.Ldarg, patchArgIndex);
+						il.Emit(OpCodes.Box, originalParamElementType);
+						var tmpBoxVar = il.DeclareVariable(patchParamType);
+						il.Emit(OpCodes.Stloc, tmpBoxVar);
+						il.Emit(OpCodes.Ldloca_S, tmpBoxVar);
+						// Store value for unboxing here as well since we want to replace the argument value
+						// e.g. replace argument value in prefix
+						tmpBoxVars.Add(new ArgumentBoxInfo { index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = false });
+					}
+					else
+						il.Emit(OpCodes.Ldarga, patchArgIndex);
 					continue;
 				}
 
 				// Case 3
-				il.Emit(OpCodes.Ldarg, patchArgIndex);
-				il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
+				if (needsBoxing)
+				{
+					il.Emit(OpCodes.Ldarg, patchArgIndex);
+					il.Emit(OpCodes.Ldobj, originalParamElementType);
+					il.Emit(OpCodes.Box, originalParamElementType);
+				}
+				else
+				{
+					il.Emit(OpCodes.Ldarg, patchArgIndex);
+					if (originalParamElementType.IsValueType)
+						il.Emit(OpCodes.Ldobj, originalParamElementType);
+					else
+						il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
+				}
 			}
 		}
 	}
