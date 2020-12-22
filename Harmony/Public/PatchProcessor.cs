@@ -131,7 +131,7 @@ namespace HarmonyLib
 				throw new NullReferenceException($"Null method for {instance.Id}");
 
 			if (original.IsDeclaredMember() is false)
-				Logger.Log(Logger.LogChannel.Warn, () => $"{instance.Id}: You should only patch implemented methods/constructors to avoid issues. Path the declared method {original.GetDeclaredMember().FullDescription()} instead of {original.FullDescription()}.");
+				Logger.Log(Logger.LogChannel.Warn, () => $"{instance.Id}: You should only patch implemented methods/constructors to avoid issues. Patch the declared method {original.GetDeclaredMember().FullDescription()} instead of {original.FullDescription()}.");
 
 			lock (locker)
 			{
