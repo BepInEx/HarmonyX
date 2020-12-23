@@ -849,15 +849,14 @@ namespace HarmonyLib.Public.Patching
 				}
 
 				// Case 3
+				il.Emit(OpCodes.Ldarg, patchArgIndex);
 				if (needsBoxing)
 				{
-					il.Emit(OpCodes.Ldarg, patchArgIndex);
 					il.Emit(OpCodes.Ldobj, originalParamElementType);
 					il.Emit(OpCodes.Box, originalParamElementType);
 				}
 				else
 				{
-					il.Emit(OpCodes.Ldarg, patchArgIndex);
 					if (originalParamElementType.IsValueType)
 						il.Emit(OpCodes.Ldobj, originalParamElementType);
 					else
