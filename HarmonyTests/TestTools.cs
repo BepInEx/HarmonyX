@@ -129,9 +129,7 @@ namespace HarmonyLibTests
 
 			public string Description => throw new NotImplementedException();
 
-#pragma warning disable CA1819 // Properties should not return arrays
 			public object[] Arguments => throw new NotImplementedException();
-#pragma warning restore CA1819 // Properties should not return arrays
 
 			public ConstraintBuilder Builder { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
@@ -329,9 +327,7 @@ namespace HarmonyLibTests
 
 	public class TestLogger
 	{
-#pragma warning disable CA1032 // Implement standard exception constructors
 		class ExplicitException : ResultStateException
-#pragma warning restore CA1032 // Implement standard exception constructors
 		{
 			public ExplicitException(string message) : base(message) { }
 
