@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using MonoMod.RuntimeDetour;
 
 namespace HarmonyLib.Public.Patching
 {
@@ -14,6 +16,8 @@ namespace HarmonyLib.Public.Patching
 	{
 		private static readonly Dictionary<MethodBase, PatchInfo> PatchInfos = new Dictionary<MethodBase, PatchInfo>();
 		private static readonly Dictionary<MethodBase, MethodPatcher> MethodPatchers = new Dictionary<MethodBase, MethodPatcher>();
+		// Keep replacements as weak references to allow GC to collect them (e.g. if replacement is DynamicMethod)
+		private static readonly List<KeyValuePair<WeakReference, MethodBase>> ReplacementToOriginals = new List<KeyValuePair<WeakReference, MethodBase>>();
 
 		static PatchManager()
 		{
@@ -92,6 +96,39 @@ namespace HarmonyLib.Public.Patching
 		{
 			lock (PatchInfos)
 				return PatchInfos.Keys.ToList();
+		}
+
+		internal static MethodBase GetOriginal(MethodInfo replacement)
+		{
+			lock (ReplacementToOriginals)
+			{
+				ReplacementToOriginals.RemoveAll(kv => !kv.Key.IsAlive);
+				foreach (var replacementToOriginal in ReplacementToOriginals)
+				{
+					var method = replacementToOriginal.Key.Target as MethodInfo;
+					if (method == replacement)
+						return replacementToOriginal.Value;
+				}
+				return null;
+			}
+		}
+
+		internal static MethodInfo FindReplacement(StackFrame frame)
+		{
+			var methodAddress = AccessTools.Field(typeof(StackFrame), "methodAddress");
+			if (methodAddress == null) return null;
+			var framePtr = (long)methodAddress.GetValue(frame);
+			lock (ReplacementToOriginals)
+				return ReplacementToOriginals
+					.FirstOrDefault(kv => kv.Key.IsAlive && ((MethodInfo)kv.Key.Target).GetNativeStart().ToInt64() == framePtr).Key.Target as MethodInfo;
+		}
+
+		internal static void AddReplacementOriginal(MethodBase original, MethodInfo replacement)
+		{
+			if (replacement == null)
+				return;
+			lock (ReplacementToOriginals)
+				ReplacementToOriginals.Add(new KeyValuePair<WeakReference, MethodBase>(new WeakReference(replacement), original));
 		}
 
 		/// <summary>

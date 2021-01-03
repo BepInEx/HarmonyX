@@ -197,6 +197,7 @@ namespace HarmonyLib
 						patchInfo.AddFinalizers(instance.Id, job.finalizers.ToArray());
 
 						replacement = PatchFunctions.UpdateWrapper(job.original, patchInfo);
+						PatchManager.AddReplacementOriginal(job.original, replacement);
 					}
 					catch (Exception ex)
 					{

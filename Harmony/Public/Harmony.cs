@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using HarmonyLib.Internal.RuntimeFixes;
+using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
 
 namespace HarmonyLib
@@ -277,7 +278,7 @@ namespace HarmonyLib
 		public static MethodBase GetOriginalMethod(MethodInfo replacement)
 		{
 			if (replacement == null) throw new ArgumentNullException(nameof(replacement));
-			return HarmonySharedState.GetOriginal(replacement);
+			return PatchManager.GetOriginal(replacement);
 		}
 
 		/// <summary>Tries to get the method from a stackframe including dynamic replacement methods</summary>
@@ -289,7 +290,7 @@ namespace HarmonyLib
 			if (frame == null) throw new ArgumentNullException(nameof(frame));
 			var method = frame.GetMethod();
 			if (method != null) return method;
-			return HarmonySharedState.FindReplacement(frame);
+			return PatchManager.FindReplacement(frame);
 		}
 
 		/// <summary>Gets Harmony version for all active Harmony instances</summary>
