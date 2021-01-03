@@ -192,6 +192,14 @@ namespace HarmonyLib.Public.Patching
 			if (returnValueVar != null)
 				il.Emit(OpCodes.Stloc, returnValueVar);
 
+			if (!variables.ContainsKey(RUN_ORIGINAL_PARAM))
+			{
+				// If __runOriginal wasn't defined in prefixes, create it and mark as true (since original was run)
+				var runOriginalVar = variables[RUN_ORIGINAL_PARAM] = il.DeclareVariable(typeof(bool));
+				il.Emit(OpCodes.Ldc_I4_1);
+				il.Emit(OpCodes.Stloc, runOriginalVar);
+			}
+
 			foreach (var postfix in postfixes.Where(p => p.method.ReturnType == typeof(void)))
 			{
 				var method = postfix.method;
