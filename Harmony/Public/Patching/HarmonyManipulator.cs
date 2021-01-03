@@ -828,7 +828,7 @@ namespace HarmonyLib.Public.Patching
 						{
 							il.Emit(OpCodes.Ldobj, originalParamElementType);
 							il.Emit(OpCodes.Box, originalParamElementType);
-							var tmpBoxVar = il.DeclareVariable(patchParamType);
+							var tmpBoxVar = il.DeclareVariable(patchParamElementType);
 							il.Emit(OpCodes.Stloc, tmpBoxVar);
 							il.Emit(OpCodes.Ldloca_S, tmpBoxVar);
 							tmpBoxVars.Add(new ArgumentBoxInfo { index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = true });
@@ -844,7 +844,7 @@ namespace HarmonyLib.Public.Patching
 					{
 						il.Emit(OpCodes.Ldarg, patchArgIndex);
 						il.Emit(OpCodes.Box, originalParamElementType);
-						var tmpBoxVar = il.DeclareVariable(patchParamType);
+						var tmpBoxVar = il.DeclareVariable(patchParamElementType);
 						il.Emit(OpCodes.Stloc, tmpBoxVar);
 						il.Emit(OpCodes.Ldloca_S, tmpBoxVar);
 						// Store value for unboxing here as well since we want to replace the argument value
