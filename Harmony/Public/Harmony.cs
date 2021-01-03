@@ -13,10 +13,6 @@ namespace HarmonyLib
 	///
 	public class Harmony
 	{
-		/// <summary>The unique identifier</summary>
-		///
-		public string Id { get; private set; }
-
 		/// <summary>Set to true before instantiating Harmony to debug Harmony or use an environment variable to set HARMONY_DEBUG to '1' like this: cmd /C "set HARMONY_DEBUG=1 &amp;&amp; game.exe"</summary>
 		/// <remarks>This is for full debugging. To debug only specific patches, use the <see cref="HarmonyDebug"/> attribute</remarks>
 		///
