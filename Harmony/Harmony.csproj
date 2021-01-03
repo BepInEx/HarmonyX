@@ -70,7 +70,7 @@
 		<PackageReference Include="jnm2.ReferenceAssemblies.net35" Version="1.0.1" PrivateAssets="all" Condition="'$(TargetFramework)'=='net35'" />
 		
 		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-		<PackageReference Include="MonoMod.RuntimeDetour" Version="20.11.26.2" />
+		<PackageReference Include="MonoMod.RuntimeDetour" Version="20.12.25.1" />
 
 		<!-- Reference SRE helpers for .NET Standard -->
 		<PackageReference Include="System.Reflection.Emit" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
