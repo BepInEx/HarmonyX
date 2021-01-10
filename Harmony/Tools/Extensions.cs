@@ -1,3 +1,4 @@
+using HarmonyLib.Tools;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -41,26 +42,7 @@ namespace HarmonyLib
 		///
 		public static string FullDescription(this Type type)
 		{
-			if (type is null)
-				return "null";
-
-			var ns = type.Namespace;
-			if (string.IsNullOrEmpty(ns) is false) ns += ".";
-			var result = ns + type.Name;
-
-			if (type.IsGenericType)
-			{
-				result += "<";
-				var subTypes = type.GetGenericArguments();
-				for (var i = 0; i < subTypes.Length; i++)
-				{
-					if (result.EndsWith("<", StringComparison.Ordinal) is false)
-						result += ", ";
-					result += subTypes[i].FullDescription();
-				}
-				result += ">";
-			}
-			return result;
+			return type is null ? "null" : TypeNameHelper.GetTypeDisplayName(type);
 		}
 
 		/// <summary>A a full description of a method or a constructor without assembly details but with generics</summary>
@@ -516,7 +498,7 @@ namespace HarmonyLib
 	}
 
 	/// <summary>General extensions for collections</summary>
-	/// 
+	///
 	public static class CollectionExtensions
 	{
 		/// <summary>A simple way to execute code for every element in a collection</summary>
@@ -608,7 +590,7 @@ namespace HarmonyLib
 	}
 
 	/// <summary>General extensions for collections</summary>
-	/// 
+	///
 	public static class MethodBaseExtensions
 	{
 		/// <summary>Tests a class member if it has an IL method body (external methods for example don't have a body)</summary>

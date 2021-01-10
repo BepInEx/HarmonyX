@@ -375,7 +375,7 @@ namespace HarmonyLibTests.Tools
 		public void Test_AccessTools_TypeExtension_Description()
 		{
 			var types = new Type[] { typeof(string), typeof(int), null, typeof(void), typeof(Test_AccessTools) };
-			Assert.AreEqual("(System.String, System.Int32, null, System.Void, HarmonyLibTests.Tools.Test_AccessTools)", types.Description());
+			Assert.AreEqual("(string, int, null, void, HarmonyLibTests.Tools.Test_AccessTools)", types.Description());
 		}
 
 		[Test]
