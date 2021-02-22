@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Run test
-      run: ./build.ps1 -Target Test
+      run: ./build.ps1 --target=Test
   build:
     runs-on: windows-latest
     needs: test
