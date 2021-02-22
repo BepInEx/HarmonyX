@@ -24,13 +24,13 @@ jobs:
       run: git remote set-url --push origin https://$GITHUB_USER:$GITHUB_PAT@github.com/$GITHUB_REPOSITORY.git
       
     - name: Run build script
-      run: ./build.ps1 -Target Build
+      run: ./build.ps1 --target=Build
       
     - name: Create a release tag
       if: github.ref == 'refs/heads/master'
       env:
         NUGET_KEY: ${{ secrets.NUGET_KEY }}
-      run: ./build.ps1 -Target Publish -ScriptArgs "-nugetKey=""${env:NUGET_KEY}"""
+      run: ./build.ps1 --target=Publish --nugetKey="${env:NUGET_KEY}"
       
     - name: Get target file
       id: getfilename

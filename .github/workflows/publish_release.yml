@@ -20,7 +20,7 @@ jobs:
         echo Current branch: ${tag:1}
         echo ::set-output name=version_num::${tag:1}
     - name: Run build script
-      run: ./build.ps1 -Target Build
+      run: ./build.ps1 --target=Build
       shell: powershell
     - name: Create Release
       id:  create_release
