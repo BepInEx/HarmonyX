@@ -657,9 +657,9 @@ namespace HarmonyLib
 	{
 	}
 
-	[AttributeUsage(AttributeTargets.Method)]
 	/// <summary>Specifies the ILManipulator function in a patch class</summary>>
 	/// 
+	[AttributeUsage(AttributeTargets.Method)]
 	public class HarmonyILManipulator : Attribute
 	{
 	}

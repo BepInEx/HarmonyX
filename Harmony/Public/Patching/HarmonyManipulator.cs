@@ -482,6 +482,25 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
+		private static void ApplyILManipulators(ILContext ctx, MethodBase original, ICollection<PatchContext> manipulators)
+		{
+			foreach (var manipulator in manipulators)
+			{
+				var method = manipulator.method;
+
+				List<object> manipulatorParameters = new List<object>();
+				foreach (var type in method.GetParameters().Select(p => p.ParameterType))
+				{
+					if (type.IsAssignableFrom(typeof(ILContext)))
+						manipulatorParameters.Add(ctx);
+					if (type.IsAssignableFrom(typeof(MethodBase)))
+						manipulatorParameters.Add(original);
+				}
+
+				method.Invoke(null, manipulatorParameters.ToArray());
+			}
+		}
+
 		private static void MakePatched(MethodBase original, ILContext ctx,
 			List<PatchContext> prefixes,
 			List<PatchContext> postfixes,
@@ -533,27 +552,7 @@ namespace HarmonyLib.Public.Patching
 				if (modifiesControlFlow)
 					lastInstruction.OpCode = OpCodes.Ret;
 
-				foreach (var ilman in ilmanipulators)
-				{
-					var methodParamsTypes = ilman.method.GetParameters().Select(x => x.ParameterType).ToArray();
-
-					var contextIndex = Array.IndexOf(methodParamsTypes, typeof(ILContext));
-					var baseIndex = Array.IndexOf(methodParamsTypes, typeof(MethodBase));
-
-					List<object> methodParams = new List<object>();
-
-					if (contextIndex > baseIndex)
-						methodParams.Add(ctx);
-					else if (baseIndex > contextIndex)
-						methodParams.Add(original);
-
-					if (contextIndex > -1 && contextIndex < baseIndex)
-						methodParams.Add(ctx);
-					else if (baseIndex > -1 && baseIndex < contextIndex)
-						methodParams.Add(original);
-
-					ilman.method.Invoke(null, methodParams.ToArray());
-				}
+				ApplyILManipulators(ctx, original, ilmanipulators);
 
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
