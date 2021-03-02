@@ -50,9 +50,10 @@ namespace HarmonyLib.Public.Patching
 			out List<PatchContext> prefixes,
 			out List<PatchContext> postfixes,
 			out List<PatchContext> transpilers,
-			out List<PatchContext> finalizers)
+			out List<PatchContext> finalizers,
+			out List<PatchContext> ilmanipulators)
 		{
-			Patch[] prefixesArr, postfixesArr, transpilersArr, finalizersArr;
+			Patch[] prefixesArr, postfixesArr, transpilersArr, finalizersArr, ilmanipulatorsArr;
 
 			// Lock to ensure no more patches are added while we're sorting
 			lock (patchInfo)
@@ -61,6 +62,7 @@ namespace HarmonyLib.Public.Patching
 				postfixesArr = patchInfo.postfixes.ToArray();
 				transpilersArr = patchInfo.transpilers.ToArray();
 				finalizersArr = patchInfo.finalizers.ToArray();
+				ilmanipulatorsArr = patchInfo.ilmanipulators.ToArray();
 			}
 
 			static List<PatchContext> Sort(MethodBase original, Patch[] patches)
@@ -73,6 +75,7 @@ namespace HarmonyLib.Public.Patching
 			postfixes = Sort(original, postfixesArr);
 			transpilers = Sort(original, transpilersArr);
 			finalizers = Sort(original, finalizersArr);
+			ilmanipulators = Sort(original, ilmanipulatorsArr);
 		}
 
 		/// <summary>
@@ -89,7 +92,7 @@ namespace HarmonyLib.Public.Patching
 		public static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
 		{
 			SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
-				out var sortedFinalizers);
+				out var sortedFinalizers, out var sortedILManipulators);
 
 			Logger.Log(Logger.LogChannel.Info, () =>
 			{
@@ -111,11 +114,12 @@ namespace HarmonyLib.Public.Patching
 				Print(sortedPostfixes, "postfixes");
 				Print(sortedTranspilers, "transpilers");
 				Print(sortedFinalizers, "finalizers");
+				Print(sortedILManipulators, "ilmanipulators");
 
 				return sb.ToString();
 			});
 
-			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers);
+			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers, sortedILManipulators);
 		}
 
 		private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<PatchContext> transpilers)
@@ -482,7 +486,8 @@ namespace HarmonyLib.Public.Patching
 			List<PatchContext> prefixes,
 			List<PatchContext> postfixes,
 			List<PatchContext> transpilers,
-			List<PatchContext> finalizers)
+			List<PatchContext> finalizers,
+			List<PatchContext> ilmanipulators)
 		{
 			try
 			{
@@ -494,7 +499,7 @@ namespace HarmonyLib.Public.Patching
 				WriteTranspiledMethod(ctx, original, transpilers);
 
 				// If no need to wrap anything, we're basically done!
-				if (prefixes.Count + postfixes.Count + finalizers.Count == 0)
+				if (prefixes.Count + postfixes.Count + finalizers.Count + ilmanipulators.Count == 0)
 				{
 					Logger.Log(Logger.LogChannel.IL,
 						() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
@@ -527,6 +532,28 @@ namespace HarmonyLib.Public.Patching
 				// If we have finalizers, ensure the return label is `ret` and not `nop`
 				if (modifiesControlFlow)
 					lastInstruction.OpCode = OpCodes.Ret;
+
+				foreach (var ilman in ilmanipulators)
+				{
+					var methodParamsTypes = ilman.method.GetParameters().Select(x => x.ParameterType).ToArray();
+
+					var contextIndex = Array.IndexOf(methodParamsTypes, typeof(ILContext));
+					var baseIndex = Array.IndexOf(methodParamsTypes, typeof(MethodBase));
+
+					List<object> methodParams = new List<object>();
+
+					if (contextIndex > baseIndex)
+						methodParams.Add(ctx);
+					else if (baseIndex > contextIndex)
+						methodParams.Add(original);
+
+					if (contextIndex > -1 && contextIndex < baseIndex)
+						methodParams.Add(ctx);
+					else if (baseIndex > -1 && baseIndex < contextIndex)
+						methodParams.Add(original);
+
+					ilman.method.Invoke(null, methodParams.ToArray());
+				}
 
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
