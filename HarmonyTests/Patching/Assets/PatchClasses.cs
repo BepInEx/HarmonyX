@@ -1,5 +1,6 @@
 extern alias mmc;
 using HarmonyLib;
+using mmc::MonoMod.Cil;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -1259,6 +1260,74 @@ namespace HarmonyLibTests.Assets
 		{
 			__result = someMethod(123) + "/" + someMethod(456);
 			return false;
+		}
+	}
+
+	public static class ILManipulatorClass
+	{
+		public static string SomeMethod(string a, string b)
+		{
+			string result = "";
+			result += a;
+			result += " ";
+			result += "something";
+			result += " ";
+			result += b;
+			return result;
+		}
+	}
+
+	public class ILManipulatorClassPatch
+	{
+		public static void ILManipulator(ILContext il)
+		{
+			ILCursor c = new ILCursor(il);
+
+			c.GotoNext(MoveType.Before,
+				x => x.MatchLdloc(0),
+				x => x.MatchLdstr("something")
+			);
+
+			c.RemoveRange(8);
+		}
+	}
+
+	public static class ILManipulatorsAndOthersClass
+	{
+		public static int SomeMethod()
+		{
+			int a = 5;
+			int b = 10;
+
+			return a + b;
+		}
+	}
+
+	public class ILManipulatorsAndOthersClassPatch
+	{
+		public static void ILManipulator(ILContext il)
+		{
+			ILCursor c = new ILCursor(il);
+
+			c.GotoNext(MoveType.Before,
+				x => x.MatchLdcI4(10)
+			);
+
+			c.Next.Operand = 2;
+		}
+		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			foreach (var instruction in instructions)
+			{
+				if (instruction.opcode == OpCodes.Ldc_I4_5)
+					yield return new CodeInstruction(OpCodes.Ldc_I4, 3);
+				else
+					yield return instruction;
+			}
+		}
+		public static void Postfix(ref int __result)
+		{
+			__result += 2;
 		}
 	}
 
