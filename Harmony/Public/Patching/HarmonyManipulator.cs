@@ -482,12 +482,10 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
-		private static void ApplyILManipulators(ILContext ctx, MethodBase original, ICollection<PatchContext> manipulators)
+		internal static void ApplyILManipulators(ILContext ctx, MethodBase original, ICollection<MethodInfo> manipulators)
 		{
-			foreach (var manipulator in manipulators)
+			foreach (var method in manipulators)
 			{
-				var method = manipulator.method;
-
 				List<object> manipulatorParameters = new List<object>();
 				foreach (var type in method.GetParameters().Select(p => p.ParameterType))
 				{
@@ -552,7 +550,7 @@ namespace HarmonyLib.Public.Patching
 				if (modifiesControlFlow)
 					lastInstruction.OpCode = OpCodes.Ret;
 
-				ApplyILManipulators(ctx, original, ilmanipulators);
+				ApplyILManipulators(ctx, original, ilmanipulators.Select(m => m.method).ToList());
 
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
