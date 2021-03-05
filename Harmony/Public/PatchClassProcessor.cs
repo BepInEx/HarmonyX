@@ -195,6 +195,7 @@ namespace HarmonyLib
 						patchInfo.AddPostfixes(instance.Id, job.postfixes.ToArray());
 						patchInfo.AddTranspilers(instance.Id, job.transpilers.ToArray());
 						patchInfo.AddFinalizers(instance.Id, job.finalizers.ToArray());
+						patchInfo.AddILManipulators(instance.Id, job.ilmanipulators.ToArray());
 
 						replacement = PatchFunctions.UpdateWrapper(job.original, patchInfo);
 						PatchManager.AddReplacementOriginal(job.original, replacement);

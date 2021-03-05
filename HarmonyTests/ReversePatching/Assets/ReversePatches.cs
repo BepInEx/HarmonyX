@@ -1,4 +1,7 @@
+extern alias mmc;
+
 using HarmonyLib;
+using mmc::MonoMod.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -89,6 +92,36 @@ namespace HarmonyLibTests.Assets
 
 			__result = "Prefixed" + GetExtra(n) + original;
 			return false;
+		}
+	}
+
+	public class Class2Reverse
+	{
+		public string SomeMethod()
+		{
+			string a = "some";
+			string b = "string";
+			return a + " " + b;
+		}
+	}
+
+	public static class Class2ReversePatch
+	{
+		public static string SomeMethodReverse()
+		{
+			void ILManipulator(ILContext il)
+			{
+				ILCursor c = new ILCursor(il);
+
+				c.GotoNext(MoveType.Before,
+					x => x.MatchLdstr("some")
+				);
+
+				c.Next.Operand = "some other";
+			}
+
+			ILManipulator(null);
+			return default(string);
 		}
 	}
 }
