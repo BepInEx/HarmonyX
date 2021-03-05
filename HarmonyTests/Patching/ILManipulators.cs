@@ -51,5 +51,27 @@ namespace HarmonyLibTests.Patching
 
 			Assert.AreEqual(7, ILManipulatorsAndOthersClass.SomeMethod());
 		}
+
+		[Test]
+		public void Test_ILManipulatorName()
+		{
+			Assert.AreEqual("string1", ILManipulatorNameClass.SomeMethod("string"));
+
+			var instance = new Harmony("test-ilmanipulators-name");
+			instance.PatchAll(typeof(ILManipulatorNameClassPatch));
+
+			Assert.AreEqual("string2", ILManipulatorNameClass.SomeMethod("string"));
+		}
+
+		[Test]
+		public void Test_ILManipulatorAttribute()
+		{
+			Assert.AreEqual(2, ILManipulatorAttributeClass.SomeMethod(6, 3));
+
+			var instance = new Harmony("test-ilmanipulators-attribute");
+			instance.PatchAll(typeof(ILManipulatorAttributeClassPatch));
+
+			Assert.AreEqual(8, ILManipulatorAttributeClass.SomeMethod(2, 4));
+		}
 	}
 }

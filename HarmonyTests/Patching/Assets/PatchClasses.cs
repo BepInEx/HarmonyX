@@ -1315,6 +1315,7 @@ namespace HarmonyLibTests.Assets
 
 			c.Next.Operand = 2;
 		}
+
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
 			foreach (var instruction in instructions)
@@ -1325,9 +1326,57 @@ namespace HarmonyLibTests.Assets
 					yield return instruction;
 			}
 		}
+
 		public static void Postfix(ref int __result)
 		{
 			__result += 2;
+		}
+	}
+
+	public static class ILManipulatorNameClass
+	{
+		public static string SomeMethod(string a)
+		{
+			return a + "1";
+		}
+	}
+
+	[HarmonyPatch(typeof(ILManipulatorNameClass), "SomeMethod")]
+	public class ILManipulatorNameClassPatch
+	{
+		public static void ILManipulator(ILContext il)
+		{
+			ILCursor c = new ILCursor(il);
+
+			c.GotoNext(MoveType.Before,
+				x => x.MatchLdstr("1")
+			);
+
+			c.Next.Operand = "2";
+		}
+	}
+
+	public static class ILManipulatorAttributeClass
+	{
+		public static int SomeMethod(int a, int b)
+		{
+			return a / b;
+		}
+	}
+
+	[HarmonyPatch(typeof(ILManipulatorAttributeClass), "SomeMethod")]
+	public class ILManipulatorAttributeClassPatch
+	{
+		[HarmonyILManipulator]
+		public static void DifferentNameILManipulator(ILContext il)
+		{
+			ILCursor c = new ILCursor(il);
+
+			c.GotoNext(MoveType.Before,
+				x => x.MatchDiv()
+			);
+
+			c.Next.OpCode = Mono.Cecil.Cil.OpCodes.Mul;
 		}
 	}
 
