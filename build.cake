@@ -52,7 +52,8 @@ Task("Test")
 	{
 	    Information($"Testing {target}");
 		DotNetCoreTest("./HarmonyTests/HarmonyTests.csproj", new DotNetCoreTestSettings {
-			Framework = target
+			Framework = target,
+			Verbosity = DotNetCoreVerbosity.Normal
 		});
 	}
 });
