@@ -1,5 +1,5 @@
 #addin nuget:?package=Cake.FileHelpers&version=4.0.0
-#tool "nuget:?package=NUnit.ConsoleRunner"
+#tool "nuget:?package=NUnit.ConsoleRunner&version=3.12.0"
 #addin "nuget:?package=Cake.Incubator&version=6.0.0"
 
 var target = Argument("target", "Build");
@@ -52,6 +52,7 @@ Task("Test")
 	{
 	    Information($"Testing {target}");
 		DotNetCoreTest("./HarmonyTests/HarmonyTests.csproj", new DotNetCoreTestSettings {
+			Configuration = "Release",
 			Framework = target,
 			Verbosity = DotNetCoreVerbosity.Normal
 		});
