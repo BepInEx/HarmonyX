@@ -97,6 +97,7 @@ namespace HarmonyLibTests.Assets
 
 	public class Class2Reverse
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public string SomeMethod()
 		{
 			string a = "some";
@@ -107,6 +108,7 @@ namespace HarmonyLibTests.Assets
 
 	public static class Class2ReversePatch
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static string SomeMethodReverse()
 		{
 			void ILManipulator(ILContext il)
