@@ -7,6 +7,7 @@ using System;
 namespace HarmonyLibTests.Patching
 {
 	[TestFixture]
+	[Order(1)]
 	public class Specials : TestLogger
 	{
 		/* TODO - patching HttpWebRequest.GetResponse does not work
