@@ -35,8 +35,8 @@ namespace HarmonyLibTests.Patching
 			var original = AccessTools.Method(typeof(ILManipulatorsAndOthersClass), nameof(ILManipulatorsAndOthersClass.SomeMethod));
 			Assert.NotNull(original);
 
-			var postfix = AccessTools.Method(typeof(ILManipulatorsAndOthersClassPatch), nameof(ILManipulatorsAndOthersClassPatch.Postfix));
-			Assert.NotNull(postfix);
+			var prefix = AccessTools.Method(typeof(ILManipulatorsAndOthersClassPatch), nameof(ILManipulatorsAndOthersClassPatch.Prefix));
+			Assert.NotNull(prefix);
 
 			var manipulator = AccessTools.Method(typeof(ILManipulatorsAndOthersClassPatch), nameof(ILManipulatorsAndOthersClassPatch.ILManipulator));
 			Assert.NotNull(manipulator);
@@ -44,12 +44,12 @@ namespace HarmonyLibTests.Patching
 			var transpiler = AccessTools.Method(typeof(ILManipulatorsAndOthersClassPatch), nameof(ILManipulatorsAndOthersClassPatch.Transpiler));
 			Assert.NotNull(transpiler);
 
-			Assert.AreEqual(15, ILManipulatorsAndOthersClass.SomeMethod());
+			Assert.AreEqual(14, ILManipulatorsAndOthersClass.SomeMethod(4));
 
 			var instance = new Harmony("test-ilmanipulators-and-other-patches");
-			_ = instance.Patch(original, postfix: new HarmonyMethod(postfix), ilmanipulator: new HarmonyMethod(manipulator), transpiler: new HarmonyMethod(transpiler));
+			_ = instance.Patch(original, prefix: new HarmonyMethod(prefix), ilmanipulator: new HarmonyMethod(manipulator), transpiler: new HarmonyMethod(transpiler));
 
-			Assert.AreEqual(7, ILManipulatorsAndOthersClass.SomeMethod());
+			Assert.AreEqual(18, ILManipulatorsAndOthersClass.SomeMethod(4));
 		}
 
 		[Test]

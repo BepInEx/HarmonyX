@@ -1265,15 +1265,10 @@ namespace HarmonyLibTests.Assets
 
 	public static class ILManipulatorClass
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static string SomeMethod(string a, string b)
 		{
-			string result = "";
-			result += a;
-			result += " ";
-			result += "something";
-			result += " ";
-			result += b;
-			return result;
+			return a + " something " + b;
 		}
 	}
 
@@ -1284,22 +1279,19 @@ namespace HarmonyLibTests.Assets
 			ILCursor c = new ILCursor(il);
 
 			c.GotoNext(MoveType.Before,
-				x => x.MatchLdloc(0),
-				x => x.MatchLdstr("something")
+				x => x.MatchLdstr(" something ")
 			);
 
-			c.RemoveRange(8);
+			c.Next.Operand = " ";
 		}
 	}
 
 	public static class ILManipulatorsAndOthersClass
 	{
-		public static int SomeMethod()
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static int SomeMethod(int a)
 		{
-			int a = 5;
-			int b = 10;
-
-			return a + b;
+			return (a * 2) + 6;
 		}
 	}
 
@@ -1310,31 +1302,33 @@ namespace HarmonyLibTests.Assets
 			ILCursor c = new ILCursor(il);
 
 			c.GotoNext(MoveType.Before,
-				x => x.MatchLdcI4(10)
+				x => x.MatchLdcI4(6)
 			);
 
-			c.Next.Operand = 2;
+			c.Remove();
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4, 10);
 		}
 
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
 			foreach (var instruction in instructions)
 			{
-				if (instruction.opcode == OpCodes.Ldc_I4_5)
-					yield return new CodeInstruction(OpCodes.Ldc_I4, 3);
+				if (instruction.opcode == OpCodes.Ldc_I4_2 || ((instruction.opcode == OpCodes.Ldc_I4 || instruction.opcode == OpCodes.Ldc_I4_S) && (int)instruction.operand == 5))
+					yield return new CodeInstruction(OpCodes.Ldc_I4, 4);
 				else
 					yield return instruction;
 			}
 		}
 
-		public static void Postfix(ref int __result)
+		public static void Prefix(ref int a)
 		{
-			__result += 2;
+			a = 2;
 		}
 	}
 
 	public static class ILManipulatorNameClass
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static string SomeMethod(string a)
 		{
 			return a + "1";
@@ -1358,6 +1352,7 @@ namespace HarmonyLibTests.Assets
 
 	public static class ILManipulatorAttributeClass
 	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static int SomeMethod(int a, int b)
 		{
 			return a / b;
