@@ -73,5 +73,25 @@ namespace HarmonyLibTests.Patching
 
 			Assert.AreEqual(8, ILManipulatorAttributeClass.SomeMethod(2, 4));
 		}
+
+		[Test]
+		public void Test_ILManipulatorReturnLabel()
+		{
+			var original = AccessTools.Method(typeof(ILManipulatorReturnLabelClass), nameof(ILManipulatorReturnLabelClass.SomeMethod));
+			Assert.NotNull(original);
+
+			var postfix = AccessTools.Method(typeof(ILManipulatorReturnLabelClassPatch), nameof(ILManipulatorReturnLabelClassPatch.Postfix));
+			Assert.NotNull(postfix);
+
+			var manipulator = AccessTools.Method(typeof(ILManipulatorReturnLabelClassPatch), nameof(ILManipulatorReturnLabelClassPatch.ILManipulator));
+			Assert.NotNull(manipulator);
+
+			Assert.AreEqual(3, ILManipulatorReturnLabelClass.SomeMethod(2));
+
+			var instance = new Harmony("test-ilmanipulators-return-label");
+			var a = instance.Patch(original, postfix: new HarmonyMethod(postfix), ilmanipulator: new HarmonyMethod(manipulator));
+
+			Assert.AreEqual(7, ILManipulatorReturnLabelClass.SomeMethod(5));
+		}
 	}
 }

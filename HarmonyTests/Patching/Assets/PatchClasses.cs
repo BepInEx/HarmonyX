@@ -1375,6 +1375,34 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public class ILManipulatorReturnLabelClass
+	{
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public static int SomeMethod(int a)
+		{
+			return a + 1;
+		}
+	}
+
+	public class ILManipulatorReturnLabelClassPatch
+	{
+		public static void ILManipulator(ILContext il, ILLabel retLabel)
+		{
+			ILCursor c = new ILCursor(il);
+
+			c.GotoNext(MoveType.Before,
+				x => x.MatchLdcI4(1)
+			);
+
+			c.Emit(Mono.Cecil.Cil.OpCodes.Br, retLabel);
+		}
+
+		public static void Postfix(ref int __result)
+		{
+			__result += 2;
+		}
+	}
+
 	// disabled - see test case
 	/*
 	public class ClassExceptionFilter
