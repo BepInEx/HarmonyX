@@ -108,7 +108,7 @@ namespace HarmonyLib
 
 				manipulator.WriteTo(ctx.Body, standin.method);
 
-				HarmonyManipulator.ApplyILManipulators(ctx, original, ilmanipulators);
+				HarmonyManipulator.ApplyILManipulators(ctx, original, ilmanipulators, null);
 
 				// Write a ret in case it got removed (wrt. HarmonyManipulator)
 				ctx.IL.Emit(OpCodes.Ret);

@@ -482,8 +482,11 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
-		internal static void ApplyILManipulators(ILContext ctx, MethodBase original, ICollection<MethodInfo> manipulators)
+		internal static void ApplyILManipulators(ILContext ctx, MethodBase original, ICollection<MethodInfo> manipulators, ILEmitter.Label retLabel)
 		{
+			// Define a label to branch to, if not passed a label create one to the last instruction
+			var retILLabel = ctx.DefineLabel(retLabel?.instruction) ?? ctx.DefineLabel(ctx.Body.Instructions.Last());
+
 			foreach (var method in manipulators)
 			{
 				List<object> manipulatorParameters = new List<object>();
@@ -493,6 +496,8 @@ namespace HarmonyLib.Public.Patching
 						manipulatorParameters.Add(ctx);
 					if (type.IsAssignableFrom(typeof(MethodBase)))
 						manipulatorParameters.Add(original);
+					if (type.IsAssignableFrom(typeof(ILLabel)))
+						manipulatorParameters.Add(retILLabel);
 				}
 
 				method.Invoke(null, manipulatorParameters.ToArray());
@@ -550,7 +555,7 @@ namespace HarmonyLib.Public.Patching
 				if (modifiesControlFlow)
 					lastInstruction.OpCode = OpCodes.Ret;
 
-				ApplyILManipulators(ctx, original, ilmanipulators.Select(m => m.method).ToList());
+				ApplyILManipulators(ctx, original, ilmanipulators.Select(m => m.method).ToList(), returnLabel);
 
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
