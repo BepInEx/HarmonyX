@@ -34,6 +34,17 @@ namespace HarmonyLibTests.Assets
 		}
 	}*/
 
+	public static class TypeTargetedPatch
+	{
+		[HarmonyTranspiler]
+		[HarmonyPatch(typeof(DeadEndCode))]
+		[HarmonyPatch(nameof(DeadEndCode.Method3), MethodType.Normal)]
+		private static IEnumerable<CodeInstruction> ReplaceWithStub(IEnumerable<CodeInstruction> instrs, ILGenerator il)
+		{
+			return new[] {new CodeInstruction(OpCodes.Ret)};
+		}
+	}
+
 	public static class MultiAttributePatch
 	{
 		public static int callCount = 0;
@@ -57,6 +68,11 @@ namespace HarmonyLibTests.Assets
 		}
 
 		public string Method2()
+		{
+			throw new Exception();
+		}
+
+		public void Method3()
 		{
 			throw new Exception();
 		}
