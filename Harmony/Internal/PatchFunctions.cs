@@ -87,19 +87,16 @@ namespace HarmonyLib
 			Logger.Log(Logger.LogChannel.Info, () =>
 			{
 				var sb = new StringBuilder();
-				sb.AppendLine("## Reverse patcher info START");
-				sb.AppendLine($"Original: {original.FullDescription()}");
-				sb.AppendLine($"Stand-in: {standin.method.FullDescription()}");
+				sb.AppendLine($"Reverse patching {standin.method.FullDescription()} with {original.FullDescription()}");
 				static void PrintInfo(StringBuilder sb, ICollection<MethodInfo> methods, string name)
 				{
 					if (methods.Count <= 0) return;
 					sb.AppendLine($"{name}:");
 					foreach (var method in methods)
-						sb.AppendLine($"* {method.FullDescription()}");
+						sb.AppendLine($"  * {method.FullDescription()}");
 				}
 				PrintInfo(sb, transpilers, "Transpiler");
 				PrintInfo(sb, ilmanipulators, "Manipulators");
-				sb.AppendLine("## Reverse patcher info END");
 				return sb.ToString();
 			});
 
