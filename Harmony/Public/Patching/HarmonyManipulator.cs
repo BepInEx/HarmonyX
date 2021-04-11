@@ -55,6 +55,7 @@ namespace HarmonyLib.Public.Patching
 		{
 			Patch[] prefixesArr, postfixesArr, transpilersArr, finalizersArr, ilmanipulatorsArr;
 
+			var debug = patchInfo.Debugging;
 			// Lock to ensure no more patches are added while we're sorting
 			lock (patchInfo)
 			{
@@ -65,17 +66,17 @@ namespace HarmonyLib.Public.Patching
 				ilmanipulatorsArr = patchInfo.ilmanipulators.ToArray();
 			}
 
-			static List<PatchContext> Sort(MethodBase original, Patch[] patches)
-				=> PatchFunctions.GetSortedPatchMethodsAsPatches(original, patches)
+			static List<PatchContext> Sort(MethodBase original, Patch[] patches, bool debug)
+				=> PatchFunctions.GetSortedPatchMethodsAsPatches(original, patches, debug)
 					.Select(p => new PatchContext {method = p.GetMethod(original), wrapTryCatch = p.wrapTryCatch})
 					.ToList();
 
 			// debug is useless; debug logs passed on-demand
-			prefixes = Sort(original, prefixesArr);
-			postfixes = Sort(original, postfixesArr);
-			transpilers = Sort(original, transpilersArr);
-			finalizers = Sort(original, finalizersArr);
-			ilmanipulators = Sort(original, ilmanipulatorsArr);
+			prefixes = Sort(original, prefixesArr, debug);
+			postfixes = Sort(original, postfixesArr, debug);
+			transpilers = Sort(original, transpilersArr, debug);
+			finalizers = Sort(original, finalizersArr, debug);
+			ilmanipulators = Sort(original, ilmanipulatorsArr, debug);
 		}
 
 		/// <summary>
@@ -93,7 +94,7 @@ namespace HarmonyLib.Public.Patching
 		{
 			SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
 				out var sortedFinalizers, out var sortedILManipulators);
-
+			var debug = patchInfo.Debugging;
 			Logger.Log(Logger.LogChannel.Info, () =>
 			{
 				var sb = new StringBuilder();
@@ -117,20 +118,20 @@ namespace HarmonyLib.Public.Patching
 				Print(sortedILManipulators, "ilmanipulators");
 
 				return sb.ToString();
-			});
+			}, debug);
 
-			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers, sortedILManipulators);
+			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers, sortedILManipulators, debug);
 		}
 
-		private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<PatchContext> transpilers)
+		private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<PatchContext> transpilers, bool debug)
 		{
 			if (transpilers.Count == 0)
 				return;
 
-			Logger.Log(Logger.LogChannel.Info, () => $"Transpiling {original.FullDescription()}");
+			Logger.Log(Logger.LogChannel.Info, () => $"Transpiling {original.FullDescription()}", debug);
 
 			// Create a high-level manipulator for the method
-			var manipulator = new ILManipulator(ctx.Body);
+			var manipulator = new ILManipulator(ctx.Body, debug);
 
 			// Add in all transpilers
 			foreach (var transpiler in transpilers)
@@ -168,7 +169,7 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		private static void WritePostfixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> postfixes)
+			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> postfixes, bool debug)
 		{
 			// Postfix layout:
 			// Make return value (if needed) into a variable
@@ -179,7 +180,7 @@ namespace HarmonyLib.Public.Patching
 			if (postfixes.Count == 0)
 				return;
 
-			Logger.Log(Logger.LogChannel.Info, () => "Writing postfixes");
+			Logger.Log(Logger.LogChannel.Info, () => "Writing postfixes", debug);
 
 			// Get the last instruction (expected to be `ret`)
 			il.emitBefore = il.IL.Body.Instructions[il.IL.Body.Instructions.Count - 1];
@@ -268,7 +269,7 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		private static bool WritePrefixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> prefixes)
+			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> prefixes, bool debug)
 		{
 			// Prefix layout:
 			// Make return value (if needed) into a variable
@@ -278,7 +279,7 @@ namespace HarmonyLib.Public.Patching
 			if (prefixes.Count == 0)
 				return false;
 
-			Logger.Log(Logger.LogChannel.Info, () => "Writing prefixes");
+			Logger.Log(Logger.LogChannel.Info, () => "Writing prefixes", debug);
 
 			// Start emitting at the start
 			il.emitBefore = il.IL.Body.Instructions[0];
@@ -358,7 +359,7 @@ namespace HarmonyLib.Public.Patching
 
 		private static bool WriteFinalizers(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
 			Dictionary<string, VariableDefinition> variables,
-			ICollection<PatchContext> finalizers)
+			ICollection<PatchContext> finalizers, bool debug)
 		{
 			// Finalizer layout:
 			// Create __exception variable to store exception info and a skip flag
@@ -375,7 +376,7 @@ namespace HarmonyLib.Public.Patching
 			if (finalizers.Count == 0)
 				return false;
 
-			Logger.Log(Logger.LogChannel.Info, () => "Writing finalizers");
+			Logger.Log(Logger.LogChannel.Info, () => "Writing finalizers", debug);
 
 			// Create variables to hold custom exception
 			variables[EXCEPTION_VAR] = il.DeclareVariable(typeof(Exception));
@@ -509,22 +510,23 @@ namespace HarmonyLib.Public.Patching
 			List<PatchContext> postfixes,
 			List<PatchContext> transpilers,
 			List<PatchContext> finalizers,
-			List<PatchContext> ilmanipulators)
+			List<PatchContext> ilmanipulators,
+			bool debug)
 		{
 			try
 			{
 				if (original == null)
 					throw new ArgumentException(nameof(original));
 
-				Logger.Log(Logger.LogChannel.Info, () => $"Running ILHook manipulator on {original.FullDescription()}");
+				Logger.Log(Logger.LogChannel.Info, () => $"Running ILHook manipulator on {original.FullDescription()}", debug);
 
-				WriteTranspiledMethod(ctx, original, transpilers);
+				WriteTranspiledMethod(ctx, original, transpilers, debug);
 
 				// If no need to wrap anything, we're basically done!
 				if (prefixes.Count + postfixes.Count + finalizers.Count + ilmanipulators.Count == 0)
 				{
 					Logger.Log(Logger.LogChannel.IL,
-						() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
+						() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
 					return;
 				}
 
@@ -543,9 +545,9 @@ namespace HarmonyLib.Public.Patching
 								il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 
 				var modifiesControlFlow = false;
-				modifiesControlFlow |= WritePrefixes(il, original, returnLabel, variables, prefixes);
-				WritePostfixes(il, original, returnLabel, variables, postfixes);
-				modifiesControlFlow |= WriteFinalizers(il, original, returnLabel, variables, finalizers);
+				modifiesControlFlow |= WritePrefixes(il, original, returnLabel, variables, prefixes, debug);
+				WritePostfixes(il, original, returnLabel, variables, postfixes, debug);
+				modifiesControlFlow |= WriteFinalizers(il, original, returnLabel, variables, finalizers, debug);
 
 				// Mark return label in case it hasn't been marked yet and close open labels to return
 				il.MarkLabel(returnLabel);
@@ -558,11 +560,11 @@ namespace HarmonyLib.Public.Patching
 				ApplyILManipulators(ctx, original, ilmanipulators.Select(m => m.method).ToList(), returnLabel);
 
 				Logger.Log(Logger.LogChannel.IL,
-					() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
+					() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
 			}
 			catch (Exception e)
 			{
-				Logger.Log(Logger.LogChannel.Error, () => $"Failed to patch {original.FullDescription()}: {e}");
+				Logger.Log(Logger.LogChannel.Error, () => $"Failed to patch {original.FullDescription()}: {e}", debug);
 			}
 		}
 

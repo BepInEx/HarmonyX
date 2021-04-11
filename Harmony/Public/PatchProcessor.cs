@@ -118,7 +118,7 @@ namespace HarmonyLib
 		/// <summary>Adds an ilmanipulator</summary>
 		/// <param name="ilmanipulator">The ilmanipulator as a <see cref="HarmonyMethod"/></param>
 		/// <returns>A <see cref="PatchProcessor"/> for chaining calls</returns>
-		/// 
+		///
 		public PatchProcessor AddILManipulator(HarmonyMethod ilmanipulator)
 		{
 			this.ilmanipulator = ilmanipulator;
@@ -340,7 +340,7 @@ namespace HarmonyLib
 			var original = method.GetMethodPatcher().CopyOriginal();
 			if (original == null)
 				return null;
-			return new ILManipulator(original.Definition.Body).GetRawInstructions();
+			return new ILManipulator(original.Definition.Body, false).GetRawInstructions();
 		}
 
 		/// <summary>A low level way to read the body of a method. Used for quick searching in methods</summary>
@@ -353,7 +353,7 @@ namespace HarmonyLib
 			var original = method.GetMethodPatcher().CopyOriginal();
 			if (original == null)
 				return null;
-			var manipulator = new ILManipulator(original.Definition.Body);
+			var manipulator = new ILManipulator(original.Definition.Body, false);
 			// Force label generation
 			_ = manipulator.GetInstructions(generator);
 			return manipulator.GetRawInstructions();

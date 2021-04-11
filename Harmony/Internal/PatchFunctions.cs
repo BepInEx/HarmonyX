@@ -22,10 +22,10 @@ namespace HarmonyLib
 		/// <summary>Sorts patch methods by their priority rules</summary>
 		/// <param name="original">The original method</param>
 		/// <param name="patches">Patches to sort</param>
-		/// <param name="debug">Use debug mode. Present for source parity with Harmony 2, don't use.</param>
+		/// <param name="debug">Use debug mode</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug = false)
+		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug)
 		{
 			return new PatchSorter(patches, debug).Sort(original);
 		}
@@ -33,11 +33,12 @@ namespace HarmonyLib
 		/// <summary>Sorts patch methods by their priority rules</summary>
 		/// <param name="original">The original method</param>
 		/// <param name="patches">Patches to sort</param>
+		/// <param name="debug">Use debug mode</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches)
+		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches, bool debug)
 		{
-			return new PatchSorter(patches).SortAsPatches(original);
+			return new PatchSorter(patches, debug).SortAsPatches(original);
 		}
 
 		/// <summary>Creates new replacement method with the latest patches and detours the original method</summary>
@@ -73,13 +74,14 @@ namespace HarmonyLib
 			if (standin.method is null)
 				throw new ArgumentNullException($"{nameof(standin)}.{nameof(standin.method)}");
 
+			var debug = standin.debug ?? false;
 			var transpilers = new List<MethodInfo>();
 			var ilmanipulators = new List<MethodInfo>();
 			if (standin.reversePatchType == HarmonyReversePatchType.Snapshot)
 			{
 				var info = Harmony.GetPatchInfo(original);
-				transpilers.AddRange(GetSortedPatchMethods(original, info.Transpilers.ToArray()));
-				ilmanipulators.AddRange(GetSortedPatchMethods(original, info.ILManipulators.ToArray()));
+				transpilers.AddRange(GetSortedPatchMethods(original, info.Transpilers.ToArray(), debug));
+				ilmanipulators.AddRange(GetSortedPatchMethods(original, info.ILManipulators.ToArray(), debug));
 			}
 			if (postTranspiler is object) transpilers.Add(postTranspiler);
 			if (postManipulator is object) ilmanipulators.Add(postManipulator);
@@ -98,7 +100,7 @@ namespace HarmonyLib
 				PrintInfo(sb, transpilers, "Transpiler");
 				PrintInfo(sb, ilmanipulators, "Manipulators");
 				return sb.ToString();
-			});
+			}, debug);
 
 			MethodBody patchBody = null;
 			var hook = new ILHook(standin.method, ctx =>
@@ -114,7 +116,7 @@ namespace HarmonyLib
 				if (dmd == null)
 					throw new NullReferenceException($"Cannot reverse patch {mi.FullDescription()}: method patcher ({patcher.GetType().FullDescription()}) can't copy original method body");
 
-				var manipulator = new ILManipulator(dmd.Definition.Body);
+				var manipulator = new ILManipulator(dmd.Definition.Body, debug);
 
 				// Copy over variables from the original code
 				ctx.Body.Variables.Clear();
@@ -132,7 +134,7 @@ namespace HarmonyLib
 				ctx.IL.Emit(OpCodes.Ret);
 
 				Logger.Log(Logger.LogChannel.IL,
-					() => $"Generated reverse patcher ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
+					() => $"Generated reverse patcher ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
 			}, new ILHookConfig { ManualApply = true });
 
 			try
@@ -157,12 +159,12 @@ namespace HarmonyLib
 			if (dmd == null)
 				throw new NullReferenceException($"Cannot reverse patch {methodBase.FullDescription()}: method patcher ({patcher.GetType().FullDescription()}) can't copy original method body");
 
-			var manipulator = new ILManipulator(dmd.Definition.Body);
+			var manipulator = new ILManipulator(dmd.Definition.Body, false);
 
 			var info = methodBase.GetPatchInfo();
 			if (info is object)
 			{
-				var sortedTranspilers = GetSortedPatchMethods(methodBase, info.transpilers);
+				var sortedTranspilers = GetSortedPatchMethods(methodBase, info.transpilers, false);
 				for (var i = 0; i < maxTranspilers && i < sortedTranspilers.Count; i++)
 					manipulator.AddTranspiler(sortedTranspilers[i]);
 			}

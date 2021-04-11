@@ -135,15 +135,15 @@ namespace HarmonyLib.Tools
         /// </summary>
         public static event EventHandler<LogEventArgs> MessageReceived;
 
-        internal static void Log(LogChannel channel, Func<string> message)
+        internal static void Log(LogChannel channel, Func<string> message, bool forcePropagation = false)
         {
-            if ((channel & ChannelFilter) != LogChannel.None)
+            if (forcePropagation || (channel & ChannelFilter) != LogChannel.None)
                 MessageReceived?.Invoke(null, new LogEventArgs { LogChannel = channel, Message = message() });
         }
 
-        internal static void LogText(LogChannel channel, string message)
+        internal static void LogText(LogChannel channel, string message, bool forcePropagation = false)
         {
-            if ((channel & ChannelFilter) != LogChannel.None)
+            if (forcePropagation || (channel & ChannelFilter) != LogChannel.None)
                 MessageReceived?.Invoke(null, new LogEventArgs { LogChannel = channel, Message = message });
         }
     }

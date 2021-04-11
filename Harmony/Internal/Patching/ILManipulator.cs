@@ -43,6 +43,7 @@ namespace HarmonyLib.Internal.Patching
 		private readonly IEnumerable<RawInstruction> codeInstructions;
 		private readonly List<MethodInfo> transpilers = new List<MethodInfo>();
 		private readonly Dictionary<VariableDefinition, SRE.LocalBuilder> localsCache = new Dictionary<VariableDefinition, SRE.LocalBuilder>();
+		private readonly bool debug;
 
 		static ILManipulator()
 		{
@@ -63,10 +64,13 @@ namespace HarmonyLib.Internal.Patching
 		///    Initialize IL transpiler
 		/// </summary>
 		/// <param name="body">Body of the method to transpile</param>
-		public ILManipulator(MethodBody body)
+		/// <param name="debug">Whether to always log everything for this instance</param>
+		public ILManipulator(MethodBody body, bool debug)
 		{
 			Body = body;
-			codeInstructions = ReadBody(body);
+			this.debug = debug;
+			codeInstructions = ReadBody(Body);
+
 		}
 
 		public MethodBody Body { get; }
@@ -222,7 +226,7 @@ namespace HarmonyLib.Internal.Patching
 			{
 				var args = GetTranspilerArguments(il, transpiler, tempInstructions, original);
 
-				Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.FullDescription()}");
+				Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.FullDescription()}", debug);
 				var newInstructions = transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>;
 				tempInstructions = MakeBranchesLong(newInstructions).ToList();
 			}
@@ -384,7 +388,7 @@ namespace HarmonyLib.Internal.Patching
 				return null;
 			try
 			{
-				return new ILManipulator(body).GetIndexedInstructions(PatchProcessor.CreateILGenerator());
+				return new ILManipulator(body, false).GetIndexedInstructions(PatchProcessor.CreateILGenerator());
 			}
 			catch (Exception e)
 			{

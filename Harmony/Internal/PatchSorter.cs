@@ -118,12 +118,12 @@ namespace HarmonyLib
 					if (!handledPatches.Contains(afterNode))
 					{
 						waitingList[i].RemoveAfterDependency(afterNode);
-						if (debug)
+						Logger.Log(Logger.LogChannel.Debug, () =>
 						{
 							var part1 = afterNode.innerPatch.PatchMethod.FullDescription();
 							var part2 = waitingList[i].innerPatch.PatchMethod.FullDescription();
-							Logger.Log(Logger.LogChannel.Debug, () => $"Breaking dependance between {part1} and {part2}");
-						}
+							return $"Breaking dependence between {part1} and {part2}";
+						}, debug);
 						return;
 					}
 		}
