@@ -6,9 +6,11 @@ using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
+using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
+using System.Text;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
 using OpCodes = Mono.Cecil.Cil.OpCodes;
 
@@ -82,6 +84,25 @@ namespace HarmonyLib
 			if (postTranspiler is object) transpilers.Add(postTranspiler);
 			if (postManipulator is object) ilmanipulators.Add(postManipulator);
 
+			Logger.Log(Logger.LogChannel.Info, () =>
+			{
+				var sb = new StringBuilder();
+				sb.AppendLine("## Reverse patcher info START");
+				sb.AppendLine($"Original: {original.FullDescription()}");
+				sb.AppendLine($"Stand-in: {standin.method.FullDescription()}");
+				static void PrintInfo(StringBuilder sb, ICollection<MethodInfo> methods, string name)
+				{
+					if (methods.Count <= 0) return;
+					sb.AppendLine($"{name}:");
+					foreach (var method in methods)
+						sb.AppendLine($"* {method.FullDescription()}");
+				}
+				PrintInfo(sb, transpilers, "Transpiler");
+				PrintInfo(sb, ilmanipulators, "Manipulators");
+				sb.AppendLine("## Reverse patcher info END");
+				return sb.ToString();
+			});
+
 			MethodBody patchBody = null;
 			var hook = new ILHook(standin.method, ctx =>
 			{
@@ -112,6 +133,9 @@ namespace HarmonyLib
 
 				// Write a ret in case it got removed (wrt. HarmonyManipulator)
 				ctx.IL.Emit(OpCodes.Ret);
+
+				Logger.Log(Logger.LogChannel.IL,
+					() => $"Generated reverse patcher ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}");
 			}, new ILHookConfig { ManualApply = true });
 
 			try
