@@ -13,6 +13,7 @@ using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
+using Logger = HarmonyLib.Tools.Logger;
 
 namespace HarmonyLibTests
 {
@@ -334,9 +335,21 @@ namespace HarmonyLibTests
 			public override ResultState ResultState => ResultState.Explicit;
 		}
 
+		private static bool loggingSetup;
+
 		[SetUp]
 		public void BaseSetUp()
 		{
+			if (!loggingSetup)
+			{
+				Logger.MessageReceived += (sender, args) =>
+				{
+					TestTools.Log($"[{args.LogChannel}]\n{args.Message}", 0);
+				};
+				Logger.ChannelFilter = Logger.LogChannel.All;
+				loggingSetup = true;
+			}
+
 			TestTools.Log($"### {TestExecutionContext.CurrentContext.CurrentResult.FullName}", indentLevel: 0);
 
 			SkipExplicitTestIfVSTest();
