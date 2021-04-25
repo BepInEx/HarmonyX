@@ -34,6 +34,13 @@ namespace HarmonyLib
 		// Note: This should a be const, but changing from static (readonly) to const breaks binary compatibility.
 		public static readonly BindingFlags allDeclared = all | BindingFlags.DeclaredOnly;
 
+		/// <summary>Enumerates all assemblies in the current app domain, excluding visual studio assemblies</summary>
+		/// <returns>An enumeration of <see cref="Assembly"/></returns>
+		public static IEnumerable<Assembly> AllAssemblies()
+		{
+			return AppDomain.CurrentDomain.GetAssemblies().Where(a => a.FullName.StartsWith("Microsoft.VisualStudio") is false);
+		}
+
 		/// <summary>Gets a type by name. Prefers a full name with namespace but falls back to the first type matching the name otherwise</summary>
 		/// <param name="name">The name</param>
 		/// <returns>A type or null if not found</returns>
@@ -41,15 +48,10 @@ namespace HarmonyLib
 		public static Type TypeByName(string name)
 		{
 			var type = Type.GetType(name, false);
-			var assemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a => a.FullName.StartsWith("Microsoft.VisualStudio") is false);
 			if (type is null)
-				type = assemblies
-					.SelectMany(a => GetTypesFromAssembly(a))
-					.FirstOrDefault(t => t.FullName == name);
+				type = AllTypes().FirstOrDefault(t => t.FullName == name);
 			if (type is null)
-				type = assemblies
-					.SelectMany(a => GetTypesFromAssembly(a))
-					.FirstOrDefault(t => t.Name == name);
+				type = AllTypes().FirstOrDefault(t => t.Name == name);
 			if (type is null)
 				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.TypeByName: Could not find type named {name}");
 			return type;
@@ -75,6 +77,13 @@ namespace HarmonyLib
 				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.GetTypesFromAssembly: assembly {assembly} => {ex}");
 				return ex.Types.Where(type => type is object).ToArray();
 			}
+		}
+
+		/// <summary>Enumerates all successfully loaded types in the current app domain, excluding visual studio assemblies</summary>
+		/// <returns>An enumeration of all <see cref="Type"/> in all assemblies, excluding visual studio assemblies</returns>
+		public static IEnumerable<Type> AllTypes()
+		{
+			return AllAssemblies().SelectMany(a => GetTypesFromAssembly(a));
 		}
 
 		/// <summary>Applies a function going up the type hierarchy and stops at the first non-<c>null</c> result</summary>
@@ -1677,6 +1686,12 @@ namespace HarmonyLib
 		/// </summary>
 		static readonly Dictionary<Type, FastInvokeHandler> addHandlerCache = new Dictionary<Type, FastInvokeHandler>();
 
+#if NET35
+		static readonly ReaderWriterLock addHandlerCacheLock = new ReaderWriterLock();
+#else
+		static readonly ReaderWriterLockSlim addHandlerCacheLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+#endif
+
 		/// <summary>Makes a deep copy of any object</summary>
 		/// <typeparam name="T">The type of the instance that should be created; for legacy reasons, this must be a class or interface</typeparam>
 		/// <param name="source">The original object</param>
@@ -1708,18 +1723,6 @@ namespace HarmonyLib
 		///
 		public static object MakeDeepCopy(object source, Type resultType, Func<string, Traverse, Traverse, object> processor = null, string pathRoot = "")
 		{
-			static bool TryGetHandler(Type resultType, out FastInvokeHandler handler)
-			{
-				lock (addHandlerCache)
-					return addHandlerCache.TryGetValue(resultType, out handler);
-			}
-
-			static void SetHandler(Type resultType, FastInvokeHandler handler)
-			{
-				lock (addHandlerCache)
-					addHandlerCache[resultType] = handler;
-			}
-
 			if (source is null || resultType is null)
 				return null;
 
@@ -1734,30 +1737,61 @@ namespace HarmonyLib
 
 			if (type.IsGenericType && resultType.IsGenericType)
 			{
-				if (!TryGetHandler(resultType, out var addInvoker))
+#if NET35
+				addHandlerCacheLock.AcquireReaderLock(200);
+#else
+				addHandlerCacheLock.EnterUpgradeableReadLock();
+#endif
+				try
 				{
-					var addOperation = FirstMethod(resultType, m => m.Name == "Add" && m.GetParameters().Length == 1);
-					if (addOperation is object)
+					if (!addHandlerCache.TryGetValue(resultType, out var addInvoker))
 					{
-						addInvoker = MethodInvoker.GetHandler(addOperation);
+						var addOperation = FirstMethod(resultType, m => m.Name == "Add" && m.GetParameters().Length == 1);
+						if (addOperation is object)
+						{
+							addInvoker = MethodInvoker.GetHandler(addOperation);
+						}
+#if NET35
+						addHandlerCacheLock.UpgradeToWriterLock(200);
+						addHandlerCacheLock.AcquireWriterLock(200);
+#else
+						addHandlerCacheLock.EnterWriteLock();
+#endif
+						try
+						{
+							addHandlerCache[resultType] = addInvoker;
+						}
+						finally
+						{
+#if NET35
+							addHandlerCacheLock.ReleaseWriterLock();
+#else
+							addHandlerCacheLock.ExitWriteLock();
+#endif
+						}
 					}
-
-					SetHandler(resultType, addInvoker);
+					if (addInvoker != null)
+					{
+						var addableResult = Activator.CreateInstance(resultType);
+						var newElementType = resultType.GetGenericArguments()[0];
+						var i = 0;
+						foreach (var element in source as IEnumerable)
+						{
+							var iStr = (i++).ToString();
+							var path = pathRoot.Length > 0 ? pathRoot + "." + iStr : iStr;
+							var newElement = MakeDeepCopy(element, newElementType, processor, path);
+							_ = addInvoker(addableResult, new object[] { newElement });
+						}
+						return addableResult;
+					}
 				}
-
-				if (addInvoker != null)
+				finally
 				{
-					var addableResult = Activator.CreateInstance(resultType);
-					var newElementType = resultType.GetGenericArguments()[0];
-					var i = 0;
-					foreach (var element in source as IEnumerable)
-					{
-						var iStr = (i++).ToString();
-						var path = pathRoot.Length > 0 ? pathRoot + "." + iStr : iStr;
-						var newElement = MakeDeepCopy(element, newElementType, processor, path);
-						_ = addInvoker(addableResult, new object[] {newElement});
-					}
-					return addableResult;
+#if NET35
+					addHandlerCacheLock.ReleaseReaderLock();
+#else
+					addHandlerCacheLock.ExitUpgradeableReadLock();
+#endif
 				}
 			}
 
