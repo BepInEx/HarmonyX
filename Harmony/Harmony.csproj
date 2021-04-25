@@ -13,7 +13,7 @@
 		<SignAssembly>true</SignAssembly>
 		<Version>2.4.1</Version>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<PackageProjectUrl>https://github.com/pardeike/Harmony</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
 		<AssemblyVersion>2.4.1.0</AssemblyVersion>
