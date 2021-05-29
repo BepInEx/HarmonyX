@@ -299,6 +299,87 @@ namespace HarmonyLib
             logger($"{err} in {method}");
             return true;
         }
+      
+        /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed)</summary>
+        /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+        /// <returns>The same code matcher</returns>
+        ///
+        public CodeMatcher ThrowIfInvalid(string explanation)
+        {
+            if (explanation == null) throw new ArgumentNullException(nameof(explanation));
+            if (IsInvalid) throw new InvalidOperationException(explanation + " - Current state is invalid");
+            return this;
+        }
+
+        /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+        /// or if the matches do not match at current position</summary>
+        /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        /// 
+        public CodeMatcher ThrowIfNotMatch(string explanation, params CodeMatch[] matches)
+        {
+            ThrowIfInvalid(explanation);
+            if (!MatchSequence(Pos, matches)) throw new InvalidOperationException(explanation + " - Match failed");
+            return this;
+        }
+
+        private void ThrowIfNotMatch(string explanation, int direction, CodeMatch[] matches)
+        {
+            ThrowIfInvalid(explanation);
+
+            var tempPos = Pos;
+            try
+            {
+                if (Match(matches, direction, false).IsInvalid)
+                    throw new InvalidOperationException(explanation + " - Match failed");
+            }
+            finally
+            {
+                Pos = tempPos;
+            }
+        }
+      
+        /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+        /// or if the matches do not match at any point between current position and the end</summary>
+        /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        /// 
+        public CodeMatcher ThrowIfNotMatchForward(string explanation, params CodeMatch[] matches)
+        {
+            ThrowIfNotMatch(explanation, 1, matches);
+            return this;
+        }
+      
+        /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+        /// or if the matches do not match at any point between current position and the start</summary>
+        /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        /// 
+        public CodeMatcher ThrowIfNotMatchBack(string explanation, params CodeMatch[] matches)
+        {
+            ThrowIfNotMatch(explanation, -1, matches);
+            return this;
+        }
+
+        /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
+        /// or if the check function returns false</summary>
+        /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
+        /// <param name="stateCheckFunc">Function that checks validity of current state. If it returns false, an exception is thrown</param>
+        /// <returns>The same code matcher</returns>
+        /// 
+        public CodeMatcher ThrowIfFalse(string explanation, Func<CodeMatcher, bool> stateCheckFunc)
+        {
+            if (stateCheckFunc == null) throw new ArgumentNullException(nameof(stateCheckFunc));
+
+            ThrowIfInvalid(explanation);
+         
+            if (!stateCheckFunc(this)) throw new InvalidOperationException(explanation + " - Check function returned false");
+
+            return this;
+        }
 
         /// <summary>Sets an instruction at current position</summary>
         /// <param name="instruction">The instruction to set</param>
