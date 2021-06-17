@@ -64,7 +64,7 @@ namespace HarmonyLib
 				if (method is object) auxilaryMethods[auxType] = method;
 			}
 
-			patchMethods = PatchTools.GetPatchMethods(containerType);
+			patchMethods = PatchTools.GetPatchMethods(containerType, containerAttributes.GetDeclaringType() != null);
 			foreach (var patchMethod in patchMethods)
 			{
 				var method = patchMethod.info.method;

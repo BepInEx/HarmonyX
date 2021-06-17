@@ -90,7 +90,7 @@ namespace HarmonyLib
 		internal HarmonyPatchType? type;
 
 		static readonly string harmonyAttributeName = typeof(HarmonyAttribute).FullName;
-		internal static IEnumerable<AttributePatch> Create(MethodInfo patch)
+		internal static IEnumerable<AttributePatch> Create(MethodInfo patch, bool collectIncomplete = false)
 		{
 			if (patch is null)
 				throw new NullReferenceException("Patch method cannot be null");
@@ -120,7 +120,7 @@ namespace HarmonyLib
 				m1.GetDeclaringType() == m2.GetDeclaringType() && m1.methodName == m2.methodName;
 
 			var completeMethods = list.Where(m =>
-				m.GetDeclaringType() != null && m.methodName != null &&
+				(collectIncomplete || m.GetDeclaringType() != null) && m.methodName != null &&
 				!Same(m, info)).ToList();
 			completeMethods.Add(info);
 

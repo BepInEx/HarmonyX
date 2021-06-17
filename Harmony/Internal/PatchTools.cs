@@ -44,10 +44,10 @@ namespace HarmonyLib
 #endif
 		}
 
-		internal static List<AttributePatch> GetPatchMethods(Type type)
+		internal static List<AttributePatch> GetPatchMethods(Type type, bool collectIncomplete = false)
 		{
 			return AccessTools.GetDeclaredMethods(type)
-				.SelectMany(AttributePatch.Create)
+				.SelectMany(m => AttributePatch.Create(m, collectIncomplete))
 				.Where(attributePatch => attributePatch is object)
 				.ToList();
 		}
