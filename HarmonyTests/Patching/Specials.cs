@@ -58,6 +58,42 @@ namespace HarmonyLibTests.Patching
 		}
 
 		[Test, NonParallelizable]
+		public void Test_MultiTarget_Class1()
+		{
+			MultiAttributePatchClass1.callCount = 0;
+			var instance = new Harmony("special-case-multi-target-1");
+			Assert.NotNull(instance);
+
+			var processor = instance.CreateClassProcessor(typeof(MultiAttributePatchClass1));
+			Assert.NotNull(processor);
+			processor.Patch();
+
+			var testObject = new DeadEndCode();
+			Assert.NotNull(testObject);
+			Assert.DoesNotThrow(() => testObject.Method(), "Test method 1 wasn't patched");
+			Assert.DoesNotThrow(() => testObject.Method2(), "Test method 2 wasn't patched");
+			Assert.AreEqual(2, MultiAttributePatchClass1.callCount);
+		}
+
+		[Test, NonParallelizable]
+		public void Test_MultiTarget_Class2()
+		{
+			MultiAttributePatchClass2.callCount = 0;
+			var instance = new Harmony("special-case-multi-target-2");
+			Assert.NotNull(instance);
+
+			var processor = instance.CreateClassProcessor(typeof(MultiAttributePatchClass2));
+			Assert.NotNull(processor);
+			processor.Patch();
+
+			var testObject = new DeadEndCode();
+			Assert.NotNull(testObject);
+			Assert.DoesNotThrow(() => testObject.Method(), "Test method 1 wasn't patched");
+			Assert.DoesNotThrow(() => testObject.Method2(), "Test method 2 wasn't patched");
+			Assert.AreEqual(2, MultiAttributePatchClass2.callCount);
+		}
+
+		[Test, NonParallelizable]
 		public void Test_Multiple_Attributes_Partial()
 		{
 			var instance = new Harmony("special-case-multi-attribute-partial");
