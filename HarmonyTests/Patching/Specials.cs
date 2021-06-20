@@ -105,6 +105,21 @@ namespace HarmonyLibTests.Patching
 			Assert.DoesNotThrow(() => testObject.Method3(), "Test method wasn't patched");
 		}
 
+		[Test, NonParallelizable]
+		public void Test_Multiple_Attributes_Overload()
+		{
+			OverloadedCodePatch.callCount = 0;
+			var instance = new Harmony("special-case-overload");
+			Assert.NotNull(instance);
+			instance.PatchAll(typeof(OverloadedCodePatch));
+
+			var testObject = new OverloadedCode();
+			Assert.NotNull(testObject);
+			Assert.DoesNotThrow(() => testObject.Method(), "Method() wasn't patched");
+			Assert.DoesNotThrow(() => testObject.Method("test"), "Method(string) wasn't patched");
+			Assert.AreEqual(2, OverloadedCodePatch.callCount);
+		}
+
 		[Test]
 		public void Test_Patch_With_Module_Call()
 		{

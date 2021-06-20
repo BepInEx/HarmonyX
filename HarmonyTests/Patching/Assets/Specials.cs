@@ -92,6 +92,34 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public static class OverloadedCodePatch
+	{
+		public static int callCount = 0;
+
+		[HarmonyPrefix]
+		[HarmonyPatch(typeof(OverloadedCode), nameof(OverloadedCode.Method))]
+		[HarmonyPatch(typeof(OverloadedCode), nameof(OverloadedCode.Method), typeof(string))]
+		public static bool Prefix(ref string __result)
+		{
+			callCount++;
+			__result = "";
+			return false;
+		}
+	}
+
+	public class OverloadedCode
+	{
+		public string Method(string str)
+		{
+			throw new Exception();
+		}
+
+		public string Method()
+		{
+			throw new Exception();
+		}
+	}
+
 	public class DeadEndCode
 	{
 		public string Method()
