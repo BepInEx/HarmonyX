@@ -97,8 +97,8 @@ namespace HarmonyLibTests.Assets
 		public static int callCount = 0;
 
 		[HarmonyPrefix]
-		[HarmonyPatch(typeof(OverloadedCode), nameof(OverloadedCode.Method))]
-		[HarmonyPatch(typeof(OverloadedCode), nameof(OverloadedCode.Method), typeof(string))]
+		[HarmonyPatch(typeof(OverloadedCode.Class2), nameof(OverloadedCode.Class2.Method), typeof(string))]
+		[HarmonyPatch(typeof(OverloadedCode.Class1), nameof(OverloadedCode.Class1.Method))]
 		public static bool Prefix(ref string __result)
 		{
 			callCount++;
@@ -109,15 +109,23 @@ namespace HarmonyLibTests.Assets
 
 	public class OverloadedCode
 	{
-		public string Method(string str)
+
+		public class Class1
 		{
-			throw new Exception();
+			public string Method()
+			{
+				throw new Exception();
+			}
 		}
 
-		public string Method()
+		public class Class2
 		{
-			throw new Exception();
+			public string Method(string str)
+			{
+				throw new Exception();
+			}
 		}
+
 	}
 
 	public class DeadEndCode

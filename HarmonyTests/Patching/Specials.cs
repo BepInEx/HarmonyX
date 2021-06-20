@@ -113,10 +113,12 @@ namespace HarmonyLibTests.Patching
 			Assert.NotNull(instance);
 			instance.PatchAll(typeof(OverloadedCodePatch));
 
-			var testObject = new OverloadedCode();
-			Assert.NotNull(testObject);
-			Assert.DoesNotThrow(() => testObject.Method(), "Method() wasn't patched");
-			Assert.DoesNotThrow(() => testObject.Method("test"), "Method(string) wasn't patched");
+			var testObject1 = new OverloadedCode.Class1();
+			var testObject2 = new OverloadedCode.Class2();
+			Assert.NotNull(testObject1);
+			Assert.NotNull(testObject2);
+			Assert.DoesNotThrow(() => testObject1.Method(), "Method() wasn't patched");
+			Assert.DoesNotThrow(() => testObject2.Method("test"), "Method(string) wasn't patched");
 			Assert.AreEqual(2, OverloadedCodePatch.callCount);
 		}
 
