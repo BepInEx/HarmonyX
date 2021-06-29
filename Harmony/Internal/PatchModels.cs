@@ -114,20 +114,27 @@ namespace HarmonyLib
 				.Select(harmonyInfo => AccessTools.MakeDeepCopy<HarmonyMethod>(harmonyInfo))
 				.ToList();
 
-			var info = HarmonyMethod.Merge(list);
+			var completeMethods = new List<HarmonyMethod>();
 
-			static bool Same(HarmonyMethod m1, HarmonyMethod m2) =>
-				m1.GetDeclaringType() == m2.GetDeclaringType() && m1.methodName == m2.methodName;
+			static bool Same(HarmonyMethod m1, HarmonyMethod m2) => m1.GetDeclaringType() == m2.GetDeclaringType() && m1.methodName == m2.methodName && m1.GetArgumentList().SequenceEqual(m2.GetArgumentList());
+			static bool IsComplete(HarmonyMethod m, bool collectIncomplete) => (collectIncomplete || m.GetDeclaringType() != null) && m.methodName != null;
 
-			var completeMethods = list.Where(m =>
-				(collectIncomplete || m.GetDeclaringType() != null) && m.methodName != null &&
-				!Same(m, info)).ToList();
-			completeMethods.Add(info);
+			var groupedAttributes = list.ToLookup(m => IsComplete(m, collectIncomplete));
+			var incomplete = groupedAttributes[false].ToList();
+			var info = HarmonyMethod.Merge(incomplete);
+			var complete = groupedAttributes[true].Where(m => !Same(m, info)).ToList();
+
+			// Special case: more than one complete method, can be partially complete
+			// Merge complete methods with incomplete annotations and register all of them
+			if (complete.Count > 1)
+				completeMethods.AddRange(complete.Select(m => HarmonyMethod.Merge(incomplete.AddItem(m))));
+			else // Usual case: just one complete method => merge all into one
+				completeMethods.Add(HarmonyMethod.Merge(list));
 
 			foreach (var completeMethod in completeMethods)
 				completeMethod.method = patch;
 
-			return completeMethods.Select(i => new AttributePatch() { info = i, type = type }).ToList();
+			return completeMethods.Select(i => new AttributePatch { info = i, type = type }).ToList();
 		}
 
 		static HarmonyPatchType? GetPatchType(string methodName, object[] allAttributes)

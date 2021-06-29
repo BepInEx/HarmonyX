@@ -134,10 +134,15 @@ namespace HarmonyLib
 		///
 		public static HarmonyMethod Merge(List<HarmonyMethod> attributes)
 		{
+			return Merge((IEnumerable<HarmonyMethod>) attributes);
+		}
+
+		internal static HarmonyMethod Merge(IEnumerable<HarmonyMethod> attributes)
+		{
 			var result = new HarmonyMethod();
 			if (attributes is null) return result;
 			var resultTrv = Traverse.Create(result);
-			attributes.ForEach(attribute =>
+			attributes.Do(attribute =>
 			{
 				var trv = Traverse.Create(attribute);
 				HarmonyFields().ForEach(f =>
@@ -177,7 +182,7 @@ namespace HarmonyLib
 			var aName = argumentTypes is object ? argumentTypes.Description() : "undefined";
 			return $"(class={cName}, methodname={mName}, type={tName}, args={aName})";
 		}
-		
+
 		internal string assemblyQualifiedDeclaringTypeName;
 		internal Type GetDeclaringType()
 		{
@@ -185,6 +190,16 @@ namespace HarmonyLib
 				declaringType = Type.GetType(assemblyQualifiedDeclaringTypeName, true);
 			return declaringType;
 		}
+
+		internal Type[] GetArgumentList()
+		{
+			return argumentTypes ?? EmptyType.NoArgs;
+		}
+	}
+
+	internal static class EmptyType
+	{
+		internal static readonly Type[] NoArgs = new Type[0];
 	}
 
 	/// <summary>Annotation extensions</summary>
