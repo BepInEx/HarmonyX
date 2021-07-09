@@ -58,6 +58,23 @@ namespace HarmonyLibTests.Patching
 		}
 
 		[Test, NonParallelizable]
+		public void Test_Interface_Virtual_Patch()
+		{
+			InterfaceVirtualPatch.callCount = 0;
+			var instance = new Harmony("special-case-virtual-interface");
+			Assert.NotNull(instance);
+
+			var processor = instance.CreateClassProcessor(typeof(InterfaceVirtualPatch));
+			Assert.NotNull(processor);
+			processor.Patch();
+
+			var testObject = new InterfaceVirtualClass();
+			Assert.NotNull(testObject);
+			Assert.DoesNotThrow(() => testObject.Test(), "Test method 1 wasn't patched");
+			Assert.AreEqual(1, InterfaceVirtualPatch.callCount);
+		}
+
+		[Test, NonParallelizable]
 		public void Test_MultiTarget_Class1()
 		{
 			MultiAttributePatchClass1.callCount = 0;

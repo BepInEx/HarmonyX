@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Mono.Cecil;
+using NUnit.Framework.Internal;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
 using TypeAttributes = Mono.Cecil.TypeAttributes;
 
@@ -104,6 +105,31 @@ namespace HarmonyLibTests.Assets
 			callCount++;
 			__result = "";
 			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(InterfaceVirtualClass), nameof(InterfaceVirtualClass.Test))]
+	public static class InterfaceVirtualPatch
+	{
+		public static int callCount = 0;
+
+		public static bool Prefix()
+		{
+			callCount++;
+			return false;
+		}
+	}
+
+	interface Interface1
+	{
+		void Test();
+	}
+
+	public class InterfaceVirtualClass : Interface1
+	{
+		public virtual void Test()
+		{
+			throw new Exception();
 		}
 	}
 
