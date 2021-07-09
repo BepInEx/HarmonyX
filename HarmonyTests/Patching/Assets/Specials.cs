@@ -108,34 +108,12 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
-	[HarmonyPatch(typeof(InterfaceVirtualClass), nameof(InterfaceVirtualClass.Test))]
-	public static class InterfaceVirtualTranspile
+	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method))]
+	public static class ErrorReportTestPatch
 	{
-		public static int callCount = 0;
-
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instrs)
 		{
-			callCount++;
-			// Pass instructions unmodified
-			return instrs;
-		}
-	}
-
-	public struct StructTest1
-	{
-		public bool field;
-	}
-
-	interface Interface1
-	{
-		void Test(StructTest1 a, StructTest1 b, bool flag);
-	}
-
-	public class InterfaceVirtualClass : Interface1
-	{
-		public virtual void Test(StructTest1 a, StructTest1 b, bool flag)
-		{
-			throw new Exception();
+			throw new Exception("Test exception");
 		}
 	}
 

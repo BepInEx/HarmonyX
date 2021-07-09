@@ -58,21 +58,14 @@ namespace HarmonyLibTests.Patching
 		}
 
 		[Test, NonParallelizable]
-		public void Test_Interface_Virtual_Transpiler()
+		public void Test_Patch_Exception_Propagate()
 		{
-			InterfaceVirtualTranspile.callCount = 0;
-			var instance = new Harmony("special-case-virtual-interface");
+			var instance = new Harmony("special-case-exception-throw");
 			Assert.NotNull(instance);
 
-			var processor = instance.CreateClassProcessor(typeof(InterfaceVirtualTranspile));
+			var processor = instance.CreateClassProcessor(typeof(ErrorReportTestPatch));
 			Assert.NotNull(processor);
-			processor.Patch();
-
-			var testObject = new InterfaceVirtualClass();
-			Assert.NotNull(testObject);
-			Assert.Throws<Exception>(() => testObject.Test(new StructTest1(), new StructTest1(), false),
-				"Test method 1 was modified");
-			Assert.AreEqual(1, InterfaceVirtualTranspile.callCount);
+			Assert.Throws<HarmonyException>(() => processor.Patch());
 		}
 
 		[Test, NonParallelizable]
