@@ -565,6 +565,7 @@ namespace HarmonyLib.Public.Patching
 			catch (Exception e)
 			{
 				Logger.Log(Logger.LogChannel.Error, () => $"Failed to patch {original.FullDescription()}: {e}", debug);
+				throw HarmonyException.Create(e, ctx.Body);
 			}
 		}
 
