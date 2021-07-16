@@ -11,13 +11,13 @@
 		<Authors>Andreas Pardeike, Geoffrey Horsington, ManlyMarco et al.</Authors>
 		<AssemblyName>0Harmony</AssemblyName>
 		<SignAssembly>true</SignAssembly>
-		<Version>2.5.0</Version>
+		<Version>2.5.1</Version>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
-		<AssemblyVersion>2.5.0.0</AssemblyVersion>
-		<FileVersion>2.5.0.0</FileVersion>
+		<AssemblyVersion>2.5.1.0</AssemblyVersion>
+		<FileVersion>2.5.1.0</FileVersion>
 		<PackageIcon>logo_mini.png</PackageIcon>
 		<PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
