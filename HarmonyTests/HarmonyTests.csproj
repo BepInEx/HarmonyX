@@ -44,7 +44,7 @@
 		<PackageReference Include="jnm2.ReferenceAssemblies.net35" Version="1.0.1" PrivateAssets="all" Condition="'$(TargetFramework)'=='net35'" />
 
 		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-		<PackageReference Include="MonoMod.RuntimeDetour" Version="21.4.21.3" />
+		<PackageReference Include="MonoMod.RuntimeDetour" Version="21.7.8.3" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
