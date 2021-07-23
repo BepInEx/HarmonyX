@@ -130,8 +130,16 @@ namespace HarmonyLib
 
 				HarmonyManipulator.ApplyILManipulators(ctx, original, ilmanipulators, null);
 
-				// Write a ret in case it got removed (wrt. HarmonyManipulator)
-				ctx.IL.Emit(OpCodes.Ret);
+				// Normalize rets in case they get removed
+				Instruction retIns = null;
+				foreach (var instruction in ctx.Instrs.Where(i => i.OpCode == OpCodes.Ret))
+				{
+					retIns ??= ctx.IL.Create(OpCodes.Ret);
+					instruction.OpCode = OpCodes.Br;
+					instruction.Operand = retIns;
+				}
+				if (retIns != null)
+					ctx.IL.Append(retIns);
 
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated reverse patcher ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
