@@ -19,6 +19,9 @@ namespace HarmonyLib.Public.Patching
 		// Keep replacements as weak references to allow GC to collect them (e.g. if replacement is DynamicMethod)
 		private static readonly List<KeyValuePair<WeakReference, MethodBase>> ReplacementToOriginals = new List<KeyValuePair<WeakReference, MethodBase>>();
 
+		// typeof(StackFrame).methodAddress
+		private static FieldInfo methodAddress = null;
+
 		static PatchManager()
 		{
 			ResolvePatcher += ManagedMethodPatcher.TryResolve;
@@ -113,14 +116,34 @@ namespace HarmonyLib.Public.Patching
 			}
 		}
 
-		internal static MethodInfo FindReplacement(StackFrame frame)
+		internal static MethodBase FindReplacement(StackFrame frame)
 		{
-			var methodAddress = AccessTools.Field(typeof(StackFrame), "methodAddress");
-			if (methodAddress == null) return null;
-			var framePtr = (long)methodAddress.GetValue(frame);
+			methodAddress ??= typeof(StackFrame).GetField("methodAddress", BindingFlags.Instance | BindingFlags.NonPublic);
+
+			var frameMethod = frame.GetMethod();
+			var methodStart = 0L;
+
+			if (frameMethod is null)
+			{
+				if (methodAddress == null)
+					return null;
+
+				methodStart = (long) methodAddress.GetValue(frame);
+			}
+			else
+			{
+				var baseMethod = DetourHelper.Runtime.GetIdentifiable(frameMethod);
+				methodStart = baseMethod.GetNativeStart().ToInt64();
+			}
+
+			// Failed to find any usable method, if `frameMethod` is null, we can not find any
+			// method from the stacktrace.
+			if (methodStart == 0)
+				return frameMethod;
+
 			lock (ReplacementToOriginals)
 				return ReplacementToOriginals
-					.FirstOrDefault(kv => kv.Key.IsAlive && ((MethodInfo)kv.Key.Target).GetNativeStart().ToInt64() == framePtr).Key.Target as MethodInfo;
+					.FirstOrDefault(kv => kv.Key.IsAlive && ((MethodBase)kv.Key.Target).GetNativeStart().ToInt64() == methodStart).Key.Target as MethodBase;
 		}
 
 		internal static void AddReplacementOriginal(MethodBase original, MethodInfo replacement)

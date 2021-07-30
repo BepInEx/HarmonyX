@@ -1,3 +1,4 @@
+using MonoMod.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -61,7 +62,9 @@ namespace HarmonyLib
 				var platform = Environment.OSVersion.Platform.ToString();
 				if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
 
-				sb.AppendLine($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}");
+				var ptr_runtime = IntPtr.Size;
+				var ptr_env = PlatformHelper.Current;
+				sb.AppendLine($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}, ptrsize:runtime/env={ptr_runtime}/{ptr_env}");
 				var callingMethod = AccessTools.GetOutsideCaller();
 				if (callingMethod.DeclaringType is object)
 				{
@@ -84,6 +87,7 @@ namespace HarmonyLib
 		public string Id { get; }
 
 		/// <summary>Searches the current assembly for Harmony annotations and uses them to create patches</summary>
+		/// <remarks>This method can fail to use the correct assembly when being inlined. It calls StackTrace.GetFrame(1) which can point to the wrong method/assembly. If you are unsure or run into problems, use <code>PatchAll(Assembly.GetExecutingAssembly())</code> instead.</remarks>
 		///
 		public void PatchAll()
 		{
@@ -318,8 +322,6 @@ namespace HarmonyLib
 		public static MethodBase GetMethodFromStackframe(StackFrame frame)
 		{
 			if (frame == null) throw new ArgumentNullException(nameof(frame));
-			var method = frame.GetMethod();
-			if (method != null) return method;
 			return PatchManager.FindReplacement(frame);
 		}
 
