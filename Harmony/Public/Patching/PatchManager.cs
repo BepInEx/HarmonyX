@@ -20,7 +20,7 @@ namespace HarmonyLib.Public.Patching
 		private static readonly List<KeyValuePair<WeakReference, MethodBase>> ReplacementToOriginals = new List<KeyValuePair<WeakReference, MethodBase>>();
 
 		// typeof(StackFrame).methodAddress
-		private static FieldInfo methodAddress = null;
+		private static FieldInfo methodAddress;
 
 		static PatchManager()
 		{
