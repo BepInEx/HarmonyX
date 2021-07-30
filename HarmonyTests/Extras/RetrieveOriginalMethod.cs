@@ -2,6 +2,7 @@ using HarmonyLib;
 using NUnit.Framework;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace HarmonyLibTests.Extras
 {
@@ -36,11 +37,13 @@ namespace HarmonyLibTests.Extras
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		internal static void PatchTarget()
 		{
 			ChecksStackTrace();
 		}
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		internal static void DummyPrefix()
 		{
 
