@@ -227,6 +227,7 @@ namespace HarmonyLib
 			postfixes = postfixes.Where(p => p.PatchMethod != patch).ToArray();
 			transpilers = transpilers.Where(p => p.PatchMethod != patch).ToArray();
 			finalizers = finalizers.Where(p => p.PatchMethod != patch).ToArray();
+			ilmanipulators = ilmanipulators.Where(p => p.PatchMethod != patch).ToArray();
 		}
 
 		/// <summary>Gets a concatenated list of patches</summary>
