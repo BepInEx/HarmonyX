@@ -22,6 +22,22 @@ namespace HarmonyLibTests.Patching
 #endif
 
 		[Test]
+		public void Test_TranspilerNullLabels()
+		{
+			var original = AccessTools.Method(typeof(ClassNullLabelTest), nameof(ClassNullLabelTest.Method));
+			Assert.NotNull(original);
+
+			var transpiler = AccessTools.Method(typeof(Transpiling), nameof(Transpiling.NullLabelBlocksTranspiler));
+			Assert.NotNull(transpiler);
+
+			var instance = new Harmony("test-null-labels");
+			_ = instance.Patch(original, null, null, new HarmonyMethod(transpiler));
+
+			new ClassNullLabelTest().Method();
+			Assert.True(ClassNullLabelTest.originalExecuted);
+		}
+
+		[Test]
 		public void Test_TranspilerException1()
 		{
 			var test = new Class3();
@@ -42,6 +58,15 @@ namespace HarmonyLibTests.Patching
 
 			test.TestMethod("restart");
 			Assert.AreEqual(test.GetLog, "restart,test,patch,ex:DivideByZeroException,finally,end");
+		}
+
+		public static IEnumerable<CodeInstruction> NullLabelBlocksTranspiler(IEnumerable<CodeInstruction> instructions)
+		{
+			return new[]
+			{
+				new CodeInstruction(OpCodes.Nop) { labels = null },
+				new CodeInstruction(OpCodes.Nop) { blocks = null }
+			}.Concat(instructions);
 		}
 
 		public static IEnumerable<CodeInstruction> TestTranspiler(IEnumerable<CodeInstruction> instructions)

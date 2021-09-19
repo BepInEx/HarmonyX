@@ -434,7 +434,7 @@ namespace HarmonyLibTests.Assets
 		/*
 		 * TODO: This hangs MonoMod Common and we use a different version
 		 * until the problem is fixed
-		 * 
+		 *
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		public void TestMethod(string val)
 		{
@@ -1429,6 +1429,23 @@ namespace HarmonyLibTests.Assets
 		public static void Postfix(ref int __result)
 		{
 			__result += 2;
+		}
+	}
+
+	public class ClassNullLabelTest
+	{
+		public static bool originalExecuted;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void Method()
+		{
+			try
+			{
+				originalExecuted = true;
+			}
+			finally
+			{
+			}
 		}
 	}
 

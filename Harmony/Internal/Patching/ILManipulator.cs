@@ -206,7 +206,7 @@ namespace HarmonyLib.Internal.Patching
 
 		public List<CodeInstruction> GetInstructions(SRE.ILGenerator il, MethodBase original = null)
 		{
-			return MakeBranchesLong(ApplyTranspilers(il, original,
+			return NormalizeInstructions(ApplyTranspilers(il, original,
 				vDef => il.DeclareLocal(vDef.VariableType.ResolveReflection()), il.DefineLabel)).ToList();
 		}
 
@@ -220,7 +220,7 @@ namespace HarmonyLib.Internal.Patching
 				return instructions;
 
 			// Step 2: Run the code instructions through transpilers
-			var tempInstructions = MakeBranchesLong(instructions);
+			var tempInstructions = NormalizeInstructions(instructions);
 
 			foreach (var transpiler in transpilers)
 			{
@@ -228,7 +228,7 @@ namespace HarmonyLib.Internal.Patching
 
 				Logger.Log(Logger.LogChannel.Info, () => $"Running transpiler {transpiler.FullDescription()}", debug);
 				var newInstructions = transpiler.Invoke(null, args) as IEnumerable<CodeInstruction>;
-				tempInstructions = MakeBranchesLong(newInstructions).ToList();
+				tempInstructions = NormalizeInstructions(newInstructions).ToList();
 			}
 
 			return tempInstructions;
@@ -367,15 +367,20 @@ namespace HarmonyLib.Internal.Patching
 		}
 
 		/// <summary>
-		///    Converts all branches to long types. This exists to mimic the behaviour of Harmony 2
+		///    Normalizes instructions into a consistent format for passing to transpilers.
+		///    Converts short branches to long, ensures that certain fields are properly initialized.
 		/// </summary>
 		/// <param name="instrs">Enumerable of instructions</param>
-		/// <returns>Enumerable of fixed instructions</returns>
-		private static IEnumerable<CodeInstruction> MakeBranchesLong(IEnumerable<CodeInstruction> instrs)
+		/// <returns>Enumerable of normalized instructions</returns>
+		private static IEnumerable<CodeInstruction> NormalizeInstructions(IEnumerable<CodeInstruction> instrs)
 		{
 			// Yes, we mutate original objects to save speed
 			foreach (var ins in instrs)
 			{
+				// Ensure labels and blocks are initialized since some transpilers set them to null
+				ins.labels ??= new List<SRE.Label>();
+				ins.blocks ??= new List<ExceptionBlock>();
+				// Do short -> long conversion for Harmony 2 compat
 				if (ShortToLongMap.TryGetValue(ins.opcode, out var longOpCode))
 					ins.opcode = longOpCode;
 				yield return ins;
