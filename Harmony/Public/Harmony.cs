@@ -52,6 +52,9 @@ namespace HarmonyLib
 			if (DEBUG)
 				HarmonyFileLog.Enabled = true;
 
+			// Get caller before log call to ensure it's captured correctly
+			var callingMethod = Logger.IsEnabledFor(Logger.LogChannel.Info) ? AccessTools.GetOutsideCaller() : null;
+
 			Logger.Log(Logger.LogChannel.Info, () =>
 			{
 				var sb = new StringBuilder();
@@ -62,11 +65,10 @@ namespace HarmonyLib
 				var platform = Environment.OSVersion.Platform.ToString();
 				if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
 
-				var ptr_runtime = IntPtr.Size;
-				var ptr_env = PlatformHelper.Current;
-				sb.AppendLine($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}, ptrsize:runtime/env={ptr_runtime}/{ptr_env}");
-				var callingMethod = AccessTools.GetOutsideCaller();
-				if (callingMethod.DeclaringType is object)
+				var ptrRuntime = IntPtr.Size;
+				var ptrEnv = PlatformHelper.Current;
+				sb.AppendLine($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}, ptrsize:runtime/env={ptrRuntime}/{ptrEnv}");
+				if (callingMethod?.DeclaringType is object)
 				{
 					var callingAssembly = callingMethod.DeclaringType.Assembly;
 					location = callingAssembly.Location;
