@@ -584,7 +584,7 @@ namespace HarmonyLib
             return this;
         }
 
-        /// <summary>Removes some instruction fro current position by count</summary>
+        /// <summary>Removes some instruction from current position by count</summary>
         /// <param name="count">Number of instructions</param>
         /// <returns>The same code matcher</returns>
         ///
