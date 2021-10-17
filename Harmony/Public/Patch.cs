@@ -98,7 +98,7 @@ namespace HarmonyLib
 		public Patch[] finalizers = new Patch[0];
 
 		/// <summary>ILManipulators as an array of <see cref="Patch"/></summary>
-		/// 
+		///
 		public Patch[] ilmanipulators = new Patch[0];
 
 		/// <summary>Returns if any of the patches wants debugging turned on</summary>

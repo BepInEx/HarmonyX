@@ -40,13 +40,17 @@ namespace HarmonyLibTests.Extras
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		internal static void PatchTarget()
 		{
-			ChecksStackTrace();
+			try {
+				ChecksStackTrace(); // call this from within PatchTarget
+				throw new Exception();
+			} catch (Exception e) {
+
+			}
 		}
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		internal static void DummyPrefix()
 		{
-
 		}
 	}
 }
