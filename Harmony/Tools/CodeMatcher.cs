@@ -112,6 +112,21 @@ namespace HarmonyLib
                 result += "predicate=yes ";
             return $"{result.TrimEnd()}]";
         }
+
+        /// <summary>Creates a new code match for an opcode</summary>
+        /// <param name="opcode">Opcode to match</param>
+        ///
+        public static implicit operator CodeMatch(OpCode opcode) => new CodeMatch(opcode);
+
+        /// <summary>Creates a new code match for a code instruction</summary>
+        /// <param name="instruction">Code instruction</param>
+        ///
+        public static implicit operator CodeMatch(CodeInstruction instruction) => new CodeMatch(instruction);
+
+        /// <summary>Creates a new code match for a predicate</summary>
+        /// <param name="predicate">Predicate to match</param>
+        ///
+        public static implicit operator CodeMatch(Func<CodeInstruction, bool> predicate) => new CodeMatch(predicate);
     }
 
     /// <summary>A CodeInstruction matcher</summary>
@@ -299,7 +314,7 @@ namespace HarmonyLib
             logger($"{err} in {method}");
             return true;
         }
-      
+
         /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed)</summary>
         /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
         /// <returns>The same code matcher</returns>
@@ -316,7 +331,7 @@ namespace HarmonyLib
         /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
         /// <param name="matches">Some code matches</param>
         /// <returns>The same code matcher</returns>
-        /// 
+        ///
         public CodeMatcher ThrowIfNotMatch(string explanation, params CodeMatch[] matches)
         {
             ThrowIfInvalid(explanation);
@@ -339,25 +354,25 @@ namespace HarmonyLib
                 Pos = tempPos;
             }
         }
-      
+
         /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
         /// or if the matches do not match at any point between current position and the end</summary>
         /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
         /// <param name="matches">Some code matches</param>
         /// <returns>The same code matcher</returns>
-        /// 
+        ///
         public CodeMatcher ThrowIfNotMatchForward(string explanation, params CodeMatch[] matches)
         {
             ThrowIfNotMatch(explanation, 1, matches);
             return this;
         }
-      
+
         /// <summary>Throw an InvalidOperationException if current state is invalid (position out of bounds / last match failed),
         /// or if the matches do not match at any point between current position and the start</summary>
         /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
         /// <param name="matches">Some code matches</param>
         /// <returns>The same code matcher</returns>
-        /// 
+        ///
         public CodeMatcher ThrowIfNotMatchBack(string explanation, params CodeMatch[] matches)
         {
             ThrowIfNotMatch(explanation, -1, matches);
@@ -369,13 +384,13 @@ namespace HarmonyLib
         /// <param name="explanation">Explanation of where/why the exception was thrown that will be added to the exception message</param>
         /// <param name="stateCheckFunc">Function that checks validity of current state. If it returns false, an exception is thrown</param>
         /// <returns>The same code matcher</returns>
-        /// 
+        ///
         public CodeMatcher ThrowIfFalse(string explanation, Func<CodeMatcher, bool> stateCheckFunc)
         {
             if (stateCheckFunc == null) throw new ArgumentNullException(nameof(stateCheckFunc));
 
             ThrowIfInvalid(explanation);
-         
+
             if (!stateCheckFunc(this)) throw new InvalidOperationException(explanation + " - Check function returned false");
 
             return this;
