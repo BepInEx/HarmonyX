@@ -69,7 +69,7 @@
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
 		
 		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-		<PackageReference Include="MonoMod.RuntimeDetour" Version="21.8.19.1" />
+		<PackageReference Include="MonoMod.RuntimeDetour" Version="21.10.10.1" />
 
 		<!-- Reference SRE helpers for .NET Standard -->
 		<PackageReference Include="System.Reflection.Emit" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
