@@ -113,20 +113,22 @@ namespace HarmonyLib
             return $"{result.TrimEnd()}]";
         }
 
-        /// <summary>Creates a new code match for an opcode</summary>
-        /// <param name="opcode">Opcode to match</param>
-        ///
-        public static implicit operator CodeMatch(OpCode opcode) => new CodeMatch(opcode);
 
-        /// <summary>Creates a new code match for a code instruction</summary>
-        /// <param name="instruction">Code instruction</param>
-        ///
-        public static implicit operator CodeMatch(CodeInstruction instruction) => new CodeMatch(instruction);
-
-        /// <summary>Creates a new code match for a predicate</summary>
-        /// <param name="predicate">Predicate to match</param>
-        ///
-        public static implicit operator CodeMatch(Func<CodeInstruction, bool> predicate) => new CodeMatch(predicate);
+        // TODO: Add back once C# 10 with better lambda handling is introduced
+        // /// <summary>Creates a new code match for an opcode</summary>
+        // /// <param name="opcode">Opcode to match</param>
+        // ///
+        // public static implicit operator CodeMatch(OpCode opcode) => new CodeMatch(opcode);
+        //
+        // /// <summary>Creates a new code match for a code instruction</summary>
+        // /// <param name="instruction">Code instruction</param>
+        // ///
+        // public static implicit operator CodeMatch(CodeInstruction instruction) => new CodeMatch(instruction);
+        //
+        // /// <summary>Creates a new code match for a predicate</summary>
+        // /// <param name="predicate">Predicate to match</param>
+        // ///
+        // public static implicit operator CodeMatch(Func<CodeInstruction, bool> predicate) => new CodeMatch(predicate);
     }
 
     /// <summary>A CodeInstruction matcher</summary>
