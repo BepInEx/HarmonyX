@@ -1,5 +1,6 @@
 using HarmonyLib;
 using NUnit.Framework;
+using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -43,7 +44,7 @@ namespace HarmonyLibTests.Extras
 			try {
 				ChecksStackTrace(); // call this from within PatchTarget
 				throw new Exception();
-			} catch (Exception e) {
+			} catch (Exception) {
 
 			}
 		}
