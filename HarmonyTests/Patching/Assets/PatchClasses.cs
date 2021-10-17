@@ -1432,6 +1432,23 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public class ClassEmptyTranspilerTest
+	{
+		public static bool originalExecuted;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void Method()
+		{
+			try
+			{
+				originalExecuted = true;
+			}
+			finally
+			{
+			}
+		}
+	}
+
 	public class ClassNullLabelTest
 	{
 		public static bool originalExecuted;

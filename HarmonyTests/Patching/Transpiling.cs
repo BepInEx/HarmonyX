@@ -115,6 +115,27 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(LazyTranspilerRunsOnce_Class.counter, 2);
 		}
 
+		[Test]
+		public void Test_Empty_Transpiler()
+		{
+			var original = AccessTools.Method(typeof(ClassEmptyTranspilerTest), nameof(ClassEmptyTranspilerTest.Method));
+			Assert.NotNull(original);
+
+			var transpiler = AccessTools.Method(typeof(Transpiling), nameof(Transpiling.EmptyTranspiler));
+			Assert.NotNull(transpiler);
+
+			var instance = new Harmony("test-empty-transpiler");
+			_ = instance.Patch(original, null, null, new HarmonyMethod(transpiler));
+
+			new ClassEmptyTranspilerTest().Method();
+			Assert.False(ClassNullLabelTest.originalExecuted);
+		}
+
+		public static IEnumerable<CodeInstruction> EmptyTranspiler(IEnumerable<CodeInstruction> _)
+		{
+			return new CodeInstruction[0];
+		}
+
 		public static IEnumerable<CodeInstruction> LazyTranspiler(IEnumerable<CodeInstruction> instructions)
 		{
 			LazyTranspilerRunsOnce_Class.counter++;

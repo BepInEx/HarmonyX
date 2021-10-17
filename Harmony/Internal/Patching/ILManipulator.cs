@@ -362,6 +362,11 @@ namespace HarmonyLib.Internal.Patching
 				ins.blocks.ForEach(b => il.MarkBlockAfter(b));
 			}
 
+			// Special Harmony interop case: if no instructions exist, at least emit a quick return to attempt to get a valid method
+			// Vanilla Harmony (almost) always emits a `ret` which allows for skipping original method by writing an empty transpiler
+			if (body.Instructions.Count == 0)
+				il.Emit(SRE.OpCodes.Ret);
+
 			// Note: We lose all unassigned labels here along with any way to log them
 			// On the contrary, we gain better logging anyway down the line by using Cecil
 		}
