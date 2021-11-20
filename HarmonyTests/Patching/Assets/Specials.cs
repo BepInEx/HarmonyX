@@ -78,6 +78,17 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	[HarmonyPatch]
+	public class TestMultiAttributePatch
+	{
+		[HarmonyPatch(typeof(MultiAttributePatchCall), nameof(MultiAttributePatchCall.GetValue))]
+		[HarmonyPostfix]
+		public static void ReplaceGetValue(ref bool __result)
+		{
+			__result = true;
+		}
+	}
+
 	public static class MultiAttributePatch
 	{
 		public static int callCount = 0;
@@ -153,6 +164,19 @@ namespace HarmonyLibTests.Assets
 		public void Method3()
 		{
 			throw new Exception();
+		}
+	}
+
+	public class MultiAttributePatchCall
+	{
+		public static bool returnValue = false;
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public bool GetValue()
+		{
+			if (returnValue)
+				return true;
+			return false;
 		}
 	}
 

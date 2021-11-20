@@ -43,6 +43,27 @@ namespace HarmonyLibTests.Patching
 		*/
 
 		[Test, NonParallelizable]
+		public void Test_Type_Patch_Regression()
+		{
+			var instance = new Harmony("special-case-type-patch");
+			Assert.NotNull(instance);
+
+			var testObject = new MultiAttributePatchCall();
+			Assert.NotNull(testObject);
+			MultiAttributePatchCall.returnValue = true;
+			Assert.True(testObject.GetValue());
+			MultiAttributePatchCall.returnValue = false;
+			Assert.False(testObject.GetValue());
+
+			instance.PatchAll(typeof(TestMultiAttributePatch));
+
+			MultiAttributePatchCall.returnValue = true;
+			Assert.True(testObject.GetValue());
+			MultiAttributePatchCall.returnValue = false;
+			Assert.True(testObject.GetValue());
+		}
+
+		[Test, NonParallelizable]
 		public void Test_Multiple_Attributes()
 		{
 			MultiAttributePatch.callCount = 0;
