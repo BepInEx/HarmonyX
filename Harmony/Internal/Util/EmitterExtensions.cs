@@ -89,9 +89,8 @@ namespace HarmonyLib.Internal.Util
             il.Emit(OpCodes.Ret);
 
             emitDMDMethod = emitDMD.Generate();
-            emitCodeDelegate =
-                (Action<CecilILGenerator, OpCode, object>) emitDMDMethod
-                    .CreateDelegate<Action<CecilILGenerator, OpCode, object>>();
+            emitCodeDelegate = emitDMDMethod
+	                .CreateDelegate<Action<CecilILGenerator, OpCode, object>>();
         }
 
         public static void Emit(this CecilILGenerator il, OpCode opcode, object operand)

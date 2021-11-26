@@ -587,6 +587,30 @@ namespace HarmonyLib
 				dict.Add(transform(pair.Key), pair.Value);
 			return dict;
 		}
+
+		// Iterates the enumerable pairwise, i.e. by returning tuple (current, next)
+		internal static IEnumerable<(T, T)> Pairwise<T>(this IEnumerable<T> self)
+		{
+			var isFirst = true;
+			T prev = default;
+
+			foreach (var e in self)
+				if (isFirst)
+				{
+					prev = e;
+					isFirst = false;
+				}
+				else
+				{
+					yield return (prev, e);
+					prev = e;
+				}
+
+			if (isFirst)
+				yield break;
+
+			yield return (prev, default);
+		}
 	}
 
 	/// <summary>General extensions for collections</summary>

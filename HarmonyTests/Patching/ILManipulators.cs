@@ -1,8 +1,6 @@
 using HarmonyLib;
-using HarmonyLibTests;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
-using System;
 
 namespace HarmonyLibTests.Patching
 {
