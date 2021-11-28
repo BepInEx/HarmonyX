@@ -35,6 +35,22 @@ namespace HarmonyLibTests.Assets
 		}
 	}*/
 
+	public static class EnumeratorPatch
+	{
+		public static MethodBase patchTarget;
+		public static int runTimes = 0;
+
+		[HarmonyTranspiler]
+		[HarmonyPatch(typeof(EnumeratorCode), nameof(EnumeratorCode.NumberEnumerator), MethodType.Enumerator)]
+		private static IEnumerable<CodeInstruction> MoveNextPatch(IEnumerable<CodeInstruction> instructions, MethodBase original)
+		{
+			patchTarget = original;
+			yield return Transpilers.EmitDelegate<Action>(() => runTimes++);
+			foreach (var codeInstruction in instructions)
+				yield return codeInstruction;
+		}
+	}
+
 	public static class TypeTargetedPatch
 	{
 		[HarmonyTranspiler]
@@ -147,6 +163,18 @@ namespace HarmonyLibTests.Assets
 			}
 		}
 
+	}
+
+	public class EnumeratorCode
+	{
+		public IEnumerable<int> NumberEnumerator()
+		{
+			yield return 1;
+			yield return 2;
+			yield return 3;
+			yield return 4;
+			yield return 5;
+		}
 	}
 
 	public class DeadEndCode

@@ -3,6 +3,7 @@ using HarmonyLibTests.Assets;
 using HarmonyLibTests.Assets.Methods;
 using NUnit.Framework;
 using System;
+using System.Linq;
 
 namespace HarmonyLibTests.Patching
 {
@@ -135,6 +136,24 @@ namespace HarmonyLibTests.Patching
 			var testObject = new DeadEndCode();
 			Assert.NotNull(testObject);
 			Assert.DoesNotThrow(() => testObject.Method3(), "Test method wasn't patched");
+		}
+
+		[Test, NonParallelizable]
+		public void Test_Enumerator_Patch()
+		{
+			Assert.Null(EnumeratorPatch.patchTarget);
+			Assert.AreEqual(0, EnumeratorPatch.runTimes);
+
+			var instance = new Harmony("special-case-enumerator-movenext");
+			Assert.NotNull(instance);
+			instance.PatchAll(typeof(EnumeratorPatch));
+
+			Assert.IsNotNull(EnumeratorPatch.patchTarget);
+			Assert.AreEqual("MoveNext", EnumeratorPatch.patchTarget.Name);
+
+			var testObject = new EnumeratorCode();
+			Assert.AreEqual(new []{ 1, 2, 3, 4, 5 }, testObject.NumberEnumerator().ToArray());
+			Assert.AreEqual(6, EnumeratorPatch.runTimes);
 		}
 
 		[Test, NonParallelizable]

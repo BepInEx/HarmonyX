@@ -77,14 +77,21 @@ namespace HarmonyLib
 						return AccessTools.DeclaredConstructor(attr.GetDeclaringType(), attr.argumentTypes);
 
 					case MethodType.StaticConstructor:
-						return AccessTools.GetDeclaredConstructors(attr.GetDeclaringType())
-							.Where(c => c.IsStatic)
-							.FirstOrDefault();
+						return AccessTools
+							.GetDeclaredConstructors(attr.GetDeclaringType())
+							.FirstOrDefault(c => c.IsStatic);
+
+					case MethodType.Enumerator:
+						if (attr.methodName is null)
+							return null;
+						return AccessTools.EnumeratorMoveNext(AccessTools.DeclaredMethod(attr.GetDeclaringType(),
+							attr.methodName, attr.argumentTypes));
 				}
 			}
 			catch (AmbiguousMatchException ex)
 			{
-				throw new HarmonyException($"Ambiguous match for HarmonyMethod[{attr.Description()}]", ex.InnerException ?? ex);
+				throw new HarmonyException($"Ambiguous match for HarmonyMethod[{attr.Description()}]",
+					ex.InnerException ?? ex);
 			}
 
 			return null;

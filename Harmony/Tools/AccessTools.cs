@@ -9,6 +9,8 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using HarmonyLib.Tools;
+using Mono.Cecil;
+using MonoMod.Cil;
 using System.Threading;
 
 namespace HarmonyLib
@@ -384,6 +386,68 @@ namespace HarmonyLib
 
 			var type = TypeByName(parts[0]);
 			return DeclaredMethod(type, parts[1], parameters, generics);
+		}
+
+		/// <summary>Gets <see cref="IEnumerator.MoveNext" /> method of an enumerator method.</summary>
+		/// <param name="enumerator">Enumerator method from which to get its <see cref="IEnumerator.MoveNext" /></param>
+		/// <returns><see cref="IEnumerator.MoveNext" /> of the enumerator or <b>null</b> if no valid enumerator is detected</returns>
+		public static MethodInfo EnumeratorMoveNext(MethodBase enumerator)
+		{
+			if (enumerator is null)
+			{
+				Logger.LogText(Logger.LogChannel.Warn, "EnumeratorMoveNext.Method: enumerator is null");
+				return null;
+			}
+
+			var ctx = new ILContext(new DynamicMethodDefinition(enumerator).Definition);
+			var il = new ILCursor(ctx);
+
+			Type enumeratorType;
+			if (ctx.Method.ReturnType.Name.StartsWith("UniTask"))
+			{
+				var firstVar = ctx.Body.Variables.FirstOrDefault()?.VariableType;
+				if (firstVar is object && !firstVar.Name.Contains(enumerator.Name))
+				{
+					Logger.Log(Logger.LogChannel.Warn,
+						() =>
+							$"EnumeratorMoveNext.Method: Unexpected type name {firstVar.Name}, should contain {enumerator.Name}");
+					return null;
+				}
+
+				enumeratorType = firstVar.ResolveReflection();
+			}
+			else
+			{
+				MethodReference enumeratorCtor = null;
+				il.GotoNext(i => i.MatchNewobj(out enumeratorCtor));
+				if (enumeratorCtor is null)
+				{
+					Logger.Log(Logger.LogChannel.Warn,
+						() => $"EnumeratorMoveNext.Method: {enumerator.FullDescription()} does not create enumerators");
+					return null;
+				}
+
+				if (enumeratorCtor.Name != ".ctor")
+				{
+					Logger.Log(Logger.LogChannel.Warn,
+						() =>
+							$"EnumeratorMoveNext.Method: {enumerator.FullDescription()} does not create an enumerator (got {enumeratorCtor.GetID(simple: true)})");
+					return null;
+				}
+
+				enumeratorType = enumeratorCtor.DeclaringType.ResolveReflection();
+			}
+
+			var moveNext = Method(enumeratorType, nameof(IEnumerator.MoveNext));
+			if (moveNext is null)
+			{
+				Logger.Log(Logger.LogChannel.Warn,
+					() =>
+						$"EnumeratorMoveNext.Method: {enumerator.FullDescription()} creates an object {enumeratorType.FullDescription()} but it doesn't have MoveNext");
+				return null;
+			}
+
+			return moveNext;
 		}
 
 		/// <summary>Gets the names of all method that are declared in a type</summary>
