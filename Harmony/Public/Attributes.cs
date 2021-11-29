@@ -111,7 +111,7 @@ namespace HarmonyLib
 		public HarmonyMethod info = new HarmonyMethod();
 	}
 
-	/// <summary>Annotation to define your Harmony patch methods</summary>
+	/// <summary>Annotation to define targets of your Harmony patch methods</summary>
 	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Delegate | AttributeTargets.Method, AllowMultiple = true)]
 	public class HarmonyPatch : HarmonyAttribute
@@ -547,7 +547,7 @@ namespace HarmonyLib
 	{
 	}
 
-	/// <summary>A Harmony annotation</summary>
+	/// <summary>A Harmony annotation used to change order in which Harmony patches are applied</summary>
 	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyPriority : HarmonyAttribute
@@ -561,7 +561,7 @@ namespace HarmonyLib
 		}
 	}
 
-	/// <summary>A Harmony annotation</summary>
+	/// <summary>A Harmony annotation to define that a patch comes before another patch</summary>
 	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyBefore : HarmonyAttribute
@@ -575,7 +575,7 @@ namespace HarmonyLib
 		}
 	}
 
-	/// <summary>A Harmony annotation</summary>
+	/// <summary>A Harmony annotation to define that a patch comes after another patch</summary>
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyAfter : HarmonyAttribute
 	{
@@ -588,7 +588,7 @@ namespace HarmonyLib
 		}
 	}
 
-	/// <summary>A Harmony annotation</summary>
+	/// <summary>A Harmony annotation to output a debug log for a patch</summary>
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyDebug : HarmonyAttribute
 	{
@@ -600,7 +600,8 @@ namespace HarmonyLib
 		}
 	}
 
-	/// <summary>A Harmony attribute</summary>
+	/// <summary>A Harmony attribute to automatically wrap the patch into try/catch. Exceptions are logged to Harmony log and eaten.</summary>
+	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyWrapSafe : HarmonyAttribute
 	{
@@ -675,7 +676,7 @@ namespace HarmonyLib
 	{
 	}
 
-	/// <summary>A Harmony annotation</summary>
+	/// <summary>A Harmony annotation to declare injected arguments</summary>
 	///
 	[AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
 	public class HarmonyArgument : Attribute
