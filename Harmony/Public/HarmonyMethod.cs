@@ -57,7 +57,7 @@ namespace HarmonyLib
 
 		/// <summary>Whether to wrap the patch itself into a try/catch.</summary>
 		///
-		public bool wrapTryCatch;
+		public bool? wrapTryCatch;
 
 		/// <summary>Default constructor</summary>
 		///

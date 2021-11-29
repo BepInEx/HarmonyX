@@ -105,6 +105,20 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public static class SafeWrapPatch
+	{
+		public static bool called = false;
+
+		[HarmonyPrefix]
+		[HarmonyWrapSafe]
+		[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method4))]
+		public static void Prefix()
+		{
+			called = true;
+			throw new Exception();
+		}
+	}
+
 	public static class MultiAttributePatch
 	{
 		public static int callCount = 0;
@@ -192,6 +206,15 @@ namespace HarmonyLibTests.Assets
 		public void Method3()
 		{
 			throw new Exception();
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public int Method4()
+		{
+			var sum = 0;
+			for (var i = 1; i <= 10; i++)
+				sum += i;
+			return sum;
 		}
 	}
 

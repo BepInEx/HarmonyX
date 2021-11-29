@@ -377,7 +377,7 @@ namespace HarmonyLib
 		/// <param name="index">Zero-based index</param>
 		/// <param name="owner">An owner (Harmony ID)</param>
 		public Patch(HarmonyMethod method, int index, string owner)
-			: this(method.method, index, owner, method.priority, method.before, method.after, method.debug ?? false, method.wrapTryCatch) { }
+			: this(method.method, index, owner, method.priority, method.before, method.after, method.debug ?? false, method.wrapTryCatch ?? false) { }
 
 		/// <summary>Get the patch method or a DynamicMethod if original patch method is a patch factory</summary>
 		/// <param name="original">The original method/constructor</param>

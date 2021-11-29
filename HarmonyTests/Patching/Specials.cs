@@ -44,6 +44,21 @@ namespace HarmonyLibTests.Patching
 		*/
 
 		[Test, NonParallelizable]
+		public void Test_Wrap_Patch()
+		{
+			SafeWrapPatch.called = false;
+			var instance = new Harmony("special-case-wrap-patch");
+			Assert.NotNull(instance);
+
+			instance.PatchAll(typeof(SafeWrapPatch));
+
+			var testObject = new DeadEndCode();
+			Assert.NotNull(testObject);
+			Assert.DoesNotThrow(() => testObject.Method4());
+			Assert.True(SafeWrapPatch.called);
+		}
+
+		[Test, NonParallelizable]
 		public void Test_Type_Patch_Regression()
 		{
 			var instance = new Harmony("special-case-type-patch");
