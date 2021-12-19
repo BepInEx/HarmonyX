@@ -221,7 +221,7 @@ namespace HarmonyLib
 				return;
 			}
 
-			UnpatchInternal(patchInfo => patchInfo.owner == harmonyID);
+			PatchFunctions.UnpatchConditional(patchInfo => patchInfo.owner == harmonyID);
 		}
 
 		/// <summary>Unpatches all methods that were patched by this Harmony instance's ID. Unpatching is done by repatching methods without patches of this instance.</summary>
@@ -248,29 +248,7 @@ namespace HarmonyLib
 
 			Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called - This will remove ALL HARMONY PATCHES.");
 
-			UnpatchInternal(_ => true);
-		}
-
-		private static void UnpatchInternal(Func<Patch, bool> executionCondition)
-		{
-			var originals = GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
-			foreach (var original in originals)
-			{
-				var hasBody = original.HasMethodBody();
-				var info = GetPatchInfo(original);
-				var patchProcessor = new PatchProcessor(null, original);
-
-				if (hasBody)
-				{
-					info.Postfixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-					info.Prefixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-				}
-
-				info.ILManipulators.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-				info.Transpilers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-				if (hasBody)
-					info.Finalizers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-			}
+			PatchFunctions.UnpatchConditional(_ => true);
 		}
 
 		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
