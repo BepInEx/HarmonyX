@@ -212,13 +212,13 @@ namespace HarmonyLib
 
 		/// <summary>Unpatches all methods that were patched by the specified <paramref name="harmonyID"/>. Unpatching is done by repatching methods without patches of this instance.</summary>
 		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance.</param>
+		/// <exception cref="ArgumentNullException">Gets thrown when a null or empty HarmonyID gets passed in.</exception>
+		///
 		public static void UnpatchID(string harmonyID)
 		{
 			if (string.IsNullOrEmpty(harmonyID))
 			{
-				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchID has been called with a null or empty harmonyID. " +
-				                                         "Skipping execution of UnpatchID.");
-				return;
+				throw new ArgumentNullException(nameof(harmonyID) , "UnpatchID was called with a null or empty harmonyID.");
 			}
 
 			PatchFunctions.UnpatchConditional(patchInfo => patchInfo.owner == harmonyID);
