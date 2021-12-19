@@ -210,7 +210,7 @@ namespace HarmonyLib
 			return PatchFunctions.ReversePatch(standin, original, transpiler, null);
 		}
 
-		/// <summary>Unpatches all methods that were patched by this Harmony instance's ID. Unpatching is done by repatching methods without patches of this instance.</summary>
+		/// <summary>Unpatches all methods that were patched by the specified <paramref name="harmonyID"/>. Unpatching is done by repatching methods without patches of this instance.</summary>
 		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance.</param>
 		public static void UnpatchID(string harmonyID)
 		{
