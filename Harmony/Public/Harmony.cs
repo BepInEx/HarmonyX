@@ -210,28 +210,20 @@ namespace HarmonyLib
 			return PatchFunctions.ReversePatch(standin, original, transpiler, null);
 		}
 
-		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
-		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> global flag</param>
-		/// <remarks>This method could be static if it wasn't for the fact that unpatching creates a new replacement method that contains your harmony ID. When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped.</remarks>
-		///
-		public void UnpatchAll(string harmonyID = null)
+		/// <summary>Unpatches all methods that were patched by this Harmony instance's ID. Unpatching is done by repatching methods without patches of this instance.</summary>
+		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance.</param>
+		public static void UnpatchID(string harmonyID)
 		{
-			if (harmonyID == null)
+			if (string.IsNullOrEmpty(harmonyID))
 			{
-				if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
-				{
-					Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called with harmonyID=null AND DisallowGlobalUnpatchAll=true. " +
-					                                         "If you want to only unpatch patches created by this instance (" + Id + "), use UnpatchSelf() instead.");
-					return;
-				}
-
-				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called with harmonyID=null - This will remove ALL HARMONY PATCHES. " +
-				                                         "If you want to only unpatch patches created by this instance (" + Id + "), use UnpatchSelf() instead.");
+				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchID has been called with a null or empty harmonyID. " +
+				                                         "Skipping execution of UnpatchID.");
+				return;
 			}
 
 			bool IDCheck(Patch patchInfo)
 			{
-				return harmonyID is null || patchInfo.owner == harmonyID;
+				return patchInfo.owner == harmonyID;
 			}
 
 			var originals = GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
@@ -239,15 +231,17 @@ namespace HarmonyLib
 			{
 				var hasBody = original.HasMethodBody();
 				var info = GetPatchInfo(original);
+				var patchProcessor = new PatchProcessor(null, original);
+
 				if (hasBody)
 				{
-					info.Postfixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
-					info.Prefixes.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
+					info.Postfixes.DoIf(IDCheck, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+					info.Prefixes.DoIf(IDCheck, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
 				}
-				info.ILManipulators.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
-				info.Transpilers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
+				info.ILManipulators.DoIf(IDCheck, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				info.Transpilers.DoIf(IDCheck, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
 				if (hasBody)
-					info.Finalizers.DoIf(IDCheck, patchInfo => Unpatch(original, patchInfo.PatchMethod));
+					info.Finalizers.DoIf(IDCheck, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
 			}
 		}
 
@@ -255,7 +249,59 @@ namespace HarmonyLib
 		///
 		public void UnpatchSelf()
 		{
-			UnpatchAll(Id);
+			UnpatchID(Id);
+		}
+
+		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
+		/// <remarks>When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped.</remarks>
+		///
+		public static void UnpatchAll()
+		{
+			if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
+			{
+				if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
+				{
+					Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called AND DisallowGlobalUnpatchAll=true. " +
+					                                         "Skipping execution of UnpatchAll");
+					return;
+				}
+			}
+
+			Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called - This will remove ALL HARMONY PATCHES.");
+
+			var originals = GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
+			foreach (var original in originals)
+			{
+				var hasBody = original.HasMethodBody();
+				var info = GetPatchInfo(original);
+				var patchProcessor = new PatchProcessor(null, original);
+
+				if (hasBody)
+				{
+					info.Postfixes.Do(patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+					info.Prefixes.Do(patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				}
+				info.ILManipulators.Do(patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				info.Transpilers.Do(patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				if (hasBody)
+					info.Finalizers.Do(patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+			}
+		}
+
+		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
+		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> global flag</param>
+		/// <remarks>When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped when no <paramref name="harmonyID"/> is specified.</remarks>
+		///
+		public void UnpatchAll(string harmonyID = null)
+		{
+			if (string.IsNullOrEmpty(harmonyID))
+			{
+				UnpatchAll();
+			}
+			else
+			{
+				UnpatchID(harmonyID);
+			}
 		}
 
 		/// <summary>Unpatches a method by patching it with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
