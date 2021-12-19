@@ -5,7 +5,7 @@ namespace HarmonyLib
 	public static class HarmonyGlobalSettings
 	{
 		/// <summary>Set to true to disallow executing UnpatchAll without specifying a harmonyId.</summary>
-		/// <remarks>If set to true and UnpatchAll is called without passing a harmonyId, then said method will throw a HarmonyException</remarks>
+		/// <remarks>If set to true and UnpatchAll is called without passing a harmonyId, then execution of said method will be skipped.</remarks>
 		public static bool DisallowGlobalUnpatchAll { get; set; }
 	}
 }

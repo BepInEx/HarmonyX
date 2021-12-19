@@ -212,8 +212,7 @@ namespace HarmonyLib
 
 		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
 		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> global flag</param>
-		/// <exception cref="HarmonyException">Exception gets thrown when <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/>=true and no <paramref name="harmonyID" /> is passed into the method</exception>
-		/// <remarks>This method could be static if it wasn't for the fact that unpatching creates a new replacement method that contains your harmony ID</remarks>
+		/// <remarks>This method could be static if it wasn't for the fact that unpatching creates a new replacement method that contains your harmony ID. When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped.</remarks>
 		///
 		public void UnpatchAll(string harmonyID = null)
 		{
@@ -221,8 +220,9 @@ namespace HarmonyLib
 			{
 				if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
 				{
-					throw new HarmonyException("UnpatchAll has been called with harmonyID=null AND DisallowGlobalUnpatchAll=true. " +
-					                           "If you want to only unpatch patches created by this instance (" + Id + "), use UnpatchSelf() instead.");
+					Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called with harmonyID=null AND DisallowGlobalUnpatchAll=true. " +
+					                                         "If you want to only unpatch patches created by this instance (" + Id + "), use UnpatchSelf() instead.");
+					return;
 				}
 
 				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called with harmonyID=null - This will remove ALL HARMONY PATCHES. " +
