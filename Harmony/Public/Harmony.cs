@@ -255,12 +255,19 @@ namespace HarmonyLib
 		[Obsolete("Use UnpatchSelf() to unpatch the current instance. The functionality to unpatch other ids or everything has been moved the static methods UnpatchID() and UnpatchAll()", true)]
 		public void UnpatchAll(string harmonyID = null)
 		{
-			if (string.IsNullOrEmpty(harmonyID))
+			if (harmonyID == null)
 			{
 				UnpatchAll();
 			}
 			else
 			{
+				if (harmonyID.Length == 0)
+				{
+					Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll was called with harmonyID=\"\" which is an invalid id. " +
+					                                         "Skipping execution of UnpatchAll");
+					return;
+				}
+
 				UnpatchID(harmonyID);
 			}
 		}
