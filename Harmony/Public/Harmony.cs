@@ -22,10 +22,6 @@ namespace HarmonyLib
 		// ReSharper disable once InconsistentNaming
 		public static bool DEBUG;
 
-		/// <summary>Set to true to disallow executing UnpatchAll without specifying a harmonyId.</summary>
-		/// <remarks>If set to true and UnpatchAll is called without passing a harmonyId, then said method will throw a HarmonyException</remarks>
-		public static bool DISALLOW_GLOBAL_UNPATCHALL;
-
 		static Harmony()
 		{
 			StackTraceFixes.Install();
@@ -215,17 +211,17 @@ namespace HarmonyLib
 		}
 
 		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
-		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="DISALLOW_GLOBAL_UNPATCHALL"/> global flag</param>
-		/// <exception cref="HarmonyException">Exception gets thrown when <see cref="DISALLOW_GLOBAL_UNPATCHALL"/>=true and no <paramref name="harmonyID" /> is passed into the method</exception>
+		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> global flag</param>
+		/// <exception cref="HarmonyException">Exception gets thrown when <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/>=true and no <paramref name="harmonyID" /> is passed into the method</exception>
 		/// <remarks>This method could be static if it wasn't for the fact that unpatching creates a new replacement method that contains your harmony ID</remarks>
 		///
 		public void UnpatchAll(string harmonyID = null)
 		{
 			if (harmonyID == null)
 			{
-				if (DISALLOW_GLOBAL_UNPATCHALL)
+				if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
 				{
-					throw new HarmonyException("UnpatchAll has been called with harmonyID=null AND DISALLOW_GLOBAL_UNPATCHALL=true. " +
+					throw new HarmonyException("UnpatchAll has been called with harmonyID=null AND DisallowGlobalUnpatchAll=true. " +
 					                           "If you want to only unpatch patches created by this instance (" + Id + "), use UnpatchSelf() instead.");
 				}
 
