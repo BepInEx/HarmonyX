@@ -238,12 +238,9 @@ namespace HarmonyLib
 		{
 			if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
 			{
-				if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
-				{
-					Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called AND DisallowGlobalUnpatchAll=true. " +
-					                                         "Skipping execution of UnpatchAll");
-					return;
-				}
+				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called AND DisallowGlobalUnpatchAll=true. " +
+				                                         "Skipping execution of UnpatchAll");
+				return;
 			}
 
 			Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called - This will remove ALL HARMONY PATCHES.");
