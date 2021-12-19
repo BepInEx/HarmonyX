@@ -255,7 +255,7 @@ namespace HarmonyLib
 		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> global flag</param>
 		/// <remarks>When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped when no <paramref name="harmonyID"/> is specified.</remarks>
 		///
-		[Obsolete("Use UnpatchSelf() to unpatch the current instance", true)]
+		[Obsolete("Use UnpatchSelf() to unpatch the current instance. The functionality to unpatch other ids or everything has been moved the static methods UnpatchID() and UnpatchAll()", true)]
 		public void UnpatchAll(string harmonyID = null)
 		{
 			if (string.IsNullOrEmpty(harmonyID))
