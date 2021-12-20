@@ -232,38 +232,37 @@ namespace HarmonyLib
 		}
 
 		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
-		/// <remarks>When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped.</remarks>
 		///
 		public static void UnpatchAll()
 		{
-			if (HarmonyGlobalSettings.DisallowGlobalUnpatchAll)
-			{
-				Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called AND DisallowGlobalUnpatchAll=true. " +
-				                                         "Skipping execution of UnpatchAll");
-				return;
-			}
-
 			Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll has been called - This will remove ALL HARMONY PATCHES.");
 
 			PatchFunctions.UnpatchConditional(_ => true);
 		}
 
 		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
-		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> global flag</param>
-		/// <remarks>When <see cref="HarmonyGlobalSettings.DisallowGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped when no <paramref name="harmonyID"/> is specified.</remarks>
+		/// <param name="harmonyID">The Harmony ID to restrict unpatching to a specific Harmony instance. Whether this parameter is actually optional is determined by the <see cref="HarmonyGlobalSettings.DisallowLegacyGlobalUnpatchAll"/> global flag</param>
+		/// <remarks>When <see cref="HarmonyGlobalSettings.DisallowLegacyGlobalUnpatchAll"/> is set to true, the execution of this method will be skipped when no <paramref name="harmonyID"/> is specified.</remarks>
 		///
-		[Obsolete("Use UnpatchSelf() to unpatch the current instance. The functionality to unpatch other ids or everything has been moved the static methods UnpatchID() and UnpatchAll()", true)]
+		[Obsolete("Use UnpatchSelf() to unpatch the current instance. The functionality to unpatch either other ids or EVERYTHING has been moved the static methods UnpatchID() and UnpatchAll() respectively", true)]
 		public void UnpatchAll(string harmonyID = null)
 		{
 			if (harmonyID == null)
 			{
+				if (HarmonyGlobalSettings.DisallowLegacyGlobalUnpatchAll)
+				{
+					Logger.Log(Logger.LogChannel.Warn, () => "Legacy UnpatchAll has been called AND DisallowLegacyGlobalUnpatchAll=true. " +
+					                                         "Skipping execution of UnpatchAll");
+					return;
+				}
+
 				UnpatchAll();
 			}
 			else
 			{
 				if (harmonyID.Length == 0)
 				{
-					Logger.Log(Logger.LogChannel.Warn, () => "UnpatchAll was called with harmonyID=\"\" which is an invalid id. " +
+					Logger.Log(Logger.LogChannel.Warn, () => "Legacy UnpatchAll was called with harmonyID=\"\" which is an invalid id. " +
 					                                         "Skipping execution of UnpatchAll");
 					return;
 				}
