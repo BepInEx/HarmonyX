@@ -231,7 +231,7 @@ namespace HarmonyLib
 			UnpatchID(Id);
 		}
 
-		/// <summary>Unpatches methods by patching them with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
+		/// <summary>Globally unpatches ALL methods by patching them with zero patches. Complete unpatching is not supported.</summary>
 		///
 		public static void UnpatchAll()
 		{
