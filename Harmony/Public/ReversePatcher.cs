@@ -35,6 +35,7 @@ namespace HarmonyLib
 			if (original is null)
 				throw new NullReferenceException($"Null method for {instance.Id}");
 
+			standin.reversePatchType = type;
 			var transpiler = GetTranspiler(standin.method);
 			var manipulator = GetManipulator(standin.method);
 			return PatchFunctions.ReversePatch(standin, original, transpiler, manipulator);

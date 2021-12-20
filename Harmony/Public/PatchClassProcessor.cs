@@ -139,11 +139,8 @@ namespace HarmonyLib
 				var job = jobs.GetJob(lastOriginal);
 				foreach (var patchMethod in patchMethods)
 				{
-					var note = "You cannot combine TargetMethod, TargetMethods or PatchAll with individual annotations";
+					var note = "You cannot combine TargetMethod, TargetMethods or [HarmonyPatchAll] with individual annotations";
 					var info = patchMethod.info;
-					var declaringType = info.GetDeclaringType();
-					if (declaringType is object)
-						throw new ArgumentException($"{note} [{declaringType.FullDescription()}]");
 					if (info.methodName is object)
 						throw new ArgumentException($"{note} [{info.methodName}]");
 					if (info.methodType.HasValue && info.methodType.Value != MethodType.Normal)

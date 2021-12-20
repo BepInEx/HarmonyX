@@ -41,11 +41,13 @@ namespace HarmonyLibTests.Extras
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		internal static void PatchTarget()
 		{
-			try {
+			try
+			{
 				ChecksStackTrace(); // call this from within PatchTarget
 				throw new Exception();
-			} catch (Exception) {
-
+			}
+			catch
+			{
 			}
 		}
 
