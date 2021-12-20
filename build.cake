@@ -26,7 +26,7 @@ Task("PullDependencies")
     .Does(() =>
 {
     Information("Restoring NuGet packages");
-    NuGetRestore("./Harmony.sln");
+    DotNetRestore(".");
 });
 
 Task("Build")
@@ -34,20 +34,20 @@ Task("Build")
     .IsDependentOn("PullDependencies")
     .Does(() =>
 {
-    var buildSettings = new MSBuildSettings {
+    var buildSettings = new DotNetBuildSettings {
         Configuration = "Release",
-        Restore = true
+		MSBuildSettings = new DotNetCoreMSBuildSettings()
     };
-    buildSettings.Targets.Add("build");
-    buildSettings.Targets.Add("pack");
-    MSBuild("./Harmony.sln", buildSettings);
+    buildSettings.MSBuildSettings.Targets.Add("build");
+    buildSettings.MSBuildSettings.Targets.Add("pack");
+    DotNetBuild(".", buildSettings);
 });
 
 Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-	var testTargets = new [] { "net35", "netcoreapp3.1" };
+	var testTargets = new [] { "net35", "netcoreapp3.1", "net6.0" };
 	foreach (var target in testTargets)
 	{
 	    Information($"Testing {target}");
