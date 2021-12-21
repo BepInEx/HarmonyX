@@ -196,7 +196,7 @@ namespace HarmonyLibTests.Patching
 			var instanceB = new Harmony("test");
 			Assert.NotNull(instanceB);
 
-			instanceB.UnpatchAll("unpatch-all-test");
+			Harmony.UnpatchID("unpatch-all-test");
 		}
 
 		[Test]

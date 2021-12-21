@@ -179,5 +179,27 @@ namespace HarmonyLib
 
 			return manipulator.GetInstructions(generator, methodBase);
 		}
+
+		internal static void UnpatchConditional(Func<Patch, bool> executionCondition)
+		{
+			var originals = PatchProcessor.GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
+			foreach (var original in originals)
+			{
+				var hasBody = original.HasMethodBody();
+				var info = PatchProcessor.GetPatchInfo(original);
+				var patchProcessor = new PatchProcessor(null, original);
+
+				if (hasBody)
+				{
+					info.Postfixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+					info.Prefixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				}
+
+				info.ILManipulators.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				info.Transpilers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				if (hasBody)
+					info.Finalizers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+			}
+		}
 	}
 }

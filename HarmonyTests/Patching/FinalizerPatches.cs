@@ -216,7 +216,7 @@ namespace HarmonyLibTests.Patching
 			Assert.NotNull(finalizer, nameof(finalizer));
 
 			var instance = new Harmony("finalizer-test");
-			instance.UnpatchAll("finalizer-test");
+			instance.UnpatchSelf();
 			var patcher = instance.CreateProcessor(originalMethod);
 			Assert.NotNull(patcher, nameof(patcher));
 			_ = patcher.AddFinalizer(finalizer);
