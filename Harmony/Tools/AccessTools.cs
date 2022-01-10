@@ -569,7 +569,8 @@ namespace HarmonyLib
 				return member;
 
 			var metaToken = member.MetadataToken;
-			foreach (var other in member.DeclaringType.GetMembers(all))
+			var members = member.DeclaringType?.GetMembers(all) ?? new MemberInfo[0];
+			foreach (var other in members)
 				if (other.MetadataToken == metaToken)
 					return (T)other;
 
@@ -622,7 +623,7 @@ namespace HarmonyLib
 			if (type is null)
 			{
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetDeclaredConstructors: type is null");
-				return null;
+				return new List<ConstructorInfo>();
 			}
 			var flags = allDeclared;
 			if (searchForStatic.HasValue)
@@ -639,7 +640,7 @@ namespace HarmonyLib
 			if (type is null)
 			{
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetDeclaredMethods: type is null");
-				return null;
+				return new List<MethodInfo>();
 			}
 			return type.GetMethods(allDeclared).ToList();
 		}
@@ -653,7 +654,7 @@ namespace HarmonyLib
 			if (type is null)
 			{
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetDeclaredProperties: type is null");
-				return null;
+				return new List<PropertyInfo>();
 			}
 			return type.GetProperties(allDeclared).ToList();
 		}
@@ -667,7 +668,7 @@ namespace HarmonyLib
 			if (type is null)
 			{
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetDeclaredFields: type is null");
-				return null;
+				return new List<FieldInfo>();
 			}
 			return type.GetFields(allDeclared).ToList();
 		}
@@ -1493,7 +1494,7 @@ namespace HarmonyLib
 			}
 
 			var declaringType = method.DeclaringType;
-			if (declaringType.IsInterface && !virtualCall)
+			if (declaringType != null && declaringType.IsInterface && !virtualCall)
 			{
 				throw new ArgumentException("Interface methods must be called virtually");
 			}
@@ -1512,7 +1513,7 @@ namespace HarmonyLib
 				var delegateInstanceType = delegateParameters[0].ParameterType;
 				// Exceptional case: delegate struct instance type cannot be created from an interface method.
 				// This case is handled in the "non-virtual call" case, using the struct method and the matching delegate instance type.
-				if (declaringType.IsInterface && delegateInstanceType.IsValueType)
+				if (declaringType != null && declaringType.IsInterface && delegateInstanceType.IsValueType)
 				{
 					var interfaceMapping = delegateInstanceType.GetInterfaceMap(declaringType);
 					method = interfaceMapping.TargetMethods[Array.IndexOf(interfaceMapping.InterfaceMethods, method)];
@@ -1520,7 +1521,7 @@ namespace HarmonyLib
 				}
 
 				// ... that virtually calls ...
-				if (virtualCall)
+				if (declaringType != null && virtualCall)
 				{
 					// ... an interface method
 					// If method is already an interface method, just create a delegate from it directly.
@@ -1563,7 +1564,7 @@ namespace HarmonyLib
 					OwnerType = declaringType
 				};
 				var ilGen = dmd.GetILGenerator();
-				if (declaringType.IsValueType)
+				if (declaringType != null && declaringType.IsValueType)
 					ilGen.Emit(OpCodes.Ldarga_S, 0);
 				else
 					ilGen.Emit(OpCodes.Ldarg_0);
@@ -1583,7 +1584,7 @@ namespace HarmonyLib
 			// Closed instance method delegate that non-virtually calls
 			// It's possible to create a delegate to a derived class method bound to a base class object,
 			// but this has undefined behavior, so disallow it.
-			if (!declaringType.IsInstanceOfType(instance))
+			if (declaringType != null && !declaringType.IsInstanceOfType(instance))
 			{
 				// Following should throw an ArgumentException with the proper message string.
 				_ = Delegate.CreateDelegate(typeof(DelegateType), instance, method);
@@ -1894,6 +1895,8 @@ namespace HarmonyLib
 		///
 		public static bool IsStruct(Type type)
 		{
+			if (type == null)
+				return false;
 			return type.IsValueType && !IsValue(type) && !IsVoid(type);
 		}
 
@@ -1903,6 +1906,8 @@ namespace HarmonyLib
 		///
 		public static bool IsClass(Type type)
 		{
+			if (type == null)
+				return false;
 			return !type.IsValueType;
 		}
 
@@ -1912,6 +1917,8 @@ namespace HarmonyLib
 		///
 		public static bool IsValue(Type type)
 		{
+			if (type == null)
+				return false;
 			return type.IsPrimitive || type.IsEnum;
 		}
 
@@ -1921,6 +1928,8 @@ namespace HarmonyLib
 		///
 		public static bool IsInteger(Type type)
 		{
+			if (type == null)
+				return false;
 			switch (Type.GetTypeCode(type))
 			{
 				case TypeCode.Byte:
@@ -1943,6 +1952,8 @@ namespace HarmonyLib
 		///
 		public static bool IsFloatingPoint(Type type)
 		{
+			if (type == null)
+				return false;
 			switch (Type.GetTypeCode(type))
 			{
 				case TypeCode.Decimal:
@@ -2019,7 +2030,7 @@ namespace HarmonyLib
 		public static bool IsStatic(Type type)
 		{
 			if (type is null)
-				throw new ArgumentNullException(nameof(type));
+				return false;
 			return type.IsAbstract && type.IsSealed;
 		}
 

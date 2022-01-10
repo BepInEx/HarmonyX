@@ -403,4 +403,137 @@ namespace HarmonyLibTests.Assets
 			yield return new CodeInstruction(OpCodes.Ret);
 		}
 	}
+
+	public class EventHandlerTestClass
+	{
+		public delegate void TestEvent();
+		public event TestEvent OnTestEvent;
+
+		public void Run()
+		{
+			Console.WriteLine("EventHandlerTestClass.Run called");
+			OnTestEvent += Handler;
+			_ = OnTestEvent.Method;
+			Console.WriteLine("EventHandlerTestClass.Run done");
+		}
+
+		public void Handler()
+		{
+			try
+			{
+				Console.WriteLine("MarshalledTestClass.Handler called");
+			}
+			catch
+			{
+				Console.WriteLine("MarshalledTestClass.Handler exception");
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(EventHandlerTestClass), nameof(EventHandlerTestClass.Handler))]
+	public class EventHandlerTestClass_Patch
+	{
+		static void Prefix()
+		{
+		}
+	}
+
+	public class MarshalledTestClass : MarshalByRefObject
+	{
+		public void Run()
+		{
+			Console.WriteLine("MarshalledTestClass.Run called");
+			Handler();
+			Console.WriteLine("MarshalledTestClass.Run called");
+		}
+
+		public void Handler()
+		{
+			try
+			{
+				Console.WriteLine("MarshalledTestClass.Handler called");
+			}
+			catch
+			{
+				Console.WriteLine("MarshalledTestClass.Handler exception");
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(MarshalledTestClass), nameof(MarshalledTestClass.Handler))]
+	public class MarshalledTestClass_Patch
+	{
+		static void Prefix()
+		{
+		}
+	}
+
+	public class MarshalledWithEventHandlerTest1Class : MarshalByRefObject
+	{
+		public delegate void TestEvent();
+#pragma warning disable CS0067
+		public event TestEvent OnTestEvent;
+#pragma warning restore CS0067
+
+		public void Run()
+		{
+			Console.WriteLine("MarshalledWithEventHandlerTest1Class.Run called");
+			OnTestEvent += Handler;
+			Console.WriteLine("MarshalledWithEventHandlerTest1Class.Run called");
+		}
+
+		public void Handler()
+		{
+			try
+			{
+				Console.WriteLine("MarshalledWithEventHandlerTest1Class.Handler called");
+			}
+			catch
+			{
+				Console.WriteLine("MarshalledWithEventHandlerTest1Class.Handler exception");
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(MarshalledWithEventHandlerTest1Class), nameof(MarshalledWithEventHandlerTest1Class.Handler))]
+	public class MarshalledWithEventHandlerTest1Class_Patch
+	{
+		static void Prefix()
+		{
+		}
+	}
+
+	public class MarshalledWithEventHandlerTest2Class : MarshalByRefObject
+	{
+		public delegate void TestEvent();
+		public event TestEvent OnTestEvent;
+
+		public void Run()
+		{
+			Console.WriteLine("MarshalledWithEventHandlerTest2Class.Run called");
+			OnTestEvent += Handler;
+			_ = OnTestEvent.Method;
+			Console.WriteLine("MarshalledWithEventHandlerTest2Class.Run called");
+		}
+
+		public void Handler()
+		{
+			try
+			{
+				Console.WriteLine("MarshalledWithEventHandlerTest2Class.Handler called");
+			}
+			catch
+			{
+				Console.WriteLine("MarshalledWithEventHandlerTest2Class.Handler exception");
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(MarshalledWithEventHandlerTest2Class), nameof(MarshalledWithEventHandlerTest2Class.Handler))]
+	public class MarshalledWithEventHandlerTest2Class_Patch
+	{
+		static void Prefix()
+		{
+		}
+	}
 }

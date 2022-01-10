@@ -16,7 +16,7 @@ namespace HarmonyLib
 		static FileLog()
 		{
 			var customPath = Environment.GetEnvironmentVariable("HARMONY_LOG_FILE");
-			if (string.IsNullOrEmpty(customPath) == false)
+			if (string.IsNullOrEmpty(customPath) is false)
 			{
 				logPath = customPath;
 				return;
@@ -135,6 +135,14 @@ namespace HarmonyLib
 				using var writer = File.AppendText(logPath);
 				writer.WriteLine(IndentString() + str);
 			}
+		}
+
+		/// <summary>Log a string directly to disk if Harmony.DEBUG is true. Slower method that prevents missing information in case of a crash</summary>
+		/// <param name="str">The string to log.</param>
+		///
+		public static void Debug(string str)
+		{
+			if (Harmony.DEBUG) Log(str);
 		}
 
 		/// <summary>Resets and deletes the log</summary>
