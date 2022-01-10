@@ -62,7 +62,7 @@
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
 
 		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-		<PackageReference Include="MonoMod.RuntimeDetour" Version="21.12.13.1" />
+		<PackageReference Include="MonoMod.RuntimeDetour" Version="22.1.4.3" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
