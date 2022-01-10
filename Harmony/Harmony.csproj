@@ -5,19 +5,19 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Product>HarmonyX</Product>
 		<Company>BepInEx</Company>
-		<Copyright>Copyright © BepInEx 2021</Copyright>
+		<Copyright>Copyright © BepInEx 2022</Copyright>
 		<Description>A library for patching, replacing and decorating .NET and Mono methods during runtime powered by MonoMod.</Description>
 		<PackageId>HarmonyX</PackageId>
 		<Authors>Andreas Pardeike, Geoffrey Horsington, ManlyMarco et al.</Authors>
 		<AssemblyName>0Harmony</AssemblyName>
 		<SignAssembly>true</SignAssembly>
-		<Version>2.7.0</Version>
+		<Version>2.8.0</Version>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
-		<AssemblyVersion>2.7.0.0</AssemblyVersion>
-		<FileVersion>2.7.0.0</FileVersion>
+		<AssemblyVersion>2.8.0.0</AssemblyVersion>
+		<FileVersion>2.8.0.0</FileVersion>
 		<PackageIcon>logo_mini.png</PackageIcon>
 		<PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
