@@ -38,7 +38,7 @@ namespace HarmonyLibTests.Assets
 					Console.WriteLine("Run 2");
 				}
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
 				Console.WriteLine("Catch 2");
 			}

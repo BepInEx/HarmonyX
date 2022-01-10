@@ -1,44 +1,38 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using HarmonyLib.Internal.Patching;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
 
 namespace HarmonyLib.Public.Patching
 {
 	/// <summary>
 	///    IL manipulator to create Harmony-style patches
 	/// </summary>
-	///
 	public static class HarmonyManipulator
 	{
-		internal class PatchContext
-		{
-			public MethodInfo method;
-			public bool wrapTryCatch;
-		}
-
 		private static readonly string INSTANCE_PARAM = "__instance";
 		private static readonly string ORIGINAL_METHOD_PARAM = "__originalMethod";
 		private static readonly string RUN_ORIGINAL_PARAM = "__runOriginal";
 		private static readonly string RESULT_VAR = "__result";
+		private static readonly string ARGS_ARRAY_VAR = "__args";
 		private static readonly string STATE_VAR = "__state";
 		private static readonly string EXCEPTION_VAR = "__exception";
 		private static readonly string PARAM_INDEX_PREFIX = "__";
 		private static readonly string INSTANCE_FIELD_PREFIX = "___";
 
 		private static readonly MethodInfo GetMethodFromHandle1 =
-			typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] {typeof(RuntimeMethodHandle)});
+			typeof(MethodBase).GetMethod("GetMethodFromHandle", new[] { typeof(RuntimeMethodHandle) });
 
 		private static readonly MethodInfo GetMethodFromHandle2 = typeof(MethodBase).GetMethod("GetMethodFromHandle",
-			new[] {typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle)});
+			new[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) });
 
-		private static MethodInfo LogPatchExceptionMethod =
+		private static readonly MethodInfo LogPatchExceptionMethod =
 			AccessTools.Method(typeof(HarmonyManipulator), nameof(LogPatchException));
 
 		private static void LogPatchException(object errorObject, string patch)
@@ -46,12 +40,13 @@ namespace HarmonyLib.Public.Patching
 			Logger.LogText(Logger.LogChannel.Error, $"Error while running {patch}. Error: {errorObject}");
 		}
 
-		private static void SortPatches(MethodBase original, PatchInfo patchInfo,
-			out List<PatchContext> prefixes,
-			out List<PatchContext> postfixes,
-			out List<PatchContext> transpilers,
-			out List<PatchContext> finalizers,
-			out List<PatchContext> ilmanipulators)
+		private static void SortPatches(MethodBase original,
+		                                PatchInfo patchInfo,
+		                                out List<PatchContext> prefixes,
+		                                out List<PatchContext> postfixes,
+		                                out List<PatchContext> transpilers,
+		                                out List<PatchContext> finalizers,
+		                                out List<PatchContext> ilmanipulators)
 		{
 			Patch[] prefixesArr, postfixesArr, transpilersArr, finalizersArr, ilmanipulatorsArr;
 
@@ -67,9 +62,17 @@ namespace HarmonyLib.Public.Patching
 			}
 
 			static List<PatchContext> Sort(MethodBase original, Patch[] patches, bool debug)
-				=> PatchFunctions.GetSortedPatchMethodsAsPatches(original, patches, debug)
-					.Select(p => new PatchContext {method = p.GetMethod(original), wrapTryCatch = p.wrapTryCatch})
+			{
+				return PatchFunctions.GetSortedPatchMethodsAsPatches(original, patches, debug)
+					.Select(p => new { method = p.GetMethod(original), origP = p })
+					.Select(p => new PatchContext
+					{
+						method = p.method,
+						wrapTryCatch = p.origP.wrapTryCatch,
+						hasArgsArrayArg = p.method.GetParameters().Any(par => par.Name == ARGS_ARRAY_VAR)
+					})
 					.ToList();
+			}
 
 			// debug is useless; debug logs passed on-demand
 			prefixes = Sort(original, prefixesArr, debug);
@@ -80,16 +83,18 @@ namespace HarmonyLib.Public.Patching
 		}
 
 		/// <summary>
-		/// Manipulates a <see cref="Mono.Cecil.Cil.MethodBody"/> by applying Harmony patches to it.
+		///    Manipulates a <see cref="Mono.Cecil.Cil.MethodBody" /> by applying Harmony patches to it.
 		/// </summary>
-		/// <param name="original">Reference to the method that should be considered as original. Used to reference parameter and return types.</param>
+		/// <param name="original">
+		///    Reference to the method that should be considered as original. Used to reference parameter and
+		///    return types.
+		/// </param>
 		/// <param name="patchInfo">Collection of Harmony patches to apply.</param>
-		/// <param name="ctx">Method body to manipulate as <see cref="ILContext"/> instance. Should contain instructions to patch.</param>
+		/// <param name="ctx">Method body to manipulate as <see cref="ILContext" /> instance. Should contain instructions to patch.</param>
 		/// <remarks>
-		/// In most cases you will want to use <see cref="PatchManager.ToPatchInfo"/> to create or obtain global
-		/// patch info for the method that contains aggregated info of all Harmony instances.
+		///    In most cases you will want to use <see cref="PatchManager.ToPatchInfo" /> to create or obtain global
+		///    patch info for the method that contains aggregated info of all Harmony instances.
 		/// </remarks>
-		///
 		public static void Manipulate(MethodBase original, PatchInfo patchInfo, ILContext ctx)
 		{
 			SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
@@ -120,10 +125,14 @@ namespace HarmonyLib.Public.Patching
 				return sb.ToString();
 			}, debug);
 
-			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers, sortedILManipulators, debug);
+			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers,
+				sortedILManipulators, debug);
 		}
 
-		private static void WriteTranspiledMethod(ILContext ctx, MethodBase original, List<PatchContext> transpilers, bool debug)
+		private static void WriteTranspiledMethod(ILContext ctx,
+		                                          MethodBase original,
+		                                          List<PatchContext> transpilers,
+		                                          bool debug)
 		{
 			if (transpilers.Count == 0)
 				return;
@@ -168,8 +177,12 @@ namespace HarmonyLib.Public.Patching
 			return resultLabel;
 		}
 
-		private static void WritePostfixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> postfixes, bool debug)
+		private static void WritePostfixes(ILEmitter il,
+		                                   MethodBase original,
+		                                   ILEmitter.Label returnLabel,
+		                                   Dictionary<string, VariableDefinition> variables,
+		                                   ICollection<PatchContext> postfixes,
+		                                   bool debug)
 		{
 			// Postfix layout:
 			// Make return value (if needed) into a variable
@@ -213,8 +226,13 @@ namespace HarmonyLib.Public.Patching
 
 				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
+
+				if (postfix.hasArgsArrayArg)
+					EmitAssignRefsFromArgsArray(original, il, variables[ARGS_ARRAY_VAR]);
+
 				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 				EmitArgUnbox(il, tmpBoxVars);
+
 
 				if (postfix.wrapTryCatch)
 					EmitTryCatchWrapper(il, method, start);
@@ -242,8 +260,13 @@ namespace HarmonyLib.Public.Patching
 
 				EmitCallParameter(il, original, method, variables, true, out var tmpObjectVar, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
+
+				if (postfix.hasArgsArrayArg)
+					EmitAssignRefsFromArgsArray(original, il, variables[ARGS_ARRAY_VAR]);
+
 				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 				EmitArgUnbox(il, tmpBoxVars);
+
 
 				var firstParam = method.GetParameters().FirstOrDefault();
 
@@ -268,8 +291,12 @@ namespace HarmonyLib.Public.Patching
 			}
 		}
 
-		private static bool WritePrefixes(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables, ICollection<PatchContext> prefixes, bool debug)
+		private static bool WritePrefixes(ILEmitter il,
+		                                  MethodBase original,
+		                                  ILEmitter.Label returnLabel,
+		                                  Dictionary<string, VariableDefinition> variables,
+		                                  ICollection<PatchContext> prefixes,
+		                                  bool debug)
 		{
 			// Prefix layout:
 			// Make return value (if needed) into a variable
@@ -316,8 +343,13 @@ namespace HarmonyLib.Public.Patching
 
 				EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
+
+				if (prefix.hasArgsArrayArg)
+					EmitAssignRefsFromArgsArray(original, il, variables[ARGS_ARRAY_VAR]);
+
 				EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 				EmitArgUnbox(il, tmpBoxVars);
+
 
 				if (!AccessTools.IsVoid(method.ReturnType))
 				{
@@ -357,9 +389,12 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
-		private static bool WriteFinalizers(ILEmitter il, MethodBase original, ILEmitter.Label returnLabel,
-			Dictionary<string, VariableDefinition> variables,
-			ICollection<PatchContext> finalizers, bool debug)
+		private static bool WriteFinalizers(ILEmitter il,
+		                                    MethodBase original,
+		                                    ILEmitter.Label returnLabel,
+		                                    Dictionary<string, VariableDefinition> variables,
+		                                    ICollection<PatchContext> finalizers,
+		                                    bool debug)
 		{
 			// Finalizer layout:
 			// Create __exception variable to store exception info and a skip flag
@@ -414,8 +449,13 @@ namespace HarmonyLib.Public.Patching
 
 					EmitCallParameter(il, original, method, variables, false, out var tmpObjectVar, out var tmpBoxVars);
 					il.Emit(OpCodes.Call, method);
+
+					if (finalizer.hasArgsArrayArg)
+						EmitAssignRefsFromArgsArray(original, il, variables[ARGS_ARRAY_VAR]);
+
 					EmitResultUnbox(il, original, tmpObjectVar, returnValueVar);
 					EmitArgUnbox(il, tmpBoxVars);
+
 
 					if (method.ReturnType != typeof(void))
 					{
@@ -483,14 +523,17 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
-		internal static void ApplyILManipulators(ILContext ctx, MethodBase original, ICollection<MethodInfo> manipulators, ILEmitter.Label retLabel)
+		internal static void ApplyILManipulators(ILContext ctx,
+		                                         MethodBase original,
+		                                         ICollection<MethodInfo> manipulators,
+		                                         ILEmitter.Label retLabel)
 		{
 			// Define a label to branch to, if not passed a label create one to the last instruction
 			var retILLabel = ctx.DefineLabel(retLabel?.instruction) ?? ctx.DefineLabel(ctx.Body.Instructions.Last());
 
 			foreach (var method in manipulators)
 			{
-				List<object> manipulatorParameters = new List<object>();
+				var manipulatorParameters = new List<object>();
 				foreach (var type in method.GetParameters().Select(p => p.ParameterType))
 				{
 					if (type.IsAssignableFrom(typeof(ILContext)))
@@ -505,20 +548,122 @@ namespace HarmonyLib.Public.Patching
 			}
 		}
 
-		private static void MakePatched(MethodBase original, ILContext ctx,
-			List<PatchContext> prefixes,
-			List<PatchContext> postfixes,
-			List<PatchContext> transpilers,
-			List<PatchContext> finalizers,
-			List<PatchContext> ilmanipulators,
-			bool debug)
+		private static void EmitOutParameter(ILEmitter il, int arg, Type t)
+		{
+			t = t.OpenRefType();
+			il.Emit(OpCodes.Ldarg, arg);
+
+			if (AccessTools.IsStruct(t))
+				il.Emit(OpCodes.Initobj, t);
+			else if (AccessTools.IsValue(t))
+			{
+				var (def, load, store) = t switch
+				{
+					_ when t == typeof(float)  => (0F, OpCodes.Ldc_R4, OpCodes.Stind_R4),
+					_ when t == typeof(double) => (0D, OpCodes.Ldc_R8, OpCodes.Stind_R8),
+					_ when t == typeof(long)   => (0L, OpCodes.Ldc_I8, OpCodes.Stind_I8),
+					_                          => (0, OpCodes.Ldc_I4, t.GetCecilStoreOpCode())
+				};
+				il.EmitUnsafe(load, def);
+				il.Emit(store);
+			}
+			else
+			{
+				il.Emit(OpCodes.Ldnull);
+				il.Emit(OpCodes.Stind_Ref);
+			}
+		}
+
+		private static void EmitInitArgsArray(MethodBase original, ILEmitter il)
+		{
+			var parameters = original.GetParameters();
+			var startOffset = original.IsStatic ? 0 : 1;
+			for (var i = 0; i < parameters.Length; i++)
+			{
+				var p = parameters[i];
+				if (p.IsOut || p.IsRetval)
+					EmitOutParameter(il, i + startOffset, p.ParameterType.OpenRefType());
+			}
+
+			il.Emit(OpCodes.Ldc_I4, parameters.Length);
+			il.Emit(OpCodes.Newarr, typeof(object));
+
+			for (var i = 0; i < parameters.Length; i++)
+			{
+				var p = parameters[i];
+				var paramType = p.ParameterType;
+				var openedType = paramType.OpenRefType();
+
+				il.Emit(OpCodes.Dup);
+				il.Emit(OpCodes.Ldc_I4, i);
+				il.Emit(OpCodes.Ldarg, i + startOffset);
+				if (paramType.IsByRef)
+				{
+					if (AccessTools.IsStruct(openedType))
+						il.Emit(OpCodes.Ldobj, openedType);
+					else
+						il.Emit(openedType.GetCecilLoadOpCode());
+				}
+
+				if (openedType.IsValueType)
+					il.Emit(OpCodes.Box, openedType);
+				il.Emit(OpCodes.Stelem_Ref);
+			}
+		}
+
+		private static void EmitAssignRefsFromArgsArray(MethodBase original,
+		                                                ILEmitter il,
+		                                                VariableDefinition argsArrayVariable)
+		{
+			var parameters = original.GetParameters();
+			var startOffset = original.IsStatic ? 0 : 1;
+
+			for (var i = 0; i < parameters.Length; i++)
+			{
+				var p = parameters[i];
+				var paramType = p.ParameterType;
+				if (!paramType.IsByRef)
+					continue;
+				paramType = paramType.OpenRefType();
+
+				il.Emit(OpCodes.Ldarg, i + startOffset);
+				il.Emit(OpCodes.Ldloc, argsArrayVariable);
+				il.Emit(OpCodes.Ldc_I4, i);
+				il.Emit(OpCodes.Ldelem_Ref);
+
+				if (paramType.IsValueType)
+				{
+					il.Emit(OpCodes.Unbox_Any, paramType);
+
+					if (AccessTools.IsStruct(paramType))
+						il.Emit(OpCodes.Stobj, paramType);
+					else
+						il.Emit(paramType.GetCecilStoreOpCode());
+				}
+				else
+				{
+					il.Emit(OpCodes.Castclass, paramType);
+					il.Emit(OpCodes.Stind_Ref);
+				}
+			}
+		}
+
+		private static void MakePatched(MethodBase original,
+		                                ILContext ctx,
+		                                List<PatchContext> prefixes,
+		                                List<PatchContext> postfixes,
+		                                List<PatchContext> transpilers,
+		                                List<PatchContext> finalizers,
+		                                List<PatchContext> ilmanipulators,
+		                                bool debug)
 		{
 			try
 			{
 				if (original == null)
 					throw new ArgumentException(nameof(original));
 
-				Logger.Log(Logger.LogChannel.Info, () => $"Running ILHook manipulator on {original.FullDescription()}", debug);
+				Logger.Log(Logger.LogChannel.Info, () => $"Running ILHook manipulator on {original.FullDescription()}",
+					debug);
 
 				WriteTranspiledMethod(ctx, original, transpilers, debug);
 
@@ -533,16 +678,29 @@ namespace HarmonyLib.Public.Patching
 				var il = new ILEmitter(ctx.IL);
 				var returnLabel = MakeReturnLabel(il);
 				var variables = new Dictionary<string, VariableDefinition>();
+				var auxMethods = prefixes.Union(postfixes).Union(finalizers);
 
-				// Collect state variables
-				foreach (var nfix in prefixes.Union(postfixes).Union(finalizers))
-					if (nfix.method.DeclaringType != null && variables.ContainsKey(nfix.method.DeclaringType.FullName) == false)
-						foreach (var patchParam in nfix
-							.method
-							.GetParameters()
-							.Where(patchParam => patchParam.Name == STATE_VAR))
+				// Collect state and arg variables
+				foreach (var nfix in auxMethods)
+				{
+					var parameters = nfix.method.GetParameters();
+					var argsParameter = parameters.FirstOrDefault(p => p.Name == ARGS_ARRAY_VAR);
+
+					if (argsParameter != null)
+					{
+						if (argsParameter.ParameterType != typeof(object[]))
+							throw new InvalidHarmonyPatchArgumentException(
+								$"Patch {nfix.method.FullDescription()} defines __args list, but only type `object[]` is permitted",
+								original, nfix.method);
+						variables[ARGS_ARRAY_VAR] = il.DeclareVariable(typeof(object[]));
+					}
+
+					if (nfix.method.DeclaringType != null && !variables.ContainsKey(nfix.method.DeclaringType.FullName))
+						foreach (var patchParam in parameters
+							         .Where(patchParam => patchParam.Name == STATE_VAR))
 							variables[nfix.method.DeclaringType.FullName] =
 								il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
+				}
 
 				var modifiesControlFlow = false;
 				modifiesControlFlow |= WritePrefixes(il, original, returnLabel, variables, prefixes, debug);
@@ -557,6 +715,15 @@ namespace HarmonyLib.Public.Patching
 				if (modifiesControlFlow)
 					lastInstruction.OpCode = OpCodes.Ret;
 
+				// If we have the args array, we need to initialize it right at start
+				// TODO: Come up with a better place for initializer code
+				if (variables.TryGetValue(ARGS_ARRAY_VAR, out var argsArrayVariable))
+				{
+					il.emitBefore = ctx.Instrs[0];
+					EmitInitArgsArray(original, il);
+					il.Emit(OpCodes.Stloc, argsArrayVariable);
+				}
+
 				ApplyILManipulators(ctx, original, ilmanipulators.Select(m => m.method).ToList(), returnLabel);
 
 				Logger.Log(Logger.LogChannel.IL,
@@ -567,27 +734,6 @@ namespace HarmonyLib.Public.Patching
 				Logger.Log(Logger.LogChannel.Error, () => $"Failed to patch {original.FullDescription()}: {e}", debug);
 				throw HarmonyException.Create(e, ctx.Body);
 			}
-		}
-
-		private static OpCode GetIndOpcode(Type type)
-		{
-			if (type.IsEnum)
-				return OpCodes.Ldind_I4;
-
-			if (type == typeof(float)) return OpCodes.Ldind_R4;
-			if (type == typeof(double)) return OpCodes.Ldind_R8;
-
-			if (type == typeof(byte)) return OpCodes.Ldind_U1;
-			if (type == typeof(ushort)) return OpCodes.Ldind_U2;
-			if (type == typeof(uint)) return OpCodes.Ldind_U4;
-			if (type == typeof(ulong)) return OpCodes.Ldind_I8;
-
-			if (type == typeof(sbyte)) return OpCodes.Ldind_I1;
-			if (type == typeof(short)) return OpCodes.Ldind_I2;
-			if (type == typeof(int)) return OpCodes.Ldind_I4;
-			if (type == typeof(long)) return OpCodes.Ldind_I8;
-
-			return OpCodes.Ldind_Ref;
 		}
 
 		private static void EmitTryCatchWrapper(ILEmitter il, MethodInfo target, ILEmitter.Label start)
@@ -601,7 +747,10 @@ namespace HarmonyLib.Public.Patching
 			il.Emit(OpCodes.Nop);
 		}
 
-		private static void EmitResultUnbox(ILEmitter il, MethodBase original, VariableDefinition tmp, VariableDefinition result)
+		private static void EmitResultUnbox(ILEmitter il,
+		                                    MethodBase original,
+		                                    VariableDefinition tmp,
+		                                    VariableDefinition result)
 		{
 			if (tmp == null)
 				return;
@@ -641,17 +790,13 @@ namespace HarmonyLib.Public.Patching
 			return true;
 		}
 
-		class ArgumentBoxInfo
-		{
-			public int index;
-			public VariableDefinition tmpVar;
-			public Type type;
-			public bool isByRef;
-		}
-
-		private static void EmitCallParameter(ILEmitter il, MethodBase original, MethodInfo patch,
-			Dictionary<string, VariableDefinition> variables, bool allowFirsParamPassthrough,
-			out VariableDefinition tmpObjectVar, out List<ArgumentBoxInfo> tmpBoxVars)
+		private static void EmitCallParameter(ILEmitter il,
+		                                      MethodBase original,
+		                                      MethodInfo patch,
+		                                      Dictionary<string, VariableDefinition> variables,
+		                                      bool allowFirsParamPassthrough,
+		                                      out VariableDefinition tmpObjectVar,
+		                                      out List<ArgumentBoxInfo> tmpBoxVars)
 		{
 			tmpObjectVar = null;
 			tmpBoxVars = new List<ArgumentBoxInfo>();
@@ -694,6 +839,15 @@ namespace HarmonyLib.Public.Patching
 						if (instanceIsRef is false && parameterIsRef) il.Emit(OpCodes.Ldarga, 0);
 					}
 
+					continue;
+				}
+
+				if (patchParam.Name == ARGS_ARRAY_VAR)
+				{
+					if (variables.TryGetValue(ARGS_ARRAY_VAR, out var argsArrayVar))
+						il.Emit(OpCodes.Ldloc, argsArrayVar);
+					else
+						il.Emit(OpCodes.Ldnull);
 					continue;
 				}
 
@@ -752,7 +906,8 @@ namespace HarmonyLib.Public.Patching
 						throw new Exception(
 							$"Cannot assign method return type {returnType.FullName} to {RESULT_VAR} type {resultType.FullName} for method {original.FullDescription()}");
 					var ldlocCode = patchParam.ParameterType.IsByRef && !returnType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
-					if (returnType.IsValueType && patchParam.ParameterType == typeof(object).MakeByRefType()) ldlocCode = OpCodes.Ldloc;
+					if (returnType.IsValueType && patchParam.ParameterType == typeof(object).MakeByRefType())
+						ldlocCode = OpCodes.Ldloc;
 					il.Emit(ldlocCode, variables[RESULT_VAR]);
 					if (returnType.IsValueType)
 					{
@@ -766,6 +921,7 @@ namespace HarmonyLib.Public.Patching
 							il.Emit(OpCodes.Ldloca, tmpObjectVar);
 						}
 					}
+
 					continue;
 				}
 
@@ -798,7 +954,7 @@ namespace HarmonyLib.Public.Patching
 						if (delegateOriginal is MethodInfo methodInfo)
 						{
 							var delegateConstructor =
-								patchParam.ParameterType.GetConstructor(new[] {typeof(object), typeof(IntPtr)});
+								patchParam.ParameterType.GetConstructor(new[] { typeof(object), typeof(IntPtr) });
 							if (delegateConstructor is object)
 							{
 								var originalType = original.DeclaringType;
@@ -840,7 +996,8 @@ namespace HarmonyLib.Public.Patching
 				// 4 ref/out  -> ref/out : LDARG
 				//
 				var originalParamType = originalParameters[idx].ParameterType;
-				var originalParamElementType = originalParamType.IsByRef ? originalParamType.GetElementType() : originalParamType;
+				var originalParamElementType =
+					originalParamType.IsByRef ? originalParamType.GetElementType() : originalParamType;
 				var patchParamType = patchParam.ParameterType;
 				var patchParamElementType = patchParamType.IsByRef ? patchParamType.GetElementType() : patchParamType;
 				var originalIsNormal = originalParameters[idx].IsOut is false && originalParamType.IsByRef is false;
@@ -863,9 +1020,13 @@ namespace HarmonyLib.Public.Patching
 							var tmpBoxVar = il.DeclareVariable(patchParamElementType);
 							il.Emit(OpCodes.Stloc, tmpBoxVar);
 							il.Emit(OpCodes.Ldloca_S, tmpBoxVar);
-							tmpBoxVars.Add(new ArgumentBoxInfo { index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = true });
+							tmpBoxVars.Add(new ArgumentBoxInfo
+							{
+								index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = true
+							});
 						}
 					}
+
 					continue;
 				}
 
@@ -881,10 +1042,14 @@ namespace HarmonyLib.Public.Patching
 						il.Emit(OpCodes.Ldloca_S, tmpBoxVar);
 						// Store value for unboxing here as well since we want to replace the argument value
 						// e.g. replace argument value in prefix
-						tmpBoxVars.Add(new ArgumentBoxInfo { index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = false });
+						tmpBoxVars.Add(new ArgumentBoxInfo
+						{
+							index = patchArgIndex, type = originalParamElementType, tmpVar = tmpBoxVar, isByRef = false
+						});
 					}
 					else
 						il.Emit(OpCodes.Ldarga, patchArgIndex);
+
 					continue;
 				}
 
@@ -900,9 +1065,24 @@ namespace HarmonyLib.Public.Patching
 					if (originalParamElementType.IsValueType)
 						il.Emit(OpCodes.Ldobj, originalParamElementType);
 					else
-						il.Emit(GetIndOpcode(originalParameters[idx].ParameterType));
+						il.Emit(originalParameters[idx].ParameterType.GetCecilLoadOpCode());
 				}
 			}
+		}
+
+		internal class PatchContext
+		{
+			public bool hasArgsArrayArg;
+			public MethodInfo method;
+			public bool wrapTryCatch;
+		}
+
+		private class ArgumentBoxInfo
+		{
+			public int index;
+			public bool isByRef;
+			public VariableDefinition tmpVar;
+			public Type type;
 		}
 	}
 }

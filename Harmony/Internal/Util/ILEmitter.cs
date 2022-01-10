@@ -181,6 +181,11 @@ namespace HarmonyLib.Internal.Util
             IL.InsertBefore(Target, SetOpenLabelsTo(IL.Create(opcode, IL.Import(cls))));
         }
 
+        public void EmitUnsafe(OpCode opcode, object arg)
+        {
+	        IL.InsertBefore(Target, SetOpenLabelsTo(IL.Create(opcode, arg)));
+        }
+
         public void Emit(OpCode opcode, int arg)
         {
             IL.InsertBefore(Target, SetOpenLabelsTo(IL.Create(opcode, arg)));

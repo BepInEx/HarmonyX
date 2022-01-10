@@ -142,7 +142,9 @@ namespace HarmonyLib
 		///
 		public static void Debug(string str)
 		{
+#pragma warning disable CS0618
 			if (Harmony.DEBUG) Log(str);
+#pragma warning restore CS0618
 		}
 
 		/// <summary>Resets and deletes the log</summary>

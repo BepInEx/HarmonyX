@@ -4,12 +4,13 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Utils;
 using MonoMod.Utils.Cil;
 using OpCode = System.Reflection.Emit.OpCode;
 using OpCodes = System.Reflection.Emit.OpCodes;
+using CecilOpCode = Mono.Cecil.Cil.OpCode;
+using CecilOpCodes = Mono.Cecil.Cil.OpCodes;
 
 namespace HarmonyLib.Internal.Util
 {
@@ -18,6 +19,33 @@ namespace HarmonyLib.Internal.Util
         private static DynamicMethodDefinition emitDMD;
         private static MethodInfo emitDMDMethod;
         private static Action<CecilILGenerator, OpCode, object> emitCodeDelegate;
+        private static Dictionary<Type, CecilOpCode> storeOpCodes = new Dictionary<Type, CecilOpCode>
+        {
+	        [typeof(sbyte)] = CecilOpCodes.Stind_I1,
+	        [typeof(byte)] = CecilOpCodes.Stind_I1,
+	        [typeof(short)] = CecilOpCodes.Stind_I2,
+	        [typeof(ushort)] = CecilOpCodes.Stind_I2,
+	        [typeof(int)] = CecilOpCodes.Stind_I4,
+	        [typeof(uint)] = CecilOpCodes.Stind_I4,
+	        [typeof(long)] = CecilOpCodes.Stind_I8,
+	        [typeof(ulong)] = CecilOpCodes.Stind_I8,
+	        [typeof(float)] = CecilOpCodes.Stind_R4,
+	        [typeof(double)] = CecilOpCodes.Stind_R8,
+        };
+
+        private static Dictionary<Type, CecilOpCode> loadOpCodes = new Dictionary<Type, CecilOpCode>
+        {
+				[typeof(sbyte)] = CecilOpCodes.Ldind_I1,
+				[typeof(byte)] = CecilOpCodes.Ldind_I1,
+				[typeof(short)] = CecilOpCodes.Ldind_I2,
+				[typeof(ushort)] = CecilOpCodes.Ldind_I2,
+				[typeof(int)] = CecilOpCodes.Ldind_I4,
+				[typeof(uint)] = CecilOpCodes.Ldind_I4,
+				[typeof(long)] = CecilOpCodes.Ldind_I8,
+				[typeof(ulong)] = CecilOpCodes.Ldind_I8,
+				[typeof(float)] = CecilOpCodes.Ldind_R4,
+				[typeof(double)] = CecilOpCodes.Ldind_R8,
+        };
 
         [MethodImpl(MethodImplOptions.Synchronized)]
         static EmitterExtensions()
@@ -26,6 +54,20 @@ namespace HarmonyLib.Internal.Util
                 return;
             InitEmitterHelperDMD();
         }
+
+        public static CecilOpCode GetCecilStoreOpCode(this Type t)
+        {
+	        if (t.IsEnum)
+		        return CecilOpCodes.Stind_I4;
+	        return storeOpCodes.TryGetValue(t, out var opCode) ? opCode : CecilOpCodes.Stind_Ref;
+        }
+
+		  public static CecilOpCode GetCecilLoadOpCode(this Type t)
+		  {
+	        if (t.IsEnum)
+		        return CecilOpCodes.Ldind_I4;
+	        return loadOpCodes.TryGetValue(t, out var opCode) ? opCode : CecilOpCodes.Ldind_Ref;
+		  }
 
         public static Type OpenRefType(this Type t)
         {

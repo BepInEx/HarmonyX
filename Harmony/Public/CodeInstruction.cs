@@ -12,10 +12,6 @@ namespace HarmonyLib
 	///
 	public class CodeInstruction
 	{
-		internal static class State
-		{
-			internal static readonly Dictionary<int, Delegate> closureCache = new Dictionary<int, Delegate>();
-		}
 
 		/// <summary>The opcode</summary>
 		///
@@ -167,42 +163,7 @@ namespace HarmonyLib
 		///
 		public static CodeInstruction CallClosure<T>(T closure) where T : Delegate
 		{
-			if (closure.Method.IsStatic && closure.Target == null)
-				return new CodeInstruction(OpCodes.Call, closure.Method);
-
-			var parameters = closure.Method.GetParameters().Select(x => x.ParameterType).ToArray();
-			var closureMethod = new DynamicMethodDefinition(closure.Method.Name, closure.Method.ReturnType, parameters);
-
-			var il = closureMethod.GetILGenerator();
-			var targetType = closure.Target.GetType();
-
-			var preserveContext = closure.Target != null && targetType.GetFields().Any(x => !x.IsStatic);
-			if (preserveContext)
-			{
-				var n = State.closureCache.Count;
-				State.closureCache[n] = closure;
-				il.Emit(OpCodes.Ldsfld, AccessTools.Field(typeof(Transpilers), nameof(State.closureCache)));
-				il.Emit(OpCodes.Ldc_I4, n);
-				il.Emit(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Dictionary<int, Delegate>), "Item"));
-			}
-			else
-			{
-				if (closure.Target == null)
-					il.Emit(OpCodes.Ldnull);
-				else
-					il.Emit(OpCodes.Newobj, AccessTools.FirstConstructor(targetType, x => x.IsStatic == false && x.GetParameters().Length == 0));
-
-				il.Emit(OpCodes.Ldftn, closure.Method);
-				il.Emit(OpCodes.Newobj, AccessTools.Constructor(typeof(T), new[] { typeof(object), typeof(IntPtr) }));
-			}
-
-			for (var i = 0; i < parameters.Length; i++)
-				il.Emit(OpCodes.Ldarg, i);
-
-			il.Emit(OpCodes.Callvirt, AccessTools.Method(typeof(T), nameof(Action.Invoke)));
-			il.Emit(OpCodes.Ret);
-
-			return new CodeInstruction(OpCodes.Call, closureMethod.Generate());
+			return Transpilers.EmitDelegate(closure);
 		}
 
 		// --- FIELDS
