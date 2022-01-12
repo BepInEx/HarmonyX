@@ -612,12 +612,7 @@ namespace HarmonyLib
         public CodeMatcher RemoveInstructionsInRange(int start, int end)
         {
             if (start > end)
-            {
-                var tmp = start;
-                start = end;
-                end = tmp;
-            }
-
+                (start, end) = (end, start);
             codes.RemoveRange(start, end - start + 1);
             return this;
         }
@@ -707,6 +702,42 @@ namespace HarmonyLib
         public CodeMatcher MatchBack(bool useEnd, params CodeMatch[] matches)
         {
             return Match(matches, -1, useEnd);
+        }
+
+        /// <summary>Matches forward and advances position to beginning of matching sequence</summary>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        ///
+        public CodeMatcher MatchStartForward(params CodeMatch[] matches)
+        {
+	        return Match(matches, 1, false);
+        }
+
+        /// <summary>Matches forward and advances position to ending of matching sequence</summary>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        ///
+        public CodeMatcher MatchEndForward(params CodeMatch[] matches)
+        {
+	        return Match(matches, 1, true);
+        }
+
+        /// <summary>Matches backwards and reverses position to beginning of matching sequence</summary>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        ///
+        public CodeMatcher MatchStartBackwards(params CodeMatch[] matches)
+        {
+	        return Match(matches, -1, false);
+        }
+
+        /// <summary>Matches backwards and reverses position to ending of matching sequence</summary>
+        /// <param name="matches">Some code matches</param>
+        /// <returns>The same code matcher</returns>
+        ///
+        public CodeMatcher MatchEndBackwards(params CodeMatch[] matches)
+        {
+	        return Match(matches, -1, true);
         }
 
         private CodeMatcher Match(CodeMatch[] matches, int direction, bool useEnd)
