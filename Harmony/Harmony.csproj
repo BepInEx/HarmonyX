@@ -22,7 +22,7 @@
 		<PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<LangVersion>8.0</LangVersion>
+		<LangVersion>latest</LangVersion>
 		<DefaultItemExcludes>$(DefaultItemExcludes);Documentation/**</DefaultItemExcludes>
 		<RootNamespace>HarmonyLib</RootNamespace>
 	</PropertyGroup>

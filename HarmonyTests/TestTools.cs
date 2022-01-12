@@ -14,6 +14,7 @@ using NUnit.Framework.Constraints;
 using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 using Logger = HarmonyLib.Tools.Logger;
+using Test = NUnit.Framework.Internal.Test;
 
 namespace HarmonyLibTests
 {
@@ -81,14 +82,20 @@ namespace HarmonyLibTests
 		public static ConstraintResult AssertThat<TActual>(TActual actual, IResolveConstraint expression, string message = null, params object[] args)
 		{
 			var capture = new CaptureResultConstraint(expression);
-			Assert.That(actual, capture, message, args);
+			if (actual is TestDelegate testDelegate)
+				Assert.That(testDelegate, capture, message, args);
+			else
+				Assert.That(actual, capture, message, args);
 			return capture.capturedResult;
 		}
 
 		public static ConstraintResult AssertThat<TActual>(TActual actual, IResolveConstraint expression, Func<string> getExceptionMessage)
 		{
 			var capture = new CaptureResultConstraint(expression);
-			Assert.That(actual, capture, getExceptionMessage);
+			if (actual is TestDelegate testDelegate)
+				Assert.That(testDelegate, capture, getExceptionMessage);
+			else
+				Assert.That(actual, capture, getExceptionMessage);
 			return capture.capturedResult;
 		}
 
@@ -103,20 +110,6 @@ namespace HarmonyLibTests
 		{
 			var capture = new CaptureResultConstraint(expr);
 			Assert.That(del, capture, getExceptionMessage);
-			return capture.capturedResult;
-		}
-
-		public static ConstraintResult AssertThat(TestDelegate code, IResolveConstraint constraint, string message = null, params object[] args)
-		{
-			var capture = new CaptureResultConstraint(constraint);
-			Assert.That(code, capture, message, args);
-			return capture.capturedResult;
-		}
-
-		public static ConstraintResult AssertThat(TestDelegate code, IResolveConstraint constraint, Func<string> getExceptionMessage)
-		{
-			var capture = new CaptureResultConstraint(constraint);
-			Assert.That(code, capture, getExceptionMessage);
 			return capture.capturedResult;
 		}
 
