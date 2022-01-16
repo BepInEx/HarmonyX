@@ -13,7 +13,7 @@ namespace HarmonyLib
 {
 	/// <summary>The Harmony instance is the main entry to Harmony. After creating one with an unique identifier, it is used to patch and query the current application domain</summary>
 	///
-	public class Harmony
+	public class Harmony : IDisposable
 	{
 		/// <summary>Set to true before instantiating Harmony to debug Harmony or use an environment variable to set HARMONY_DEBUG to '1' like this: cmd /C "set HARMONY_DEBUG=1 &amp;&amp; game.exe"</summary>
 		/// <remarks>This is for full debugging. To debug only specific patches, use the <see cref="HarmonyDebug"/> attribute</remarks>
@@ -222,6 +222,11 @@ namespace HarmonyLib
 			}
 
 			PatchFunctions.UnpatchConditional(patchInfo => patchInfo.owner == harmonyID);
+		}
+
+		void IDisposable.Dispose()
+		{
+			UnpatchSelf();
 		}
 
 		/// <summary>Unpatches all methods that were patched by this Harmony instance's ID. Unpatching is done by repatching methods without patches of this instance.</summary>
