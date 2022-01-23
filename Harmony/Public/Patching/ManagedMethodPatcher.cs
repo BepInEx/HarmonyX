@@ -17,12 +17,6 @@ namespace HarmonyLib.Public.Patching
 	///
 	public class ManagedMethodPatcher : MethodPatcher
 	{
-		private static readonly MethodInfo IsAppliedSetter =
-			AccessTools.PropertySetter(typeof(ILHook), nameof(ILHook.IsApplied));
-
-		private static readonly Action<ILHook, bool> SetIsApplied =
-			(Action<ILHook, bool>) IsAppliedSetter.CreateDelegate<Action<ILHook, bool>>();
-
 		private MethodBody hookBody;
 
 		private ILHook ilHook;
@@ -41,7 +35,7 @@ namespace HarmonyLib.Public.Patching
 		{
 			ilHook ??= new ILHook(Original, Manipulator, new ILHookConfig {ManualApply = true});
 			// Reset IsApplied to force MonoMod to reapply the ILHook without removing it
-			SetIsApplied(ilHook, false);
+			ILHookExtensions.SetIsApplied(ilHook, false);
 			try
 			{
 				ilHook.Apply();

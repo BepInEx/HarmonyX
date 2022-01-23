@@ -141,6 +141,7 @@ namespace HarmonyLib
 				if (retIns != null)
 					ctx.IL.Append(retIns);
 
+				// TODO: Handle new debugType
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated reverse patcher ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
 			}, new ILHookConfig { ManualApply = true });

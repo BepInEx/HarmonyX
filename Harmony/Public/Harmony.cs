@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using HarmonyLib.Internal.RuntimeFixes;
+using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
 
@@ -25,6 +26,7 @@ namespace HarmonyLib
 		static Harmony()
 		{
 			StackTraceFixes.Install();
+			ILHookGenFixes.Install();
 		}
 
 		/// <summary>Creates a new Harmony instance</summary>

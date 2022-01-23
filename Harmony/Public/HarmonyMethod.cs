@@ -50,6 +50,10 @@ namespace HarmonyLib
 		///
 		public bool? debug;
 
+		/// <summary>How this patch debug output should be handled</summary>
+		///
+		public DebugType? debugType;
+
 		/// <summary>Whether to use <see cref="MethodDispatchType.Call"/> (<c>true</c>) or <see cref="MethodDispatchType.VirtualCall"/> (<c>false</c>) mechanics
 		/// for <see cref="HarmonyDelegate"/>-attributed delegate</summary>
 		///
