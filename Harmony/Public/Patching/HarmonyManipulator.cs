@@ -3,6 +3,7 @@ using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,6 +101,7 @@ namespace HarmonyLib.Public.Patching
 			SortPatches(original, patchInfo, out var sortedPrefixes, out var sortedPostfixes, out var sortedTranspilers,
 				out var sortedFinalizers, out var sortedILManipulators);
 			var debug = patchInfo.Debugging;
+			var dumpPaths = patchInfo.DebugEmitPaths;
 			Logger.Log(Logger.LogChannel.Info, () =>
 			{
 				var sb = new StringBuilder();
@@ -127,6 +129,9 @@ namespace HarmonyLib.Public.Patching
 
 			MakePatched(original, ctx, sortedPrefixes, sortedPostfixes, sortedTranspilers, sortedFinalizers,
 				sortedILManipulators, debug);
+
+			if (dumpPaths.Length > 0)
+				CecilEmitter.Dump(ctx.Method, dumpPaths, original);
 		}
 
 		private static void WriteTranspiledMethod(ILContext ctx,

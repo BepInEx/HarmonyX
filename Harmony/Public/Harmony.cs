@@ -26,7 +26,6 @@ namespace HarmonyLib
 		static Harmony()
 		{
 			StackTraceFixes.Install();
-			ILHookGenFixes.Install();
 		}
 
 		/// <summary>Creates a new Harmony instance</summary>

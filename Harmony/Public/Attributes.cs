@@ -589,27 +589,6 @@ namespace HarmonyLib
 		}
 	}
 
-	/// <summary>Defines how a patch is debugged.</summary>
-	///
-	public enum DebugType
-	{
-		/// <summary>Don't emit IL</summary>
-		///
-		None,
-
-		/// <summary>Emit IL of the generated patch to the debug log.</summary>
-		///
-		Log,
-
-		/// <summary>Save IL of the patch to a file.</summary>
-		/// <remarks>
-		/// The generated IL includes Harmony patch and any <see cref="ILHook"/>s applied outside of Harmony.
-		/// Note that owing to how MonoMod.RuntimeDetour works, no <see cref="Detour"/>s are included in the output.
-		/// </remarks>
-		///
-		Dump
-	}
-
 	/// <summary>A Harmony annotation to output a debug log for a patch</summary>
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyDebug : HarmonyAttribute
@@ -619,26 +598,27 @@ namespace HarmonyLib
 		public HarmonyDebug()
 		{
 			info.debug = true;
-			info.debugType = DebugType.Log;
+		}
+	}
+
+	/// <summary>A Harmony annotation to emit IL of the patch to a DLL</summary>
+	/// 
+	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+	public class HarmonyEmitIL : HarmonyAttribute
+	{
+		/// <summary>A Harmony annotation to emit IL of the patch to the current working directory</summary>
+		///
+		public HarmonyEmitIL()
+		{
+			info.debugEmitPath = "./";
 		}
 
-		/// <summary>A Harmony annotation to debug a patch custom output type.</summary>
-		/// <param name="debugType">How the generated patch should be output.</param>
+		/// <summary>A Harmony annotation to emit IL of the patch to the given path</summary>
+		/// <param name="dir">Directory to which emit the patch</param>
 		///
-		public HarmonyDebug(DebugType debugType)
+		public HarmonyEmitIL(string dir)
 		{
-			info.debug = true;
-			info.debugType = debugType;
-		}
-
-		/// <summary>A Harmony annotation to debug a patch and output generated patch to a file.</summary>
-		/// <param name="dumpPath">Folder to which output the generated patch.</param>
-		///
-		public HarmonyDebug(string dumpPath)
-		{
-			info.debug = true;
-			info.debugType = DebugType.Dump;
-			// TODO: save path
+			info.debugEmitPath = dir;
 		}
 	}
 

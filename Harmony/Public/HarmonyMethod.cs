@@ -50,9 +50,9 @@ namespace HarmonyLib
 		///
 		public bool? debug;
 
-		/// <summary>How this patch debug output should be handled</summary>
+		/// <summary>If not null, the IL of the patch is output to this path</summary>
 		///
-		public DebugType? debugType;
+		public string debugEmitPath;
 
 		/// <summary>Whether to use <see cref="MethodDispatchType.Call"/> (<c>true</c>) or <see cref="MethodDispatchType.VirtualCall"/> (<c>false</c>) mechanics
 		/// for <see cref="HarmonyDelegate"/>-attributed delegate</summary>
