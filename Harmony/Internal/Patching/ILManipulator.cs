@@ -70,7 +70,6 @@ namespace HarmonyLib.Internal.Patching
 			Body = body;
 			this.debug = debug;
 			codeInstructions = ReadBody(Body);
-
 		}
 
 		public MethodBody Body { get; }
@@ -146,7 +145,7 @@ namespace HarmonyLib.Internal.Patching
 				var tryStart = instructions[body.Instructions.IndexOf(exception.TryStart)].Instruction;
 				var tryEnd = instructions[body.Instructions.IndexOf(exception.TryEnd)].Instruction;
 				var handlerStart = instructions[body.Instructions.IndexOf(exception.HandlerStart)].Instruction;
-				var handlerEnd = instructions[body.Instructions.IndexOf(exception.HandlerEnd.Previous)].Instruction;
+				var handlerEnd = instructions[exception.HandlerEnd == null ? instructions.Count - 1 : body.Instructions.IndexOf(exception.HandlerEnd.Previous)].Instruction;
 
 				tryStart.blocks.Add(new ExceptionBlock(ExceptionBlockType.BeginExceptionBlock));
 				handlerEnd.blocks.Add(new ExceptionBlock(ExceptionBlockType.EndExceptionBlock));
@@ -270,7 +269,7 @@ namespace HarmonyLib.Internal.Patching
 						if (unresolvedInstruction.Operand is VariableDefinition varDef)
 							unresolvedInstruction.Instruction.operand = localsCache[varDef];
 					}
-						break;
+					break;
 					case SRE.OperandType.InlineSwitch when unresolvedInstruction.Operand is CodeInstruction[] targets:
 					{
 						var labels = new List<SRE.Label>();
@@ -283,7 +282,7 @@ namespace HarmonyLib.Internal.Patching
 
 						unresolvedInstruction.Instruction.operand = labels.ToArray();
 					}
-						break;
+					break;
 					case SRE.OperandType.ShortInlineBrTarget:
 					case SRE.OperandType.InlineBrTarget:
 					{
@@ -294,7 +293,7 @@ namespace HarmonyLib.Internal.Patching
 							unresolvedInstruction.Instruction.operand = label;
 						}
 					}
-						break;
+					break;
 				}
 			}
 
@@ -341,7 +340,7 @@ namespace HarmonyLib.Internal.Patching
 				// We need to handle exception handler opcodes specially because ILProcessor emits them automatically
 				// Case 1: leave + start or end of exception block => ILProcessor generates leave automatically
 				if ((cur.opcode == SRE.OpCodes.Leave || cur.opcode == SRE.OpCodes.Leave_S) &&
-				    (cur.blocks.Count > 0 || next?.blocks.Count > 0))
+					 (cur.blocks.Count > 0 || next?.blocks.Count > 0))
 					goto mark_block;
 				// Case 2: endfilter/endfinally and end of exception marker => ILProcessor will generate the correct end
 				if ((cur.opcode == SRE.OpCodes.Endfilter || cur.opcode == SRE.OpCodes.Endfinally) && cur.blocks.Count > 0)

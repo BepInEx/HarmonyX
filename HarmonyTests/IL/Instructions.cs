@@ -7,6 +7,8 @@ using mmc::MonoMod.Utils;
 using Mono.Cecil.Cil;
 using NUnit.Framework;
 using System;
+using System.Linq;
+using System.Web;
 using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLibTests.Assets
@@ -220,5 +222,19 @@ IL_0071: ret
 			var transpiledBody = body.ToILDasmString();
 			Assert.AreEqual(expectedIL, transpiledBody);
 		}
+#if NETFRAMEWORK
+		[Test]
+		public void FixIssue45()
+		{
+			var method = typeof(HttpRuntime).GetMethod("ReleaseResourcesAndUnloadAppDomain",
+				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+			var body = new DynamicMethodDefinition(method).Definition.Body;
+
+			Assert.NotNull(body);
+
+			Assert.AreEqual(29, new ILManipulator(body, false).GetRawInstructions().Count());
+		}
+#endif
 	}
 }
