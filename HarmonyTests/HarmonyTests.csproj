@@ -65,6 +65,10 @@
 		<PackageReference Include="MonoMod.RuntimeDetour" Version="22.1.4.3" />
 	</ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <Reference Include="System.Web" />
+  </ItemGroup>
+
 	<ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
 		<PackageReference Include="Lokad.ILPack" Version="0.1.7" PrivateAssets="all" />
 	</ItemGroup>
