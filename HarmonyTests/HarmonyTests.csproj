@@ -1,84 +1,84 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFrameworks>net35;net45;netcoreapp3.1;net6.0</TargetFrameworks>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<LangVersion>latest</LangVersion>
-		<IsPackable>false</IsPackable>
-		<CheckEolTargetFramework>false</CheckEolTargetFramework>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>net35;net45;netcoreapp3.1;net6.0</TargetFrameworks>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <IsPackable>false</IsPackable>
+        <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    </PropertyGroup>
 
-	<!-- In .NET 5.0 Binary Formatters are off by default.  Support is added for .NET 5.0+ for fallback JSON Serialization -->
-	<Choose>
-		<When Condition="'$(TargetFramework)' == 'net5.0'">
-			<PropertyGroup>
-				<IsNET5OrGreater>true</IsNET5OrGreater>
-			</PropertyGroup>
-		</When>
-		<Otherwise>
-			<PropertyGroup>
-				<IsNET5OrGreater>false</IsNET5OrGreater>
-			</PropertyGroup>
-		</Otherwise>
-	</Choose>
+    <!-- In .NET 5.0 Binary Formatters are off by default.  Support is added for .NET 5.0+ for fallback JSON Serialization -->
+    <Choose>
+        <When Condition="'$(TargetFramework)' == 'net5.0'">
+            <PropertyGroup>
+                <IsNET5OrGreater>true</IsNET5OrGreater>
+            </PropertyGroup>
+        </When>
+        <Otherwise>
+            <PropertyGroup>
+                <IsNET5OrGreater>false</IsNET5OrGreater>
+            </PropertyGroup>
+        </Otherwise>
+    </Choose>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Harmony\Harmony.csproj" />
-	</ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Harmony\Harmony.csproj"/>
+    </ItemGroup>
 
-	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
-		<Optimize>false</Optimize>
-		<DebugType>full</DebugType>
-		<DebugSymbols>true</DebugSymbols>
-		<DefineConstants>DEBUG</DefineConstants>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+        <Optimize>false</Optimize>
+        <DebugType>full</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+        <DefineConstants>DEBUG</DefineConstants>
+    </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)'=='Release'">
-		<Optimize>true</Optimize>
-		<DebugType>none</DebugType>
-		<DebugSymbols>false</DebugSymbols>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <Optimize>true</Optimize>
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
 
-	<PropertyGroup Condition="$(IsNET5OrGreater)">
-		<DefineConstants>$(DefineConstants);NET50_OR_GREATER</DefineConstants>
-	</PropertyGroup>
+    <PropertyGroup Condition="$(IsNET5OrGreater)">
+        <DefineConstants>$(DefineConstants);NET50_OR_GREATER</DefineConstants>
+    </PropertyGroup>
 
-	<!-- Workaround for `dotnet test HarmonyTests -f net35` not running tests - Microsoft.NET.Test.Sdk only sets IsTestProject property for net40+. -->
-	<PropertyGroup Condition="'$(TargetFramework)'=='net35'">
-		<IsTestProject>true</IsTestProject>
-	</PropertyGroup>
+    <!-- Workaround for `dotnet test HarmonyTests -f net35` not running tests - Microsoft.NET.Test.Sdk only sets IsTestProject property for net40+. -->
+    <PropertyGroup Condition="'$(TargetFramework)'=='net35'">
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.0.0" />
-		<PackageReference Include="NUnit" Version="3.13.2" />
-		<PackageReference Include="NUnit3TestAdapter" Version="4.1.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.0.0"/>
+        <PackageReference Include="NUnit" Version="3.13.2"/>
+        <PackageReference Include="NUnit3TestAdapter" Version="4.1.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
 
-	<ItemGroup>
-		<!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
-		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
+    <ItemGroup>
+        <!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
 
-		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-		<PackageReference Include="MonoMod.RuntimeDetour" Version="22.1.4.3" />
-	</ItemGroup>
+        <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
+        <PackageReference Include="MonoMod.RuntimeDetour" Version="22.1.4.3"/>
+    </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
-    <Reference Include="System.Web" />
-  </ItemGroup>
+    <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+        <Reference Include="System.Web"/>
+    </ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
-		<PackageReference Include="Lokad.ILPack" Version="0.1.7" PrivateAssets="all" />
-	</ItemGroup>
+    <ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
+        <PackageReference Include="Lokad.ILPack" Version="0.1.7" PrivateAssets="all"/>
+    </ItemGroup>
 
-	<Target Name="ChangeAliasesOfStrongNameAssemblies" BeforeTargets="FindReferenceAssembliesForReferences;ResolveReferences">
-		<ItemGroup>
-			<ReferencePath Condition="'%(FileName)'=='MonoMod.Utils'">
-				<Aliases>mmc</Aliases>
-			</ReferencePath>
-		</ItemGroup>
-	</Target>
+    <Target Name="ChangeAliasesOfStrongNameAssemblies" BeforeTargets="FindReferenceAssembliesForReferences;ResolveReferences">
+        <ItemGroup>
+            <ReferencePath Condition="'%(FileName)'=='MonoMod.Utils'">
+                <Aliases>mmc</Aliases>
+            </ReferencePath>
+        </ItemGroup>
+    </Target>
 
 </Project>

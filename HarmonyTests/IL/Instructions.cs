@@ -13,7 +13,7 @@ using OpCodes = System.Reflection.Emit.OpCodes;
 
 namespace HarmonyLibTests.Assets
 {
-	class TryCatchMethodClass
+	internal class TryCatchMethodClass
 	{
 		private static bool run = true;
 
@@ -21,10 +21,7 @@ namespace HarmonyLibTests.Assets
 		{
 			try
 			{
-				if (run)
-				{
-					Console.WriteLine("Run");
-				}
+				if (run) Console.WriteLine("Run");
 			}
 			finally
 			{
@@ -35,10 +32,7 @@ namespace HarmonyLibTests.Assets
 
 			try
 			{
-				if (run)
-				{
-					Console.WriteLine("Run 2");
-				}
+				if (run) Console.WriteLine("Run 2");
 			}
 			catch (Exception)
 			{
@@ -70,9 +64,9 @@ namespace HarmonyLibTests.IL
 		[Test]
 		public void Test_IL_TryFinally()
 		{
-			string expectedIL =
+			var expectedIL =
 #if DEBUG
-@".locals init (
+				@".locals init (
     System.Boolean V_0
     System.Boolean V_1
     System.Exception V_2
@@ -222,6 +216,7 @@ IL_0071: ret
 			var transpiledBody = body.ToILDasmString();
 			Assert.AreEqual(expectedIL, transpiledBody);
 		}
+
 #if NETFRAMEWORK
 		[Test]
 		public void FixIssue45()
