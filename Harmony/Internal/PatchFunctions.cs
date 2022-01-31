@@ -128,7 +128,7 @@ namespace HarmonyLib
 
 				manipulator.WriteTo(ctx.Body, standin.method);
 
-				HarmonyManipulator.ApplyILManipulators(ctx, original, ilmanipulators, null);
+				HarmonyManipulator.ApplyManipulators(ctx, original, ilmanipulators, null);
 
 				// Normalize rets in case they get removed
 				Instruction retIns = null;

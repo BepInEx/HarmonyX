@@ -33,7 +33,7 @@ namespace HarmonyLib.Public.Patching
 		/// <returns>
 		/// A <see cref="DynamicMethodDefinition"/> that contains a call to
 		/// the original method to pass to the IL manipulator.
-		/// If <b>null</b>, Harmony patches must be manually applied to the original via <see cref="HarmonyManipulator.Manipulate"/>.
+		/// If <b>null</b>, Harmony patches must be manually applied to the original via <see cref="HarmonyManipulator.Manipulate(System.Reflection.MethodBase,HarmonyLib.PatchInfo,MonoMod.Cil.ILContext)"/>.
 		/// </returns>
 		///
 		public abstract DynamicMethodDefinition PrepareOriginal();
@@ -43,10 +43,10 @@ namespace HarmonyLib.Public.Patching
 		/// <see cref="Original"/> is re-detoured to the new method.
 		/// </summary>
 		/// <param name="replacement">
-		/// Result of <see cref="HarmonyManipulator.Manipulate"/>
+		/// Result of <see cref="HarmonyManipulator.Manipulate(System.Reflection.MethodBase,HarmonyLib.PatchInfo,MonoMod.Cil.ILContext)"/>
 		/// if <see cref="PrepareOriginal"/> returned non-<b>null</b>.
 		/// Otherwise, this will be <b>null</b>, in which case you must manually generate Harmony-patched method
-		/// with <see cref="HarmonyManipulator.Manipulate"/>.
+		/// with <see cref="HarmonyManipulator.Manipulate(System.Reflection.MethodBase,HarmonyLib.PatchInfo,MonoMod.Cil.ILContext)"/>.
 		/// </param>
 		/// <returns><see cref="MethodBase"/> of the hook, if it's different from `replacement`.</returns>
 		///

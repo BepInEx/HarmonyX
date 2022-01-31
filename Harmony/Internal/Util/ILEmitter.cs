@@ -14,16 +14,14 @@ namespace HarmonyLib.Internal.Util
     {
         public readonly ILProcessor IL;
 
-        private readonly List<LabelledExceptionHandler> pendingExceptionHandlers = new List<LabelledExceptionHandler>();
+        private readonly List<LabelledExceptionHandler> pendingExceptionHandlers = new();
 
-        private readonly List<Label> pendingLabels = new List<Label>();
+        private readonly List<Label> pendingLabels = new();
         public Instruction emitBefore;
 
         public ILEmitter(ILProcessor il)
         {
             IL = il;
-            if (IL.Body.Instructions.Count == 0)
-                IL.Emit(OpCodes.Nop);
         }
 
         private Instruction Target => emitBefore ?? IL.Body.Instructions[IL.Body.Instructions.Count - 1];

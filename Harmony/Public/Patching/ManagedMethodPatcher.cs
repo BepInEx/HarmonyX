@@ -56,7 +56,7 @@ namespace HarmonyLib.Public.Patching
 		private void Manipulator(ILContext ctx)
 		{
 			hookBody = ctx.Body;
-			HarmonyManipulator.Manipulate(Original, Original.GetPatchInfo(), ctx);
+			HarmonyManipulator.Manipulate(Original, ctx);
 		}
 
 		/// <summary>
