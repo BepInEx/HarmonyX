@@ -9,6 +9,7 @@ namespace HarmonyLib
 {
 	/// <summary>A file log for debugging</summary>
 	///
+	[Obsolete("Use HarmonyFileLog instead")]
 	public static class FileLog
 	{
 		private static readonly object fileLock = new object();

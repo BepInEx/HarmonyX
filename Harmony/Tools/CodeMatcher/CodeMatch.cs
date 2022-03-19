@@ -118,5 +118,10 @@ namespace HarmonyLib
 				result += "predicate=yes ";
 			return $"{result.TrimEnd()}]";
 		}
+
+		/// <summary>Creates a new code match for an opcode</summary>
+		/// <param name="opcode">Opcode to match</param>
+		///
+		public static implicit operator CodeMatch(OpCode opcode) => new(opcode);
 	}
 }

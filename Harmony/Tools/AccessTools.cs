@@ -1,4 +1,5 @@
-﻿using MonoMod.Utils;
+﻿using HarmonyLib.Internal.Util;
+using MonoMod.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -158,7 +159,7 @@ namespace HarmonyLib
 		///
 		public static FieldInfo DeclaredField(string typeColonName)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			var fieldInfo = info.type.GetField(info.name, allDeclared);
 			if (fieldInfo is null)
 				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredField: Could not find field for type {info.type} and name {info.name}");
@@ -194,7 +195,7 @@ namespace HarmonyLib
 		///
 		public static FieldInfo Field(string typeColonName)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			var fieldInfo = FindIncludingBaseTypes(info.type, t => t.GetField(info.name, all));
 			if (fieldInfo is null)
 				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.Field: Could not find field for type {info.type} and name {info.name}");
@@ -248,9 +249,10 @@ namespace HarmonyLib
 		///
 		public static PropertyInfo DeclaredProperty(string typeColonName)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			var property = info.type.GetProperty(info.name, allDeclared);
-			if (property is null) FileLog.Debug($"AccessTools.DeclaredProperty: Could not find property for type {info.type} and name {info.name}");
+			if (property is null)
+				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.DeclaredProperty: Could not find property for type {info.type} and name {info.name}");
 			return property;
 		}
 
@@ -321,9 +323,10 @@ namespace HarmonyLib
 		///
 		public static PropertyInfo Property(string typeColonName)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			var property = FindIncludingBaseTypes(info.type, t => t.GetProperty(info.name, all));
-			if (property is null) FileLog.Debug($"AccessTools.Property: Could not find property for type {info.type} and name {info.name}");
+			if (property is null)
+				Logger.Log(Logger.LogChannel.Debug, () => $"AccessTools.Property: Could not find property for type {info.type} and name {info.name}");
 			return property;
 		}
 
@@ -410,7 +413,7 @@ namespace HarmonyLib
 		///
 		public static MethodInfo DeclaredMethod(string typeColonName, Type[] parameters = null, Type[] generics = null)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			return DeclaredMethod(info.type, info.name, parameters, generics);
 		}
 
@@ -473,7 +476,7 @@ namespace HarmonyLib
 		///
 		public static MethodInfo Method(string typeColonName, Type[] parameters = null, Type[] generics = null)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			return Method(info.type, info.name, parameters, generics);
 		}
 
@@ -978,7 +981,7 @@ namespace HarmonyLib
 				var delegateInstanceType = typeof(T);
 				if (delegateInstanceType.IsValueType)
 					throw new ArgumentException("T (FieldRefAccess instance type) must not be a value type");
-				return Tools.FieldRefAccess<T, F>(Tools.GetInstanceField(delegateInstanceType, fieldName), needCastclass: false);
+				return ReflectionTools.FieldRefAccess<T, F>(ReflectionTools.GetInstanceField(delegateInstanceType, fieldName), needCastclass: false);
 			}
 			catch (Exception ex)
 			{
@@ -1019,7 +1022,7 @@ namespace HarmonyLib
 				var delegateInstanceType = typeof(T);
 				if (delegateInstanceType.IsValueType)
 					throw new ArgumentException("T (FieldRefAccess instance type) must not be a value type");
-				return ref Tools.FieldRefAccess<T, F>(Tools.GetInstanceField(delegateInstanceType, fieldName), needCastclass: false)(instance);
+				return ref ReflectionTools.FieldRefAccess<T, F>(ReflectionTools.GetInstanceField(delegateInstanceType, fieldName), needCastclass: false)(instance);
 			}
 			catch (Exception ex)
 			{
@@ -1072,7 +1075,7 @@ namespace HarmonyLib
 						throw new ArgumentException("Either FieldDeclaringType must be a class or field must be static");
 				}
 				// Field's declaring type cannot be object, since object has no fields, so always need a castclass for T=object.
-				return Tools.FieldRefAccess<object, F>(fieldInfo, needCastclass: true);
+				return ReflectionTools.FieldRefAccess<object, F>(fieldInfo, needCastclass: true);
 			}
 			catch (Exception ex)
 			{
@@ -1086,7 +1089,7 @@ namespace HarmonyLib
 		/// <returns>A readable/assignable <see cref="FieldRef{T,F}"/> delegate with <c>T=object</c></returns>
 		public static FieldRef<object, F> FieldRefAccess<F>(string typeColonName)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			return FieldRefAccess<F>(info.type, info.name);
 		}
 
@@ -1136,9 +1139,9 @@ namespace HarmonyLib
 					// the field is not a struct instance field, since T could be object, ValueType, or an interface that the struct implements.
 					if (declaringType.IsValueType)
 						throw new ArgumentException("Either FieldDeclaringType must be a class or field must be static");
-					needCastclass = Tools.FieldRefNeedsClasscast(delegateInstanceType, declaringType);
+					needCastclass = ReflectionTools.FieldRefNeedsClasscast(delegateInstanceType, declaringType);
 				}
-				return Tools.FieldRefAccess<T, F>(fieldInfo, needCastclass);
+				return ReflectionTools.FieldRefAccess<T, F>(fieldInfo, needCastclass);
 			}
 			catch (Exception ex)
 			{
@@ -1191,9 +1194,9 @@ namespace HarmonyLib
 					// the field is not a struct instance field, since T could be object, ValueType, or an interface that the struct implements.
 					if (declaringType.IsValueType)
 						throw new ArgumentException("FieldDeclaringType must be a class");
-					needCastclass = Tools.FieldRefNeedsClasscast(delegateInstanceType, declaringType);
+					needCastclass = ReflectionTools.FieldRefNeedsClasscast(delegateInstanceType, declaringType);
 				}
-				return ref Tools.FieldRefAccess<T, F>(fieldInfo, needCastclass)(instance);
+				return ref ReflectionTools.FieldRefAccess<T, F>(fieldInfo, needCastclass)(instance);
 			}
 			catch (Exception ex)
 			{
@@ -1229,7 +1232,7 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(fieldName));
 			try
 			{
-				return Tools.StructFieldRefAccess<T, F>(Tools.GetInstanceField(typeof(T), fieldName));
+				return ReflectionTools.StructFieldRefAccess<T, F>(ReflectionTools.GetInstanceField(typeof(T), fieldName));
 			}
 			catch (Exception ex)
 			{
@@ -1261,7 +1264,7 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(fieldName));
 			try
 			{
-				return ref Tools.StructFieldRefAccess<T, F>(Tools.GetInstanceField(typeof(T), fieldName))(ref instance);
+				return ref ReflectionTools.StructFieldRefAccess<T, F>(ReflectionTools.GetInstanceField(typeof(T), fieldName))(ref instance);
 			}
 			catch (Exception ex)
 			{
@@ -1291,8 +1294,8 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(fieldInfo));
 			try
 			{
-				Tools.ValidateStructField<T, F>(fieldInfo);
-				return Tools.StructFieldRefAccess<T, F>(fieldInfo);
+				ReflectionTools.ValidateStructField<T, F>(fieldInfo);
+				return ReflectionTools.StructFieldRefAccess<T, F>(fieldInfo);
 			}
 			catch (Exception ex)
 			{
@@ -1324,8 +1327,8 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(fieldInfo));
 			try
 			{
-				Tools.ValidateStructField<T, F>(fieldInfo);
-				return ref Tools.StructFieldRefAccess<T, F>(fieldInfo)(ref instance);
+				ReflectionTools.ValidateStructField<T, F>(fieldInfo);
+				return ref ReflectionTools.StructFieldRefAccess<T, F>(fieldInfo)(ref instance);
 			}
 			catch (Exception ex)
 			{
@@ -1375,7 +1378,7 @@ namespace HarmonyLib
 				var fieldInfo = Field(type, fieldName);
 				if (fieldInfo is null)
 					throw new MissingFieldException(type.Name, fieldName);
-				return ref Tools.StaticFieldRefAccess<F>(fieldInfo)();
+				return ref ReflectionTools.StaticFieldRefAccess<F>(fieldInfo)();
 			}
 			catch (Exception ex)
 			{
@@ -1390,7 +1393,7 @@ namespace HarmonyLib
 		///
 		public static ref F StaticFieldRefAccess<F>(string typeColonName)
 		{
-			var info = Tools.TypColonName(typeColonName);
+			var info = ReflectionTools.TypColonName(typeColonName);
 			return ref StaticFieldRefAccess<F>(info.type, info.name);
 		}
 
@@ -1414,7 +1417,7 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(fieldInfo));
 			try
 			{
-				return ref Tools.StaticFieldRefAccess<F>(fieldInfo)();
+				return ref ReflectionTools.StaticFieldRefAccess<F>(fieldInfo)();
 			}
 			catch (Exception ex)
 			{
@@ -1437,7 +1440,7 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(fieldInfo));
 			try
 			{
-				return Tools.StaticFieldRefAccess<F>(fieldInfo);
+				return ReflectionTools.StaticFieldRefAccess<F>(fieldInfo);
 			}
 			catch (Exception ex)
 			{

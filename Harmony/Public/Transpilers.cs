@@ -1,3 +1,4 @@
+using HarmonyLib.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -126,11 +127,12 @@ namespace HarmonyLib
 		/// <param name="text">The log text</param>
 		/// <returns>Modified enumeration of <see cref="CodeInstruction"/></returns>
 		///
-		public static IEnumerable<CodeInstruction> DebugLogger(this IEnumerable<CodeInstruction> instructions,
-			string text)
+		public static IEnumerable<CodeInstruction> DebugLogger(this IEnumerable<CodeInstruction> instructions, string text)
 		{
+			yield return new CodeInstruction(OpCodes.Ldc_I4, Logger.LogChannel.Debug);
 			yield return new CodeInstruction(OpCodes.Ldstr, text);
-			yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(FileLog), nameof(FileLog.Debug)));
+			yield return new CodeInstruction(OpCodes.Ldc_I4_1);
+			yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Logger), nameof(Logger.LogText)));
 			foreach (var instruction in instructions) yield return instruction;
 		}
 
