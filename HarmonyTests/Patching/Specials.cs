@@ -7,8 +7,7 @@ using System.Linq;
 
 namespace HarmonyLibTests.Patching
 {
-	[TestFixture]
-	[Order(1)]
+	[TestFixture, NonParallelizable]
 	public class Specials : TestLogger
 	{
 		/* TODO - patching HttpWebRequest.GetResponse does not work
@@ -43,7 +42,7 @@ namespace HarmonyLibTests.Patching
 		}
 		*/
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Wrap_Patch()
 		{
 			SafeWrapPatch.called = false;
@@ -58,7 +57,7 @@ namespace HarmonyLibTests.Patching
 			Assert.True(SafeWrapPatch.called);
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Type_Patch_Regression()
 		{
 			var instance = new Harmony("special-case-type-patch");
@@ -79,7 +78,7 @@ namespace HarmonyLibTests.Patching
 			Assert.True(testObject.GetValue());
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Multiple_Attributes()
 		{
 			MultiAttributePatch.callCount = 0;
@@ -94,7 +93,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(2, MultiAttributePatch.callCount);
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Patch_Exception_Propagate()
 		{
 			var instance = new Harmony("special-case-exception-throw");
@@ -105,7 +104,7 @@ namespace HarmonyLibTests.Patching
 			Assert.Throws<HarmonyException>(() => processor.Patch());
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_MultiTarget_Class1()
 		{
 			MultiAttributePatchClass1.callCount = 0;
@@ -123,7 +122,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(2, MultiAttributePatchClass1.callCount);
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_MultiTarget_Class2()
 		{
 			MultiAttributePatchClass2.callCount = 0;
@@ -141,7 +140,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(2, MultiAttributePatchClass2.callCount);
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Multiple_Attributes_Partial()
 		{
 			var instance = new Harmony("special-case-multi-attribute-partial");
@@ -153,7 +152,7 @@ namespace HarmonyLibTests.Patching
 			Assert.DoesNotThrow(() => testObject.Method3(), "Test method wasn't patched");
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Enumerator_Patch()
 		{
 			Assert.Null(EnumeratorPatch.patchTarget);
@@ -171,7 +170,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(6, EnumeratorPatch.runTimes);
 		}
 
-		[Test, NonParallelizable]
+		[Test]
 		public void Test_Multiple_Attributes_Overload()
 		{
 			OverloadedCodePatch.callCount = 0;

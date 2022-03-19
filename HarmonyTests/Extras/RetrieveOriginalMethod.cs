@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace HarmonyLibTests.Extras
 {
-	[TestFixture]
+	[TestFixture, NonParallelizable]
 	class RetrieveOriginalMethod : TestLogger
 	{
 		[Test]
