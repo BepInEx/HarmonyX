@@ -1,99 +1,99 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFrameworks>net35;net45;netstandard2.0</TargetFrameworks>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<Product>HarmonyX</Product>
-		<Company>BepInEx</Company>
-		<Copyright>Copyright © BepInEx 2022</Copyright>
-		<Description>A library for patching, replacing and decorating .NET and Mono methods during runtime powered by MonoMod.</Description>
-		<PackageId>HarmonyX</PackageId>
-		<Authors>Andreas Pardeike, Geoffrey Horsington, ManlyMarco et al.</Authors>
-		<AssemblyName>0Harmony</AssemblyName>
-		<SignAssembly>true</SignAssembly>
-		<Version>2.9.0</Version>
-		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
-		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-		<PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
-		<AssemblyVersion>2.9.0.0</AssemblyVersion>
-		<FileVersion>2.9.0.0</FileVersion>
-		<PackageIcon>logo_mini.png</PackageIcon>
-		<PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<LangVersion>latest</LangVersion>
-		<DefaultItemExcludes>$(DefaultItemExcludes);Documentation/**</DefaultItemExcludes>
-		<RootNamespace>HarmonyLib</RootNamespace>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>net35;net45;netstandard2.0</TargetFrameworks>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Product>HarmonyX</Product>
+        <Company>BepInEx</Company>
+        <Copyright>Copyright © BepInEx 2022</Copyright>
+        <Description>A library for patching, replacing and decorating .NET and Mono methods during runtime powered by MonoMod.</Description>
+        <PackageId>HarmonyX</PackageId>
+        <Authors>Andreas Pardeike, Geoffrey Horsington, ManlyMarco et al.</Authors>
+        <AssemblyName>0Harmony</AssemblyName>
+        <SignAssembly>true</SignAssembly>
+        <Version>2.9.0</Version>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
+        <AssemblyVersion>2.9.0.0</AssemblyVersion>
+        <FileVersion>2.9.0.0</FileVersion>
+        <PackageIcon>logo_mini.png</PackageIcon>
+        <PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <DefaultItemExcludes>$(DefaultItemExcludes);Documentation/**</DefaultItemExcludes>
+        <RootNamespace>HarmonyLib</RootNamespace>
+    </PropertyGroup>
 
-	<Choose>
-		<!--
-		Ideally would check for .NET Core and .NET 5.0+ via TargetFrameworkIdentifier being .NETCoreApp, but that property isn't defined at this point,
-		so instead, relying on the fact that all .NET Core and .NET 5.0+ (and .NET Standard) have a period in their TFMs.
-		-->
-		<When Condition="$(TargetFramework.Contains('.'))">
-			<PropertyGroup>
-				<IsCoreOrStandard>true</IsCoreOrStandard>
-			</PropertyGroup>
-		</When>
-		<Otherwise>
-			<PropertyGroup>
-				<IsCoreOrStandard>false</IsCoreOrStandard>
-				<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-			</PropertyGroup>
-		</Otherwise>
-	</Choose>
+    <Choose>
+        <!--
+        Ideally would check for .NET Core and .NET 5.0+ via TargetFrameworkIdentifier being .NETCoreApp, but that property isn't defined at this point,
+        so instead, relying on the fact that all .NET Core and .NET 5.0+ (and .NET Standard) have a period in their TFMs.
+        -->
+        <When Condition="$(TargetFramework.Contains('.'))">
+            <PropertyGroup>
+                <IsCoreOrStandard>true</IsCoreOrStandard>
+            </PropertyGroup>
+        </When>
+        <Otherwise>
+            <PropertyGroup>
+                <IsCoreOrStandard>false</IsCoreOrStandard>
+                <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+            </PropertyGroup>
+        </Otherwise>
+    </Choose>
 
-	<ItemGroup>
-		<None Include="..\LICENSE" Pack="true" PackagePath="" />
-		<None Include="..\logo_mini.png" Pack="true" Visible="false" PackagePath="" />
-		<None Include="..\README.md" Pack="false" PackagePath="" />
-	</ItemGroup>
+    <ItemGroup>
+        <None Include="..\LICENSE" Pack="true" PackagePath=""/>
+        <None Include="..\logo_mini.png" Pack="true" Visible="false" PackagePath=""/>
+        <None Include="..\README.md" Pack="false" PackagePath=""/>
+    </ItemGroup>
 
-	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
-		<Optimize>false</Optimize>
-		<DebugType>full</DebugType>
-		<DebugSymbols>true</DebugSymbols>
-		<DefineConstants>DEBUG</DefineConstants>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+        <Optimize>false</Optimize>
+        <DebugType>full</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+        <DefineConstants>DEBUG</DefineConstants>
+    </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)'=='Release'">
-		<Optimize>true</Optimize>
-		<DebugType>none</DebugType>
-		<DebugSymbols>false</DebugSymbols>
-	</PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <Optimize>true</Optimize>
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
-		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
-		
-		<!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-		<PackageReference Include="MonoMod.RuntimeDetour" Version="22.1.29.1" />
+    <ItemGroup>
+        <!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
 
-		<!-- Reference SRE helpers for .NET Standard -->
-		<PackageReference Include="System.Reflection.Emit" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
-	</ItemGroup>
+        <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
+        <PackageReference Include="MonoMod.RuntimeDetour" Version="22.2.10.1"/>
 
-	<Target Name="RemoveOldNuGetPackages" BeforeTargets="PreBuildEvent">
-		<PropertyGroup>
-			<WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)</WorkingDirectory>
-		</PropertyGroup>
-		<ItemGroup>
-			<OldNugetPackages Include="$(WorkingDirectory)\$(PackageId).*.nupkg" Exclude="$(WorkingDirectory)\$(PackageId).$(Version).nupkg" />
-		</ItemGroup>
-		<Delete Files="@(OldNugetPackages)" />
-	</Target>
+        <!-- Reference SRE helpers for .NET Standard -->
+        <PackageReference Include="System.Reflection.Emit" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'"/>
+    </ItemGroup>
 
-	<Target Name="Zip" AfterTargets="Pack" DependsOnTargets="CleanZip" Condition="'$(Configuration)'=='Release'">
-		<ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)bin\$(Configuration)" DestinationFile="$(MSBuildThisFileDirectory)bin\Harmony.$(Version).zip" Overwrite="true" />
-	</Target>
+    <Target Name="RemoveOldNuGetPackages" BeforeTargets="PreBuildEvent">
+        <PropertyGroup>
+            <WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)</WorkingDirectory>
+        </PropertyGroup>
+        <ItemGroup>
+            <OldNugetPackages Include="$(WorkingDirectory)\$(PackageId).*.nupkg" Exclude="$(WorkingDirectory)\$(PackageId).$(Version).nupkg"/>
+        </ItemGroup>
+        <Delete Files="@(OldNugetPackages)"/>
+    </Target>
 
-	<Target Name="CleanZip" AfterTargets="Clean">
-		<ItemGroup>
-			<OldZipFiles Include="$(MSBuildThisFileDirectory)bin\*.zip" />
-		</ItemGroup>
-		<Delete Files="@(OldZipFiles)" />
-	</Target>
+    <Target Name="Zip" AfterTargets="Pack" DependsOnTargets="CleanZip" Condition="'$(Configuration)'=='Release'">
+        <ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)bin\$(Configuration)" DestinationFile="$(MSBuildThisFileDirectory)bin\Harmony.$(Version).zip" Overwrite="true"/>
+    </Target>
+
+    <Target Name="CleanZip" AfterTargets="Clean">
+        <ItemGroup>
+            <OldZipFiles Include="$(MSBuildThisFileDirectory)bin\*.zip"/>
+        </ItemGroup>
+        <Delete Files="@(OldZipFiles)"/>
+    </Target>
 
 </Project>
