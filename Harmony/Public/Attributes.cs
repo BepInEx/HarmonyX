@@ -177,25 +177,25 @@ namespace HarmonyLib
 		}
 
 		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="assemblyQualifiedDeclaringType">Assembly-qualified name of the declaring class/type</param>
+		/// <param name="typeName">The name of the declaring class/type. The name must be either simple or assembly-qualified.</param>
 		/// <param name="methodName">The name of the method, property or constructor to patch</param>
 		///
-		public HarmonyPatch(string assemblyQualifiedDeclaringType, string methodName)
+		public HarmonyPatch(string typeName, string methodName)
 		{
-			info.assemblyQualifiedDeclaringTypeName = assemblyQualifiedDeclaringType;
+			info.declaringType = AccessTools.TypeByName(typeName);
 			info.methodName = methodName;
 		}
 
 		/// <summary>An annotation that specifies a method, property or constructor to patch</summary>
-		/// <param name="assemblyQualifiedDeclaringType">Assembly-qualified name of the declaring class/type</param>
+		/// <param name="typeName">The name of the declaring class/type. The name must be either simple or assembly-qualified.</param>
 		/// <param name="methodName">The name of the method, property or constructor to patch</param>
 		/// <param name="methodType">The <see cref="MethodType"/></param>
 		/// <param name="argumentTypes">An array of argument types to target overloads</param>
 		/// <param name="argumentVariations">Array of <see cref="ArgumentType"/></param>
 		///
-		public HarmonyPatch(string assemblyQualifiedDeclaringType, string methodName, MethodType methodType, Type[] argumentTypes = null, ArgumentType[] argumentVariations = null)
+		public HarmonyPatch(string typeName, string methodName, MethodType methodType, Type[] argumentTypes = null, ArgumentType[] argumentVariations = null)
 		{
-			info.assemblyQualifiedDeclaringTypeName = assemblyQualifiedDeclaringType;
+			info.declaringType = AccessTools.TypeByName(typeName);
 			info.methodName = methodName;
 			info.methodType = methodType;
 			if (argumentTypes != null)
@@ -614,7 +614,7 @@ namespace HarmonyLib
 	}
 
 	/// <summary>A Harmony annotation to emit IL of the patch to a DLL</summary>
-	/// 
+	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 	public class HarmonyEmitIL : HarmonyAttribute
 	{
