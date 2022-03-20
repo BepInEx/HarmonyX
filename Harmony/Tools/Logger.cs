@@ -19,6 +19,7 @@ namespace HarmonyLib.Tools
             get => enabled;
             set
             {
+	             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HARMONY_NO_LOG"))) return;
                 enabled = value;
                 ToggleDebug();
             }
@@ -40,7 +41,15 @@ namespace HarmonyLib.Tools
         /// <summary>
         /// File path of the log.
         /// </summary>
-        public static string FileWriterPath { get; set; } = "HarmonyLog.txt";
+        public static string FileWriterPath { get; set; }
+
+        static HarmonyFileLog()
+        {
+	        var path = Environment.GetEnvironmentVariable("HARMONY_LOG_FILE");
+	        if (string.IsNullOrEmpty(path))
+		        path = "HarmonyFileLog.log";
+	        FileWriterPath = path;
+        }
 
         private static void ToggleDebug()
         {
