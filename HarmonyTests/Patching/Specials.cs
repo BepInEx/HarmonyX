@@ -123,6 +123,25 @@ namespace HarmonyLibTests.Patching
 		}
 
 		[Test]
+		public void Test_ExceptionPostfixPatch()
+		{
+			PostfixOnExceptionPatch.called = false;
+			PostfixOnExceptionPatch.patched = false;
+			var instance = new Harmony("exception-postix-patch-1");
+			Assert.NotNull(instance);
+
+			var processor = instance.CreateClassProcessor(typeof(PostfixOnExceptionPatch));
+			Assert.NotNull(processor);
+			processor.Patch();
+
+			Assert.True(PostfixOnExceptionPatch.patched, "Patch not applied");
+			var testObject = new DeadEndCode();
+			Assert.NotNull(testObject);
+			Assert.Throws<Exception>(() => testObject.Method5(), "Test method 5 didn't throw");
+			Assert.False(PostfixOnExceptionPatch.called, "Postfix was called");
+		}
+
+		[Test]
 		public void Test_MultiTarget_Class2()
 		{
 			MultiAttributePatchClass2.callCount = 0;

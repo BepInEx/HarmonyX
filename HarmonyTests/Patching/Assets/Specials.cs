@@ -51,6 +51,28 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	[HarmonyPatch]
+	public static class PostfixOnExceptionPatch
+	{
+		public static bool called;
+		public static bool patched;
+
+		[HarmonyTranspiler]
+		[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method5))]
+		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			patched = true;
+			return instructions;
+		}
+
+		[HarmonyPostfix]
+		[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method5))]
+		private static void Postfix()
+		{
+			called = true;
+		}
+	}
+
 	public static class TypeTargetedPatch
 	{
 		[HarmonyTranspiler]
@@ -215,6 +237,11 @@ namespace HarmonyLibTests.Assets
 			for (var i = 1; i <= 10; i++)
 				sum += i;
 			return sum;
+		}
+
+		public string Method5()
+		{
+			throw new Exception();
 		}
 	}
 

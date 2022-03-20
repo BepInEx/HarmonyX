@@ -292,7 +292,7 @@ public class HarmonyManipulator
 		manipulator.WriteTo(ctx.Body, original);
 	}
 
-	private ILEmitter.Label MakeReturnLabel()
+	private (ILEmitter.Label, bool) MakeReturnLabel()
 	{
 		// Ensure body is not empty
 		if (ctx.IL.Body.Instructions.Count == 0)
@@ -314,13 +314,12 @@ public class HarmonyManipulator
 			resultLabel.targets.Add(ins);
 		}
 
-		// Pick `nop` if previously the method didn't have `ret` before, like in case of exception throwing
-		resultLabel.instruction = Instruction.Create(hasRet ? OpCodes.Ret : OpCodes.Nop);
+		resultLabel.instruction = Instruction.Create(OpCodes.Ret);
 
 		// Already append ending label for other code to use as emitBefore point
 		il.IL.Append(resultLabel.instruction);
 
-		return resultLabel;
+		return (resultLabel, hasRet);
 	}
 
 	private void WriteImpl()
@@ -343,7 +342,7 @@ public class HarmonyManipulator
 				return;
 			}
 
-			var returnLabel = MakeReturnLabel();
+			var (returnLabel, originalHasReturn) = MakeReturnLabel();
 			var auxMethods = prefixes.Union(postfixes).Union(finalizers);
 
 			// Collect state and arg variables
@@ -369,18 +368,12 @@ public class HarmonyManipulator
 							il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 			}
 
-			var modifiesControlFlow = false;
-			modifiesControlFlow |= WritePrefixes(returnLabel);
-			WritePostfixes(returnLabel);
-			modifiesControlFlow |= WriteFinalizers(returnLabel);
+			WritePrefixes(returnLabel);
+			WritePostfixes(returnLabel, originalHasReturn);
+			WriteFinalizers(returnLabel);
 
-			// Mark return label in case it hasn't been marked yet and close open labels to return
 			il.MarkLabel(returnLabel);
-			var lastInstruction = il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
-
-			// If we have finalizers, ensure the return label is `ret` and not `nop`
-			if (modifiesControlFlow)
-				lastInstruction.OpCode = OpCodes.Ret;
+			il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
 
 			// If we have the args array, we need to initialize it right at start
 			// TODO: Come up with a better place for initializer code
@@ -623,7 +616,7 @@ public class HarmonyManipulator
 	}
 
 	private void WritePostfixes(
-		ILEmitter.Label returnLabel)
+		ILEmitter.Label returnLabel, bool emitResultStore)
 	{
 		// Postfix layout:
 		// Make return value (if needed) into a variable
@@ -648,7 +641,7 @@ public class HarmonyManipulator
 			returnValueVar = variables[ResultVar] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
 		}
 
-		if (returnValueVar != null)
+		if (returnValueVar != null && emitResultStore)
 			il.Emit(OpCodes.Stloc, returnValueVar);
 
 		if (!variables.ContainsKey(RunOriginalParam))
