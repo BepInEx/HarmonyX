@@ -1,6 +1,7 @@
 using HarmonyLib.Tools;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using MonoMod.Utils;
 using System;
 using System.Collections.Generic;
@@ -82,6 +83,7 @@ internal static class CecilEmitter
 			operand = operand switch
 			{
 				ParameterDefinition param  => clone.Parameters[param.Index],
+				ILLabel label => label.Target,
 				IMetadataTokenProvider mtp => mtp.Relink(relinker, clone),
 				_                          => operand
 			};
