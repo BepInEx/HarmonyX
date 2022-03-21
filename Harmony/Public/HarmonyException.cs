@@ -12,8 +12,8 @@ namespace HarmonyLib
 	[Serializable]
 	public class HarmonyException : Exception
 	{
-		Dictionary<int, CodeInstruction> instructions;
-		int errorOffset;
+		Dictionary<int, CodeInstruction> instructions = new();
+		int errorOffset = -1;
 
 		internal HarmonyException() { }
 		internal HarmonyException(string message) : base(message) { }
@@ -36,7 +36,9 @@ namespace HarmonyLib
 
 		internal static Exception Create(Exception ex, MethodBody body)
 		{
-			var match = Regex.Match(ex.Message.TrimEnd(), "Reason: Invalid IL code in.+: IL_(\\d{4}): (.+)$");
+			if (ex is HarmonyException {instructions: {Count: > 0}, errorOffset: >= 0})
+				return ex;
+			var match = Regex.Match(ex.Message.TrimEnd(), @"(?:Reason: )?Invalid IL code in.+: IL_(\d{4}): (.+)$");
 			if (match.Success is false) return new HarmonyException("IL Compile Error (unknown location)", ex);
 
 			var finalInstructions = ILManipulator.GetInstructions(body) ?? new Dictionary<int, CodeInstruction>();
