@@ -171,7 +171,7 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
-	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method))]
+	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method6))]
 	public static class ErrorReportTestPatch
 	{
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instrs)
@@ -243,6 +243,16 @@ namespace HarmonyLibTests.Assets
 		{
 			throw new Exception();
 		}
+
+		public string Method6()
+		{
+			throw new Exception();
+		}
+
+		public string Method7()
+		{
+			throw new Exception();
+		}
 	}
 
 	public class MultiAttributePatchCall
@@ -310,7 +320,7 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
-	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method))]
+	[HarmonyPatch(typeof(DeadEndCode), nameof(DeadEndCode.Method7))]
 	public class DeadEndCode_Patch2
 	{
 		public static MethodBase original = null;

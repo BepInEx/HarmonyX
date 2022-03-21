@@ -1531,6 +1531,7 @@ namespace HarmonyLibTests.Assets
 			);
 
 			c.Emit(Mono.Cecil.Cil.OpCodes.Br, retLabel);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldarg_0);
 		}
 
 		public static void Postfix(ref int __result)

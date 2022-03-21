@@ -206,9 +206,11 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(2, OverloadedCodePatch.callCount);
 		}
 
-		[Test]
+		[Test, NonParallelizable]
 		public void Test_Patch_With_Module_Call()
 		{
+			if (AccessTools.IsMonoRuntime)
+				Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "cecil");
 			var testMethod = ModuleLevelCall.CreateTestMethod();
 			Assert.AreEqual(0, testMethod());
 
@@ -219,6 +221,8 @@ namespace HarmonyLibTests.Patching
 
 			instance.Patch(testMethod.Method, postfix: new HarmonyMethod(postfix));
 			Assert.AreEqual(1, testMethod());
+			if (AccessTools.IsMonoRuntime)
+				Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "");
 		}
 
 		[Test]
@@ -342,7 +346,7 @@ namespace HarmonyLibTests.Patching
 			{
 			}
 
-			Assert.AreSame(typeof(DeadEndCode).GetMethod("Method"), DeadEndCode_Patch2.original, "Patch should save original method");
+			Assert.AreSame(typeof(DeadEndCode).GetMethod("Method7"), DeadEndCode_Patch2.original, "Patch should save original method");
 			Assert.NotNull(DeadEndCode_Patch2.exception, "Patch should save exception");
 
 			var harmonyException = DeadEndCode_Patch2.exception as HarmonyException;

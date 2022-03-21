@@ -271,6 +271,9 @@ IL_0071: ret
 		[Test]
 		public void FixIssue45()
 		{
+			if (AccessTools.IsMonoRuntime)
+				Assert.Ignore("Mono runtime does not generally provide this method.");
+
 			var method = typeof(HttpRuntime).GetMethod("ReleaseResourcesAndUnloadAppDomain",
 				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
