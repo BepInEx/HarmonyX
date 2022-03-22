@@ -1684,7 +1684,7 @@ namespace HarmonyLib
 #if NET35
 		static readonly MethodInfo m_PrepForRemoting = Method(typeof(Exception), "PrepForRemoting") // MS .NET
 			?? Method(typeof(Exception), "FixRemotingException"); // mono .NET
-		static readonly FastInvokeHandler PrepForRemoting = MethodInvoker.GetHandler(m_PrepForRemoting);
+		static readonly FastInvokeHandler PrepForRemoting = m_PrepForRemoting != null ? MethodInvoker.GetHandler(m_PrepForRemoting) : null;
 #endif
 
 		/// <summary>Rethrows an exception while preserving its stack trace (throw statement typically clobbers existing stack traces)</summary>
@@ -1693,7 +1693,7 @@ namespace HarmonyLib
 		public static void RethrowException(Exception exception)
 		{
 #if NET35
-			_ = PrepForRemoting(exception);
+			_ = PrepForRemoting?.Invoke(exception);
 #else
 			System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception).Throw();
 #endif
