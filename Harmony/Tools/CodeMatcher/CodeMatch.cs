@@ -47,8 +47,10 @@ namespace HarmonyLib
 				opcodes.Add(opcodeValue);
 			}
 			if (operand != null)
+			{
 				operands.Add(operand);
-			this.operand = operand;
+				this.operand = operand;
+			}
 			this.name = name;
 		}
 
@@ -75,9 +77,9 @@ namespace HarmonyLib
 			if (predicate != null) return predicate(instruction);
 
 			if (opcodes.Count > 0 && opcodes.Contains(instruction.opcode) == false) return false;
-			if (opcode != default && opcode != instruction.opcode) return false;
+			if (opcode.Name != null && opcode.Value != instruction.opcode.Value) return false;
 			if (operands.Count > 0 && operands.Contains(instruction.operand) == false) return false;
-			if (operand != null && operand != instruction.operand) return false;
+			if (operand != null && !operand.Equals(instruction.operand)) return false;
 			if (labels.Count > 0 && labels.Intersect(instruction.labels).Any() == false) return false;
 			if (blocks.Count > 0 && blocks.Intersect(instruction.blocks).Any() == false) return false;
 
