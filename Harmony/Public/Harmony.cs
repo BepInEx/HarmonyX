@@ -280,9 +280,9 @@ namespace HarmonyLib
 		/// <summary>Unpatches a method by patching it with zero patches. Fully unpatching is not supported. Be careful, unpatching is global</summary>
 		/// <param name="original">The original method/constructor</param>
 		/// <param name="type">The <see cref="HarmonyPatchType"/></param>
-		/// <param name="harmonyID">The optional Harmony ID to restrict unpatching to a specific Harmony instance</param>
+		/// <param name="harmonyID">Harmony ID to restrict unpatching to a specific Harmony instance. If not specified, unpatches ALL instances from the method.</param>
 		///
-		public void Unpatch(MethodBase original, HarmonyPatchType type, string harmonyID = null)
+		public void Unpatch(MethodBase original, HarmonyPatchType type, string harmonyID = "*")
 		{
 			var processor = CreateProcessor(original);
 			_ = processor.Unpatch(type, harmonyID);
