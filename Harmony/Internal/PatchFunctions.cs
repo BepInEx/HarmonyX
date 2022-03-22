@@ -73,6 +73,8 @@ namespace HarmonyLib
 				throw new ArgumentNullException(nameof(standin));
 			if (standin.method is null)
 				throw new ArgumentNullException(nameof(standin), $"{nameof(standin)}.{nameof(standin.method)} is NULL");
+			if (!standin.method.IsStatic)
+				throw new ArgumentException(nameof(standin), $"{nameof(standin)}.{nameof(standin.method)} is not static");
 
 			var debug = standin.debug ?? false;
 			var transpilers = new List<MethodInfo>();

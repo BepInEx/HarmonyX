@@ -71,13 +71,14 @@ namespace HarmonyLib
 
 		void ImportMethod(MethodInfo theMethod)
 		{
+			if (theMethod is null)
+				throw new ArgumentNullException(nameof(theMethod), "Harmony method is null (did you target a wrong or missing method?)");
+			if (!theMethod.IsStatic)
+				throw new ArgumentException("Harmony method must be static", nameof(theMethod));
 			method = theMethod;
-			if (method is object)
-			{
-				var infos = HarmonyMethodExtensions.GetFromMethod(method);
-				if (infos is object)
-					Merge(infos).CopyTo(this);
-			}
+			var infos = HarmonyMethodExtensions.GetFromMethod(method);
+			if (infos is object)
+				Merge(infos).CopyTo(this);
 		}
 
 		/// <summary>Creates a patch from a given method</summary>
