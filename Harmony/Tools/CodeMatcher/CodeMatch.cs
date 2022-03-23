@@ -77,7 +77,7 @@ namespace HarmonyLib
 			if (predicate != null) return predicate(instruction);
 
 			if (opcodes.Count > 0 && opcodes.Contains(instruction.opcode) == false) return false;
-			if (opcode.Name != null && opcode.Value != instruction.opcode.Value) return false;
+			if (opcode.Size != 0 && opcode.Value != instruction.opcode.Value) return false;
 			if (operands.Count > 0 && operands.Contains(instruction.operand) == false) return false;
 			if (operand != null && !operand.Equals(instruction.operand)) return false;
 			if (labels.Count > 0 && labels.Intersect(instruction.labels).Any() == false) return false;
@@ -107,9 +107,9 @@ namespace HarmonyLib
 			if (name != null)
 				result += $"{name}: ";
 			if (opcodes.Count > 0)
-				result += $"opcodes={opcodes.Concat(new []{ opcode }).Where(o => o != default).Join()} ";
+				result += $"opcodes={opcodes.Union(new []{ opcode }).Where(o => o.Name != null).Join()} ";
 			if (operands.Count > 0)
-				result += $"operands={operands.Concat(new []{ operand }).Where(o => o != null).Join()} ";
+				result += $"operands={operands.Union(new []{ operand }).Where(o => o != null).Join()} ";
 			if (labels.Count > 0)
 				result += $"labels={labels.Join()} ";
 			if (blocks.Count > 0)
