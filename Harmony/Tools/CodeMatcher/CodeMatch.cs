@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using System.Text;
 
 namespace HarmonyLib
 {
@@ -103,24 +104,24 @@ namespace HarmonyLib
 		///
 		public override string ToString()
 		{
-			var result = "[";
+			var sb = new StringBuilder();
 			if (name != null)
-				result += $"{name}: ";
+				sb.Append($"{name}: ");
 			if (opcodes.Count > 0)
-				result += $"opcodes={opcodes.Union(new []{ opcode }).Where(o => o.Name != null).Join()} ";
+				sb.Append($"opcodes={opcodes.Union(new[] {opcode}).Where(o => o.Size != 0).Join()} ");
 			if (operands.Count > 0)
-				result += $"operands={operands.Union(new []{ operand }).Where(o => o != null).Join()} ";
+				sb.Append($"operands={operands.Union(new[] {operand}).Where(o => o != null).Join()} ");
 			if (labels.Count > 0)
-				result += $"labels={labels.Join()} ";
+				sb.Append($"labels={labels.Join()} ");
 			if (blocks.Count > 0)
-				result += $"blocks={blocks.Join()} ";
+				sb.Append($"blocks={blocks.Join()} ");
 			if (jumpsFrom.Count > 0)
-				result += $"jumpsFrom={jumpsFrom.Join()} ";
+				sb.Append($"jumpsFrom={jumpsFrom.Join()} ");
 			if (jumpsTo.Count > 0)
-				result += $"jumpsTo={jumpsTo.Join()} ";
+				sb.Append($"jumpsTo={jumpsTo.Join()} ");
 			if (predicate != null)
-				result += "predicate=yes ";
-			return $"{result.TrimEnd()}]";
+				sb.Append("predicate=yes ");
+			return sb.Length != 0 ? $"[{sb.ToString().Trim()}]" : base.ToString();
 		}
 
 		/// <summary>Creates a new code match for an opcode</summary>

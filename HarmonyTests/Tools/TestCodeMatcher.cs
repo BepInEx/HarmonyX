@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using static HarmonyLib.Code;
 
 namespace HarmonyLibTests.Tools;
 
@@ -29,23 +30,32 @@ public class TestCodeMatcher
 				err => throw new Exception($"Nothing replaced .{err}"))
 			.Instructions();
 
+		var writeLine = AccessTools.Method(typeof(Console), nameof(Console.WriteLine), new[] {typeof(string)});
 		AssertSameCode(result,
-			new[]
+			new CodeInstruction[]
 			{
-				"ldarg.0 NULL", "call void HarmonyLibTests.Assets.CodeMatcherClass1::Foo()",
-				"call void HarmonyLibTests.Assets.CodeMatcherClass1::Bar()", "ldstr \"Foo!\"",
-				"call static void Console::WriteLine(string value)", "ldarg.0 NULL",
-				"call void HarmonyLibTests.Assets.CodeMatcherClass1::Foo()",
-				"call void HarmonyLibTests.Assets.CodeMatcherClass1::Bar()", "ldstr \"Foo!\"",
-				"call static void Console::WriteLine(string value)", "ldarg.0 NULL",
-				"call void HarmonyLibTests.Assets.CodeMatcherClass1::Foo()",
-				"call void HarmonyLibTests.Assets.CodeMatcherClass1::Bar()", "ldstr \"Foo!\"",
-				"call static void Console::WriteLine(string value)", "ret NULL"
-			});
+				Ldarg_0, //
+				Call[matchTarget], //
+				Call[matchReplacement], //
+				Ldstr["Foo!"], //
+				Call[writeLine], //
+				Ldarg_0, //
+				Call[matchTarget], //
+				Call[matchReplacement], //
+				Ldstr["Foo!"], //
+				Call[writeLine], //
+				Ldarg_0, //
+				Call[matchTarget], //
+				Call[matchReplacement], //
+				Ldstr["Foo!"], //
+				Call[writeLine], //
+				Ret //
+			}
+		);
 	}
 
-	private void AssertSameCode(List<CodeInstruction> ins, string[] expected)
+	private void AssertSameCode(List<CodeInstruction> ins, CodeInstruction[] expected)
 	{
-		Assert.AreEqual(expected, ins.Select(i => i.ToString()).ToArray());
+		Assert.AreEqual(expected.Select(i => i.ToString()), ins.Select(i => i.ToString()).ToArray());
 	}
 }
