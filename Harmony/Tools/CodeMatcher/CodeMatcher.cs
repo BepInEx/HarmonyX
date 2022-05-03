@@ -195,7 +195,12 @@ public class CodeMatcher
 	public CodeMatcher ThrowIfInvalid(string explanation)
 	{
 		if (explanation == null) throw new ArgumentNullException(nameof(explanation));
-		if (IsInvalid) throw new InvalidOperationException(explanation + " - Current state is invalid");
+		if (IsInvalid)
+		{
+			var errMsg = explanation + " - Current state is invalid.";
+			if (lastError != null) errMsg += " Details: " + lastError;
+			throw new InvalidOperationException(errMsg);
+		}
 		return this;
 	}
 
