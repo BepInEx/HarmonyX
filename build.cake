@@ -47,7 +47,7 @@ Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-	var testTargets = new [] { "net35", "netcoreapp3.1", "net6.0" };
+	var testTargets = new [] { "net35", "netcoreapp3.1", "net6.0", "net7.0" };
 	foreach (var target in testTargets)
 	{
 	    Information($"Testing {target}");

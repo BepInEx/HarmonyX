@@ -12,6 +12,7 @@ jobs:
         dotnet-version: | 
           3.1.x
           6.0.x
+          7.0.100-preview.4.22252.9
     - name: Log dotnet info
       run: dotnet --info
     - name: Run test
@@ -28,6 +29,7 @@ jobs:
         dotnet-version: | 
           3.1.x
           6.0.x
+          7.0.100-preview.4.22252.9
     
     - name: Make repo pushable
       env:
