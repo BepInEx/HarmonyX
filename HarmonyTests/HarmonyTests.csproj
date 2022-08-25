@@ -62,7 +62,7 @@
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
 
         <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-        <PackageReference Include="MonoMod.RuntimeDetour" Version="22.3.23.4"/>
+        <PackageReference Include="MonoModReorg.RuntimeDetour" Version="22.9.23-prerelease" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">

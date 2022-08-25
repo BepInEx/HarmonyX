@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using MonoMod.RuntimeDetour;
+using MonoMod.Core.Platforms;
 
 namespace HarmonyLib.Public.Patching
 {
@@ -25,7 +25,6 @@ namespace HarmonyLib.Public.Patching
 		static PatchManager()
 		{
 			ResolvePatcher += ManagedMethodPatcher.TryResolve;
-			ResolvePatcher += NativeDetourMethodPatcher.TryResolve;
 		}
 
 		/// <summary>
@@ -132,8 +131,8 @@ namespace HarmonyLib.Public.Patching
 			}
 			else
 			{
-				var baseMethod = DetourHelper.Runtime.GetIdentifiable(frameMethod);
-				methodStart = baseMethod.GetNativeStart().ToInt64();
+				var baseMethod = PlatformTriple.Current.Runtime.GetIdentifiable(frameMethod);
+				methodStart = PlatformTriple.Current.Runtime.GetMethodEntryPoint(baseMethod).ToInt64();
 			}
 
 			// Failed to find any usable method, if `frameMethod` is null, we can not find any
@@ -143,7 +142,7 @@ namespace HarmonyLib.Public.Patching
 
 			lock (ReplacementToOriginals)
 				return ReplacementToOriginals
-					.FirstOrDefault(kv => kv.Key.IsAlive && ((MethodBase)kv.Key.Target).GetNativeStart().ToInt64() == methodStart).Key.Target as MethodBase;
+					.FirstOrDefault(kv => kv.Key.IsAlive && PlatformTriple.Current.Runtime.GetMethodEntryPoint((MethodBase)kv.Key.Target).ToInt64() == methodStart).Key.Target as MethodBase;
 		}
 
 		internal static void AddReplacementOriginal(MethodBase original, MethodInfo replacement)

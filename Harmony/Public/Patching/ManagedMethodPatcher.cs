@@ -33,18 +33,17 @@ namespace HarmonyLib.Public.Patching
 		/// <inheritdoc />
 		public override MethodBase DetourTo(MethodBase replacement)
 		{
-			ilHook ??= new ILHook(Original, Manipulator, new ILHookConfig {ManualApply = true});
-			// Reset IsApplied to force MonoMod to reapply the ILHook without removing it
-			ILHookExtensions.SetIsApplied(ilHook, false);
+			ilHook ??= new ILHook(Original, Manipulator, applyByDefault: false);
 			try
 			{
+				ilHook.Undo();
 				ilHook.Apply();
 			}
 			catch (Exception e)
 			{
 				throw HarmonyException.Create(e, hookBody);
 			}
-			return ilHook.GetCurrentTarget();
+			return ilHook.Method;
 		}
 
 		/// <inheritdoc />

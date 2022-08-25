@@ -32,7 +32,7 @@ namespace HarmonyLibTests
 			try
 			{
 				exception = null;
-				return method.Pin().GetNativeStart().ToInt64();
+				return MonoMod.Core.Platforms.PlatformTriple.Current.GetNativeMethodBody(method).ToInt64();
 			}
 			catch (Exception e)
 			{

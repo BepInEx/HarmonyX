@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Reflection;
 using HarmonyLib.Tools;
 using MonoMod.RuntimeDetour;
+using System.Linq;
 
 namespace HarmonyLib.Internal.RuntimeFixes
 {
@@ -18,9 +19,7 @@ namespace HarmonyLib.Internal.RuntimeFixes
         private static readonly Dictionary<MethodBase, MethodBase> RealMethodMap =
             new Dictionary<MethodBase, MethodBase>();
 
-        private static Func<Assembly> _realGetAss;
-        private static Func<StackFrame, MethodBase> _origGetMethod;
-        private static Action<object> _origRefresh;
+        private static Hook stackTraceHook;
 
         public static void Install()
         {
@@ -29,17 +28,11 @@ namespace HarmonyLib.Internal.RuntimeFixes
 
             try
             {
-	            var refreshDet = new Detour(AccessTools.Method(AccessTools.Inner(typeof(ILHook), "Context"), "Refresh"),
-		            AccessTools.Method(typeof(StackTraceFixes), nameof(OnILChainRefresh)));
-	            _origRefresh = refreshDet.GenerateTrampoline<Action<object>>();
+	            DetourManager.ILHookApplied += OnILChainRefresh;
+	            DetourManager.ILHookUndone += OnILChainRefresh;
 
-	            var getMethodDet = new Detour(AccessTools.Method(typeof(StackFrame), nameof(StackFrame.GetMethod)),
-		            AccessTools.Method(typeof(StackTraceFixes), nameof(GetMethodFix)));
-	            _origGetMethod = getMethodDet.GenerateTrampoline<Func<StackFrame, MethodBase>>();
-
-	            var nat = new NativeDetour(AccessTools.Method(typeof(Assembly), nameof(Assembly.GetExecutingAssembly)),
+	            stackTraceHook = new Hook(AccessTools.Method(typeof(Assembly), nameof(Assembly.GetExecutingAssembly)),
 		            AccessTools.Method(typeof(StackTraceFixes), nameof(GetAssemblyFix)));
-	            _realGetAss = nat.GenerateTrampoline<Func<Assembly>>();
             }
             catch (Exception e)
             {
@@ -48,37 +41,30 @@ namespace HarmonyLib.Internal.RuntimeFixes
             _applied = true;
         }
 
-        // Fix StackFrame's GetMethod to map patched method to unpatched one instead
-        private static MethodBase GetMethodFix(StackFrame self)
-        {
-            var m = _origGetMethod(self);
-            if (m == null)
-                return null;
-            lock (RealMethodMap)
-            {
-                return RealMethodMap.TryGetValue(m, out var real) ? real : m;
-            }
-        }
-
         // We need to force GetExecutingAssembly make use of stack trace
         // This is to fix cases where calling assembly is actually the patch
         // This solves issues with code where it uses the method to get current filepath etc
-        private static Assembly GetAssemblyFix()
+        private static Assembly GetAssemblyFix(Func<Assembly> orig)
         {
-            return new StackFrame(1).GetMethod()?.Module.Assembly ?? _realGetAss();
+	        var method = new StackTrace().GetFrames().SkipWhile(frame => frame.GetMethod() != stackTraceHook.DetourInfo.Entry).Skip(1).First().GetMethod();
+	        if (RealMethodMap.TryGetValue(method, out var real))
+	        {
+		        return real.Module.Assembly;
+	        }
+	        return orig();
         }
 
+        private static readonly AccessTools.FieldRef<MethodDetourInfo, object> GetDetourState = AccessTools.FieldRefAccess<MethodDetourInfo, object>(AccessTools.DeclaredField(typeof(MethodDetourInfo), "state"));
+
+        private static readonly AccessTools.FieldRef<object, MethodBase> GetEndOfChain =
+	        AccessTools.FieldRefAccess<object, MethodBase>(AccessTools.DeclaredField(typeof(DetourManager).GetNestedType("DetourState", AccessTools.all), "EndOfChain"));
+
         // Helper to save the detour info after patch is complete
-        private static void OnILChainRefresh(object self)
+        private static void OnILChainRefresh(ILHookInfo self)
         {
-            _origRefresh(self);
-
-            if (!(AccessTools.Field(self.GetType(), "Detour").GetValue(self) is Detour detour))
-                return;
-
             lock (RealMethodMap)
             {
-                RealMethodMap[detour.Target] = detour.Method;
+                RealMethodMap[GetEndOfChain(GetDetourState(self.Method))] = self.Method.Method;
             }
         }
     }
