@@ -112,7 +112,21 @@ namespace HarmonyLib
 		public HarmonyMethod info = new HarmonyMethod();
 	}
 
-	/// <summary>Annotation to define targets of your Harmony patch methods</summary>
+	/// <summary>Annotation to define a category for use with PatchCategory</summary>
+	///
+	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	public class HarmonyPatchCategory : HarmonyAttribute
+	{
+		/// <summary>Annotation specifying the category</summary>
+		/// <param name="category">Name of patch category</param>
+		///
+		public HarmonyPatchCategory(string category)
+		{
+			info.category = category;
+		}
+	}
+
+	/// <summary>Annotation to define your Harmony patch methods</summary>
 	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Delegate | AttributeTargets.Method, AllowMultiple = true)]
 	public class HarmonyPatch : HarmonyAttribute

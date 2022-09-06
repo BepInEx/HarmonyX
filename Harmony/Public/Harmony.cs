@@ -144,7 +144,7 @@ namespace HarmonyLib
 		{
 			AccessTools.GetTypesFromAssembly(assembly).Do(type => CreateClassProcessor(type).Patch());
 		}
-
+		
 		/// <summary>Searches the given type for Harmony annotation and uses them to create patches</summary>
 		/// <param name="type">The type to search</param>
 		///
@@ -162,7 +162,8 @@ namespace HarmonyLib
 		/// <param name="ilmanipulator">An optional ilmanipulator method wrapped in a <see cref="HarmonyMethod"/></param>
 		/// <returns>The replacement method that was created to patch the original method</returns>
 		///
-		public MethodInfo Patch(MethodBase original, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null, HarmonyMethod finalizer = null, HarmonyMethod ilmanipulator = null)
+		public MethodInfo Patch(MethodBase original, HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null, HarmonyMethod finalizer = null,
+			HarmonyMethod ilmanipulator = null)
 		{
 			var processor = CreateProcessor(original);
 			_ = processor.AddPrefix(prefix);
@@ -171,6 +172,44 @@ namespace HarmonyLib
 			_ = processor.AddFinalizer(finalizer);
 			_ = processor.AddILManipulator(ilmanipulator);
 			return processor.Patch();
+		}
+
+		/// <summary>Searches an assembly for Harmony-annotated classes without category annotations and uses them to create patches</summary>
+		///
+		public void PatchAllUncategorized()
+		{
+			var method = new StackTrace().GetFrame(1).GetMethod();
+			var assembly = method.ReflectedType.Assembly;
+			PatchAllUncategorized(assembly);
+		}
+
+		/// <summary>Searches an assembly for Harmony-annotated classes without category annotations and uses them to create patches</summary>
+		/// <param name="assembly">The assembly</param>
+		///
+		public void PatchAllUncategorized(Assembly assembly)
+		{
+			PatchClassProcessor[] patchClasses = AccessTools.GetTypesFromAssembly(assembly).Select(CreateClassProcessor).ToArray();
+			patchClasses.DoIf((patchClass => String.IsNullOrEmpty(patchClass.Category)), (patchClass => patchClass.Patch()));
+		}
+
+		/// <summary>Searches an assembly for Harmony annotations with a specific category and uses them to create patches</summary>
+		/// <param name="category">Name of patch category</param>
+		///
+		public void PatchCategory(string category)
+		{
+			var method = new StackTrace().GetFrame(1).GetMethod();
+			var assembly = method.ReflectedType.Assembly;
+			PatchCategory(assembly, category);
+		}
+
+		/// <summary>Searches an assembly for Harmony annotations with a specific category and uses them to create patches</summary>
+		/// <param name="assembly">The assembly</param>
+		/// <param name="category">Name of patch category</param>
+		///
+		public void PatchCategory(Assembly assembly, string category)
+		{
+			PatchClassProcessor[] patchClasses = AccessTools.GetTypesFromAssembly(assembly).Select(CreateClassProcessor).ToArray();
+			patchClasses.DoIf((patchClass => patchClass.Category == category), (patchClass => patchClass.Patch()));
 		}
 
 		/// <summary>Creates patches by manually specifying the methods</summary>

@@ -27,6 +27,9 @@ namespace HarmonyLib
 			typeof(HarmonyTargetMethods)
 		};
 
+		/// <summary name="Category">Name of the patch class's category</summary>
+		public string Category { get; set; }
+
 		/// <summary>Creates a patch class processor by pointing out a class. Similar to PatchAll() but without searching through all classes.</summary>
 		/// <param name="instance">The Harmony instance</param>
 		/// <param name="type">The class to process (need to have at least a [HarmonyPatch] attribute if allowUnannotatedType is set to <b>false</b>)</param>
@@ -56,6 +59,8 @@ namespace HarmonyLib
 			containerAttributes = HarmonyMethod.Merge(harmonyAttributes);
 			if (containerAttributes.methodType is null) // MethodType default is Normal
 				containerAttributes.methodType = MethodType.Normal;
+			
+			this.Category = containerAttributes.category;
 
 			auxilaryMethods = new Dictionary<Type, MethodInfo>();
 			foreach (var auxType in auxilaryTypes)
