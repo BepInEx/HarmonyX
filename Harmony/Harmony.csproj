@@ -73,6 +73,7 @@
 
         <!-- Reference SRE helpers for .NET Standard -->
         <PackageReference Include="System.Reflection.Emit" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+        <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
     </ItemGroup>
 
     <Target Name="RemoveOldNuGetPackages" BeforeTargets="PreBuildEvent">

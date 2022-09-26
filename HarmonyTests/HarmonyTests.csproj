@@ -63,6 +63,8 @@
 
         <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
         <PackageReference Include="MonoModReorg.RuntimeDetour" Version="22.9.23-prerelease" />
+
+        <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
