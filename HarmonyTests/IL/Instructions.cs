@@ -267,8 +267,8 @@ IL_0071: ret
 			Assert.AreEqual(expectedIL, transpiledBody);
 		}
 
-#if NETFRAMEWORK
 		[Test]
+		[Ignore("Doesn't work on .NET 6 emulating .NET 4.5 FW API")]
 		public void FixIssue45()
 		{
 			if (AccessTools.IsMonoRuntime)
@@ -283,6 +283,5 @@ IL_0071: ret
 
 			Assert.AreEqual(29, new ILManipulator(body, false).GetRawInstructions().Count());
 		}
-#endif
 	}
 }
