@@ -16,7 +16,7 @@ jobs:
       with:
         dotnet-version: | 
           3.1.x
-          6.0.x
+          6.0.300
     - name: Get Version
       id: get_version
       shell: bash
