@@ -5,6 +5,7 @@ using HarmonyLib.Internal.Util;
 using HarmonyLibTests.Assets;
 using mmc::MonoMod.Utils;
 using Mono.Cecil.Cil;
+using MonoMod.Core.Utils;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

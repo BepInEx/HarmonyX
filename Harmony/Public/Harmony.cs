@@ -9,6 +9,7 @@ using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
+using MonoMod.Core.Platforms;
 
 namespace HarmonyLib
 {
@@ -67,8 +68,7 @@ namespace HarmonyLib
 				if (string.IsNullOrEmpty(location)) location = new Uri(assembly.CodeBase).LocalPath;
 
 				var ptrRuntime = IntPtr.Size;
-				var ptrEnv = PlatformHelper.Current;
-				sb.AppendLine($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}, ptrsize:runtime/env={ptrRuntime}/{ptrEnv}");
+				sb.AppendLine($"### Harmony id={id}, version={version}, location={location}, env/clr={environment}, platform={platform}, ptrsize:runtime={ptrRuntime}");
 				if (callingMethod?.DeclaringType is object)
 				{
 					var callingAssembly = callingMethod.DeclaringType.Assembly;

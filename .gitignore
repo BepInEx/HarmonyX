@@ -204,3 +204,4 @@ ModelManifest.xml
 /Harmony/Documentation/api/*.html
 /Harmony/Documentation/api/*.yml
 /Harmony/Documentation/Documentation.dll
+.idea/

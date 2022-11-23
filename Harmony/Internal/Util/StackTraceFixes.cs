@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using HarmonyLib.Tools;
+using MonoMod.Core.Utils;
 using MonoMod.RuntimeDetour;
 using System.Linq;
 
@@ -46,7 +47,7 @@ namespace HarmonyLib.Internal.RuntimeFixes
         // This solves issues with code where it uses the method to get current filepath etc
         private static Assembly GetAssemblyFix(Func<Assembly> orig)
         {
-	        var method = new StackTrace().GetFrames().SkipWhile(frame => frame.GetMethod() != stackTraceHook.DetourInfo.Entry).Skip(1).First().GetMethod();
+	        var method = new StackTrace().GetFrames()!.SkipWhile(frame => frame.GetMethod() != stackTraceHook.DetourInfo.Entry).Skip(1).First().GetMethod();
 	        if (RealMethodMap.TryGetValue(method, out var real))
 	        {
 		        return real.Module.Assembly;
@@ -57,7 +58,7 @@ namespace HarmonyLib.Internal.RuntimeFixes
         private static readonly AccessTools.FieldRef<MethodDetourInfo, object> GetDetourState = AccessTools.FieldRefAccess<MethodDetourInfo, object>(AccessTools.DeclaredField(typeof(MethodDetourInfo), "state"));
 
         private static readonly AccessTools.FieldRef<object, MethodBase> GetEndOfChain =
-	        AccessTools.FieldRefAccess<object, MethodBase>(AccessTools.DeclaredField(typeof(DetourManager).GetNestedType("DetourState", AccessTools.all), "EndOfChain"));
+	        AccessTools.FieldRefAccess<object, MethodBase>(AccessTools.DeclaredField(typeof(DetourManager).GetNestedType("ManagedDetourState", AccessTools.all), "EndOfChain"));
 
         // Helper to save the detour info after patch is complete
         private static void OnILChainRefresh(ILHookInfo self)

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net35;net45;netcoreapp3.1;net6.0</TargetFrameworks>
+        <TargetFrameworks>net35;net45;netcoreapp3.1;net6.0;net7.0</TargetFrameworks>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <IsPackable>false</IsPackable>
@@ -23,7 +23,7 @@
     </Choose>
 
     <ItemGroup>
-        <ProjectReference Include="..\Harmony\Harmony.csproj"/>
+        <ProjectReference Include="..\Harmony\Harmony.csproj" />
     </ItemGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -49,8 +49,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0"/>
-        <PackageReference Include="NUnit" Version="3.13.3"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+        <PackageReference Include="NUnit" Version="3.13.3" />
         <PackageReference Include="NUnit3TestAdapter" Version="4.2.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -59,20 +59,20 @@
 
     <ItemGroup>
         <!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
-        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
 
         <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-        <PackageReference Include="MonoModReorg.RuntimeDetour" Version="22.9.23-prerelease" />
+        <PackageReference Include="MonoModReorg.RuntimeDetour" Version="22.11.21-prerelease.2" />
 
         <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
-        <Reference Include="System.Web"/>
+        <Reference Include="System.Web" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETCoreApp'">
-        <PackageReference Include="Lokad.ILPack" Version="0.1.7" PrivateAssets="all"/>
+        <PackageReference Include="Lokad.ILPack" Version="0.1.7" PrivateAssets="all" />
     </ItemGroup>
 
     <Target Name="ChangeAliasesOfStrongNameAssemblies" BeforeTargets="FindReferenceAssembliesForReferences;ResolveReferences">

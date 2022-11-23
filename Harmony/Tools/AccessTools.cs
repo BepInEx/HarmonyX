@@ -1553,10 +1553,7 @@ namespace HarmonyLib
 				var dmd = new DynamicMethodDefinition(
 					"OpenInstanceDelegate_" + method.Name,
 					method.ReturnType,
-					parameterTypes)
-				{
-					OwnerType = declaringType
-				};
+					parameterTypes);
 				var ilGen = dmd.GetILGenerator();
 				if (declaringType != null && declaringType.IsValueType)
 					ilGen.Emit(OpCodes.Ldarga_S, 0);
@@ -1593,10 +1590,7 @@ namespace HarmonyLib
 				var dmd = new DynamicMethodDefinition(
 					"LdftnDelegate_" + method.Name,
 					delegateType,
-					new[] { typeof(object) })
-				{
-					OwnerType = delegateType
-				};
+					new[] { typeof(object) });
 				var ilGen = dmd.GetILGenerator();
 				ilGen.Emit(OpCodes.Ldarg_0);
 				ilGen.Emit(OpCodes.Ldftn, method);
