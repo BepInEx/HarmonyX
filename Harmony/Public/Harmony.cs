@@ -144,7 +144,7 @@ namespace HarmonyLib
 		{
 			AccessTools.GetTypesFromAssembly(assembly).Do(type => CreateClassProcessor(type).Patch());
 		}
-		
+
 		/// <summary>Searches the given type for Harmony annotation and uses them to create patches</summary>
 		/// <param name="type">The type to search</param>
 		///

@@ -86,6 +86,11 @@ namespace HarmonyLib
 							return null;
 						return AccessTools.EnumeratorMoveNext(AccessTools.DeclaredMethod(attr.GetDeclaringType(),
 							attr.methodName, attr.argumentTypes));
+
+					case MethodType.Async:
+						if (attr.methodName is null)
+							return null;
+						return AccessTools.AsyncMoveNext(AccessTools.DeclaredMethod(attr.GetDeclaringType(), attr.methodName, attr.argumentTypes));
 				}
 			}
 			catch (AmbiguousMatchException ex)

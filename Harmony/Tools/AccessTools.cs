@@ -542,6 +542,38 @@ namespace HarmonyLib
 			return moveNext;
 		}
 
+		private static readonly Type _stateMachineAttributeType = typeof(object).Assembly.GetType("System.Runtime.CompilerServices.AsyncStateMachineAttribute");
+		private static readonly MethodInfo _stateMachineTypeGetter = _stateMachineAttributeType?.GetProperty("StateMachineType").GetGetMethod();
+
+		/// <summary>Gets the <see cref="IAsyncStateMachine.MoveNext" /> method of an async method's state machine</summary>
+		/// <param name="method">Async method that creates the state machine internally</param>
+		/// <returns>The internal <see cref="IAsyncStateMachine.MoveNext" /> method of the async state machine or <b>null</b> if no valid async method is detected</returns>
+		public static MethodInfo AsyncMoveNext(MethodBase method)
+		{
+			if (method is null)
+			{
+				FileLog.Debug("AccessTools.AsyncMoveNext: method is null");
+				return null;
+			}
+
+			var asyncAttribute = method.GetCustomAttributes(false).FirstOrDefault(a => a.GetType() == _stateMachineAttributeType);
+			if (asyncAttribute == null)
+			{
+				FileLog.Debug($"AccessTools.AsyncMoveNext: Could not find AsyncStateMachine for {method.FullDescription()}");
+				return null;
+			}
+
+			var asyncStateMachineType = (Type)_stateMachineTypeGetter.Invoke(method, null);
+			var asyncMethodBody = DeclaredMethod(asyncStateMachineType, "MoveNext");
+			if (asyncMethodBody == null)
+			{
+				FileLog.Debug($"AccessTools.AsyncMoveNext: Could not find async method body for {method.FullDescription()}");
+				return null;
+			}
+
+			return asyncMethodBody;
+		}
+
 		/// <summary>Gets the names of all method that are declared in a type</summary>
 		/// <param name="type">The declaring class/type</param>
 		/// <returns>A list of method names</returns>

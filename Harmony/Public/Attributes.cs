@@ -21,7 +21,8 @@ namespace HarmonyLib
 		StaticConstructor,
 		/// <summary>This is an enumerator (<see cref="IEnumerable{T}"/>, <see cref="IEnumerator{T}"/> or UniTask coroutine)</summary>
 		/// <remarks>This path will target the <see cref="IEnumerator.MoveNext"/> method that contains the actual enumerator code</remarks>
-		Enumerator
+		Enumerator,
+		Async
 	}
 
 	/// <summary>Specifies the type of argument</summary>
