@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using HarmonyLib.Tools;
-using MonoMod.Core.Utils;
 using MonoMod.RuntimeDetour;
 using System.Linq;
 
