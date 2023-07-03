@@ -25,6 +25,7 @@ namespace HarmonyLib.Public.Patching
 		static PatchManager()
 		{
 			ResolvePatcher += ManagedMethodPatcher.TryResolve;
+			ResolvePatcher += NativeMethodPatcher.TryResolve;
 		}
 
 		/// <summary>
