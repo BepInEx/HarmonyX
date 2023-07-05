@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using HarmonyLib.Tools;
+using MonoMod.Core.Platforms;
 using MonoMod.RuntimeDetour;
 using System.Linq;
 
@@ -19,7 +20,9 @@ namespace HarmonyLib.Internal.RuntimeFixes
         private static readonly Dictionary<MethodBase, MethodBase> RealMethodMap =
             new Dictionary<MethodBase, MethodBase>();
 
-        private static Hook stackTraceHook;
+        private static Hook getAssemblyHookManaged;
+        private static NativeHook getAssemblyHookNative;
+        private static Hook getMethodHook;
 
         public static void Install()
         {
@@ -31,8 +34,17 @@ namespace HarmonyLib.Internal.RuntimeFixes
 	            DetourManager.ILHookApplied += OnILChainRefresh;
 	            DetourManager.ILHookUndone += OnILChainRefresh;
 
-	            stackTraceHook = new Hook(AccessTools.Method(typeof(Assembly), nameof(Assembly.GetExecutingAssembly)),
-		            AccessTools.Method(typeof(StackTraceFixes), nameof(GetAssemblyFix)));
+	            var getAssemblyMethod = AccessTools.DeclaredMethod(typeof(Assembly), nameof(Assembly.GetExecutingAssembly), EmptyType.NoArgs);
+	            if (getAssemblyMethod.HasMethodBody())
+	            {
+		            getAssemblyHookManaged = new Hook(getAssemblyMethod, GetAssemblyFix);
+	            }
+	            else
+	            {
+		            getAssemblyHookNative = new NativeHook(PlatformTriple.Current.GetNativeMethodBody(getAssemblyMethod), GetAssemblyFix);
+	            }
+
+	            getMethodHook = new Hook(AccessTools.DeclaredMethod(typeof(StackFrame), nameof(StackFrame.GetMethod), EmptyType.NoArgs), GetMethodFix);
             }
             catch (Exception e)
             {
@@ -41,17 +53,26 @@ namespace HarmonyLib.Internal.RuntimeFixes
             _applied = true;
         }
 
+        delegate Assembly GetAssemblyDelegate();
+
         // We need to force GetExecutingAssembly make use of stack trace
         // This is to fix cases where calling assembly is actually the patch
         // This solves issues with code where it uses the method to get current filepath etc
-        private static Assembly GetAssemblyFix(Func<Assembly> orig)
+        private static Assembly GetAssemblyFix(GetAssemblyDelegate orig)
         {
-	        var method = new StackTrace().GetFrames()!.SkipWhile(frame => frame.GetMethod() != stackTraceHook.DetourInfo.Entry).Skip(1).First().GetMethod();
-	        if (RealMethodMap.TryGetValue(method, out var real))
+	        var entry = getAssemblyHookManaged?.DetourInfo.Entry ?? getAssemblyHookNative.DetourInfo.Entry;
+	        var method = new StackTrace().GetFrames()!.Select(f => f.GetMethod()).SkipWhile(method => method != entry).Skip(1).First();
+	        return method.Module.Assembly;
+        }
+
+        private static MethodBase GetMethodFix(Func<StackFrame, MethodBase> orig, StackFrame self)
+        {
+	        var method = orig(self);
+	        if (method is not null && RealMethodMap.TryGetValue(PlatformTriple.Current.GetIdentifiable(method), out var real))
 	        {
-		        return real.Module.Assembly;
+		        return real;
 	        }
-	        return orig();
+	        return method;
         }
 
         private static readonly AccessTools.FieldRef<MethodDetourInfo, object> GetDetourState = AccessTools.FieldRefAccess<MethodDetourInfo, object>(AccessTools.DeclaredField(typeof(MethodDetourInfo), "state"));
@@ -64,7 +85,7 @@ namespace HarmonyLib.Internal.RuntimeFixes
         {
             lock (RealMethodMap)
             {
-                RealMethodMap[GetEndOfChain(GetDetourState(self.Method))] = self.Method.Method;
+                RealMethodMap[PlatformTriple.Current.GetIdentifiable(GetEndOfChain(GetDetourState(self.Method)))] = PlatformTriple.Current.GetIdentifiable(self.Method.Method);
             }
         }
     }

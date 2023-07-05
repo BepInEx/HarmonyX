@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 namespace HarmonyLib.Public.Patching;
 
 /// <inheritdoc/>
-public class NativeMethodPatcher : MethodPatcher
+public class NativeDetourMethodPatcher : MethodPatcher
 {
 	private PlatformTriple.NativeDetour? _hook;
 	private Delegate _replacementDelegate;
@@ -21,7 +21,7 @@ public class NativeMethodPatcher : MethodPatcher
 	private readonly MethodInfo _altEntryDelegateInvoke;
 
 	/// <inheritdoc/>
-	public NativeMethodPatcher(MethodBase original) : base(original)
+	public NativeDetourMethodPatcher(MethodBase original) : base(original)
 	{
 		var originalParameters = Original.GetParameters();
 
@@ -97,6 +97,6 @@ public class NativeMethodPatcher : MethodPatcher
 	public static void TryResolve(object _, PatchManager.PatcherResolverEventArgs args)
 	{
 		if (args.Original.GetMethodBody() == null)
-			args.MethodPatcher = new NativeMethodPatcher(args.Original);
+			args.MethodPatcher = new NativeDetourMethodPatcher(args.Original);
 	}
 }
