@@ -56,7 +56,7 @@ namespace HarmonyLib.Tools
             if (Enabled)
             {
                 if (Writer == null)
-                    Writer = new StreamWriter(File.Create(Path.GetFullPath(FileWriterPath)));
+                    Writer = new StreamWriter(new FileStream(Path.GetFullPath(FileWriterPath),FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete));
                 Logger.MessageReceived += OnMessage;
             }
             else
