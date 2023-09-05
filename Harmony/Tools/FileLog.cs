@@ -47,6 +47,8 @@ namespace HarmonyLib
 							}
 							finally { }
 						}
+						else
+							_logPath += ".obsolete";
 					}
 					return _logPath;
 				}
