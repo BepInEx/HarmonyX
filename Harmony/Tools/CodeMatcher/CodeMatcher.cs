@@ -426,7 +426,10 @@ public class CodeMatcher
 	///
 	public CodeMatcher Insert(params CodeInstruction[] instructions)
 	{
-		codes.InsertRange(Pos, instructions);
+		if (Pos == Length)
+			codes.AddRange(instructions);
+		else
+			codes.InsertRange(PosOrThrow(), instructions);
 		return this;
 	}
 
@@ -436,7 +439,10 @@ public class CodeMatcher
 	///
 	public CodeMatcher Insert(IEnumerable<CodeInstruction> instructions)
 	{
-		codes.InsertRange(Pos, instructions);
+		if (Pos == Length)
+			codes.AddRange(instructions);
+		else
+			codes.InsertRange(PosOrThrow(), instructions);
 		return this;
 	}
 
