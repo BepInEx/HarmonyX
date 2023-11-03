@@ -392,7 +392,7 @@ internal class ILManipulator
 				// 	Logger.Log(Logger.LogChannel.Warn, () =>
 				// 		"Found conescutive leave ops that don't agree");
 				// body.Instructions.RemoveAt(i + 1);
-				body.Instructions[i + 1].OpCode = OpCodes.Nop;
+				body.Instructions[i].OpCode = OpCodes.Nop;
 			}
 
 
