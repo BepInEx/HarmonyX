@@ -7,7 +7,9 @@ using MonoMod.Utils;
 using MonoMod.Utils.Cil;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using MethodBody = Mono.Cecil.Cil.MethodBody;
 using SRE = System.Reflection.Emit;
@@ -395,7 +397,17 @@ internal class ILManipulator
 				body.Instructions[i + 1].OpCode = OpCodes.Nop;
 			}
 
+			// Check if any instruction points to a previously nop'd instruction, if so point it to the previous instruction
+			for (int i = 0; i < body.Instructions.Count - 1; i++)
+			{
+				if (body.Instructions[i].Operand == null) continue;
+				if (body.Instructions[i].Operand is not Instruction ins) continue;
+				if (ins.Offset <= 0) continue;
+				if (ins.OpCode != OpCodes.Nop) continue;
+				if (ins.Operand == null) continue;
 
+				body.Instructions[i].Operand = body.Instructions[ins.Offset - 1];
+			}
 		}
 
 		// Special Harmony interop case: if no instructions exist, at least emit a quick return to attempt to get a valid method
