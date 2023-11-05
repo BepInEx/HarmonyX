@@ -347,6 +347,7 @@ internal class ILManipulator
 
 			// We need to handle exception handler opcodes specially because ILProcessor emits them automatically
 			// Case 1: leave + start or end of exception block => ILProcessor generates leave automatically
+
 			// Note: ILProcessor seems to generate some labels with wrong offset, clean-up code afterwards!
 			// Case 2: endfilter/endfinally and end of exception marker => ILProcessor will generate the correct end
 			if ((cur.opcode == SRE.OpCodes.Endfilter || cur.opcode == SRE.OpCodes.Endfinally) && cur.blocks.Count > 0)
@@ -376,6 +377,24 @@ internal class ILManipulator
 
 			mark_block:
 			cur.blocks.ForEach(b => il.MarkBlockAfter(b));
+
+			// Remove duplicate `leave` Op-Codes to cleanup
+			// Should be safe if "double-jumps" are not a thing
+			for (int i = 0; i < body.Instructions.Count - 1; i++)
+			{
+				// Find two leave instructions in a row to clean up
+				if (body.Instructions[i].OpCode != OpCodes.Leave &&
+				    body.Instructions[i].OpCode != OpCodes.Leave_S) continue;
+				if (body.Instructions[i + 1].OpCode != OpCodes.Leave &&
+				    body.Instructions[i + 1].OpCode != OpCodes.Leave_S) continue;
+				// Not exactly sure why this happens, labels should agree here!?
+				// if (body.Instructions[i].Offset != body.Instructions[i + 1].Offset)
+				// 	Logger.Log(Logger.LogChannel.Warn, () =>
+				// 		"Found conescutive leave ops that don't agree");
+				// body.Instructions.RemoveAt(i + 1);
+				body.Instructions[i + 1].Operand = body.Instructions[i].Operand;
+				body.Instructions[i].OpCode = OpCodes.Nop;
+			}
 		}
 
 		// Special Harmony interop case: if no instructions exist, at least emit a quick return to attempt to get a valid method
