@@ -340,17 +340,13 @@ internal class ILManipulator
 		var newInstructions = ApplyTranspilers(cil, original, vDef => il.GetLocal(vDef), il.DefineLabel);
 
 		// Step 2: Emit code
-		foreach (var (cur, next) in newInstructions.Pairwise())
+		foreach (var cur in newInstructions)
 		{
 			cur.labels.ForEach(l => il.MarkLabel(l));
 			cur.blocks.ForEach(b => il.MarkBlockBefore(b));
 
 			// We need to handle exception handler opcodes specially because ILProcessor emits them automatically
-			// Case 1: leave + start or end of exception block => ILProcessor generates leave automatically
-			if ((cur.opcode == SRE.OpCodes.Leave || cur.opcode == SRE.OpCodes.Leave_S) &&
-			    (cur.blocks.Count > 0 || next?.blocks.Count > 0))
-				goto mark_block;
-			// Case 2: endfilter/endfinally and end of exception marker => ILProcessor will generate the correct end
+			// Case: endfilter/endfinally and end of exception marker => ILProcessor will generate the correct end
 			if ((cur.opcode == SRE.OpCodes.Endfilter || cur.opcode == SRE.OpCodes.Endfinally) && cur.blocks.Count > 0)
 				goto mark_block;
 			// Other cases are either intentional leave or invalid IL => let them be processed and let JIT generate correct exception
