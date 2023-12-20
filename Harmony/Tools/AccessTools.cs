@@ -73,7 +73,15 @@ namespace HarmonyLib
 		{
 			try
 			{
-				return assembly.GetTypes();
+				// GetTypes can not throw on some assemblies with unloadable types and instead return an array with some nulls in it.
+				// This is very rare so check first and only create a new array if something is actually found.
+				var tarr = assembly.GetTypes();
+				for (var i = 0; i < tarr.Length; i++)
+				{
+					if (tarr[i] == null)
+						return tarr.Where(type => type is object).ToArray();
+				}
+				return tarr;
 			}
 			catch (ReflectionTypeLoadException ex)
 			{
