@@ -16,8 +16,8 @@
         <PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
-        <AssemblyVersion>2.10.1.0</AssemblyVersion>
-        <FileVersion>2.10.1.0</FileVersion>
+        <AssemblyVersion>2.10.2.0</AssemblyVersion>
+        <FileVersion>2.10.2.0</FileVersion>
         <PackageIcon>logo_mini.png</PackageIcon>
         <PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
