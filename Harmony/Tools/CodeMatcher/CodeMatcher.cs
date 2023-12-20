@@ -34,6 +34,12 @@ public class CodeMatcher
 		Pos = direction > 0 ? Length : -1;
 	}
 
+	private int PosOrThrow()
+	{
+		if (IsInvalid) throw new InvalidOperationException("Current position is out of bounds");
+		return Pos;
+	}
+
 	/// <summary>Gets the number of code instructions in this matcher</summary>
 	/// <value>The count</value>
 	///
@@ -52,27 +58,27 @@ public class CodeMatcher
 	/// <summary>Gets the remaining code instructions</summary>
 	/// <value>The remaining count</value>
 	///
-	public int Remaining => Length - Math.Max(0, Pos);
+	public int Remaining => Length - PosOrThrow();
 
 	/// <summary>Gets the opcode at the current position</summary>
 	/// <value>The opcode</value>
 	///
-	public ref OpCode Opcode => ref codes[Pos].opcode;
+	public ref OpCode Opcode => ref codes[PosOrThrow()].opcode;
 
 	/// <summary>Gets the operand at the current position</summary>
 	/// <value>The operand</value>
 	///
-	public ref object Operand => ref codes[Pos].operand;
+	public ref object Operand => ref codes[PosOrThrow()].operand;
 
 	/// <summary>Gets the labels at the current position</summary>
 	/// <value>The labels</value>
 	///
-	public ref List<Label> Labels => ref codes[Pos].labels;
+	public ref List<Label> Labels => ref codes[PosOrThrow()].labels;
 
 	/// <summary>Gets the exception blocks at the current position</summary>
 	/// <value>The blocks</value>
 	///
-	public ref List<ExceptionBlock> Blocks => ref codes[Pos].blocks;
+	public ref List<ExceptionBlock> Blocks => ref codes[PosOrThrow()].blocks;
 
 	/// <summary>Creates an empty code matcher</summary>
 	public CodeMatcher()
@@ -85,6 +91,7 @@ public class CodeMatcher
 	///
 	public CodeMatcher(IEnumerable<CodeInstruction> instructions, ILGenerator generator = null)
 	{
+		if (instructions == null) throw new ArgumentNullException(nameof(instructions));
 		this.generator = generator;
 		codes = instructions.Select(c => new CodeInstruction(c)).ToList();
 	}
@@ -103,7 +110,7 @@ public class CodeMatcher
 	/// <summary>Gets instructions at the current position</summary>
 	/// <value>The instruction</value>
 	///
-	public CodeInstruction Instruction => codes[Pos];
+	public CodeInstruction Instruction => codes[PosOrThrow()];
 
 	/// <summary>Gets instructions at the current position with offset</summary>
 	/// <param name="offset">The offset</param>
@@ -111,7 +118,10 @@ public class CodeMatcher
 	///
 	public CodeInstruction InstructionAt(int offset)
 	{
-		return codes[Pos + offset];
+		var pos = PosOrThrow();
+		var newPos = pos + offset;
+		if (newPos < 0 || newPos >= Length) throw new ArgumentOutOfRangeException(nameof(offset), "offset causes position to go out of bounds");
+		return codes[newPos];
 	}
 
 	/// <summary>Gets all instructions</summary>
@@ -136,7 +146,7 @@ public class CodeMatcher
 	///
 	public List<CodeInstruction> Instructions(int count)
 	{
-		return codes.GetRange(Pos, count).Select(c => new CodeInstruction(c)).ToList();
+		return codes.GetRange(PosOrThrow(), count).Select(c => new CodeInstruction(c)).ToList();
 	}
 
 	/// <summary>Gets all instructions within a range</summary>
@@ -163,7 +173,12 @@ public class CodeMatcher
 	///
 	public List<CodeInstruction> InstructionsWithOffsets(int startOffset, int endOffset)
 	{
-		return InstructionsInRange(Pos + startOffset, Pos + endOffset);
+		var pos = PosOrThrow();
+		var startPos = pos + startOffset;
+		if (startPos < 0 || startPos >= Length) throw new ArgumentOutOfRangeException(nameof(startOffset), "startOffset causes position to go out of bounds");
+		var endPos = pos + endOffset;
+		if (endPos < 0 || endPos >= Length) throw new ArgumentOutOfRangeException(nameof(endOffset), "endOffset causes position to go out of bounds");
+		return InstructionsInRange(startPos, endPos);
 	}
 
 	/// <summary>Gets a list of all distinct labels</summary>
@@ -276,7 +291,7 @@ public class CodeMatcher
 	///
 	public CodeMatcher SetInstruction(CodeInstruction instruction)
 	{
-		codes[Pos] = instruction;
+		codes[PosOrThrow()] = instruction;
 		return this;
 	}
 
@@ -388,6 +403,7 @@ public class CodeMatcher
 	///
 	public CodeMatcher AddLabelsAt(int position, IEnumerable<Label> labels)
 	{
+		if (position < 0 || position >= Length) throw new ArgumentOutOfRangeException(nameof(position), "position is out of bounds");
 		codes[position].labels.AddRange(labels);
 		return this;
 	}
@@ -410,7 +426,10 @@ public class CodeMatcher
 	///
 	public CodeMatcher Insert(params CodeInstruction[] instructions)
 	{
-		codes.InsertRange(Pos, instructions);
+		if (Pos == Length)
+			codes.AddRange(instructions);
+		else
+			codes.InsertRange(PosOrThrow(), instructions);
 		return this;
 	}
 
@@ -420,7 +439,10 @@ public class CodeMatcher
 	///
 	public CodeMatcher Insert(IEnumerable<CodeInstruction> instructions)
 	{
-		codes.InsertRange(Pos, instructions);
+		if (Pos == Length)
+			codes.AddRange(instructions);
+		else
+			codes.InsertRange(PosOrThrow(), instructions);
 		return this;
 	}
 
@@ -431,8 +453,9 @@ public class CodeMatcher
 	///
 	public CodeMatcher InsertBranch(OpCode opcode, int destination)
 	{
+		var pos = PosOrThrow();
 		_ = CreateLabelAt(destination, out var label);
-		codes.Insert(Pos, new CodeInstruction(opcode, label));
+		codes.Insert(pos, new CodeInstruction(opcode, label));
 		return this;
 	}
 
@@ -479,7 +502,7 @@ public class CodeMatcher
 	///
 	public CodeMatcher RemoveInstruction()
 	{
-		codes.RemoveAt(Pos);
+		codes.RemoveAt(PosOrThrow());
 		return this;
 	}
 
@@ -489,7 +512,7 @@ public class CodeMatcher
 	///
 	public CodeMatcher RemoveInstructions(int count)
 	{
-		codes.RemoveRange(Pos, count);
+		codes.RemoveRange(PosOrThrow(), count);
 		return this;
 	}
 
@@ -500,6 +523,9 @@ public class CodeMatcher
 	///
 	public CodeMatcher RemoveInstructionsInRange(int start, int end)
 	{
+		if (start < 0 || start >= Length) throw new ArgumentOutOfRangeException(nameof(start), "start is out of bounds");
+		if (end < 0 || end >= Length) throw new ArgumentOutOfRangeException(nameof(end), "end is out of bounds");
+
 		if (start > end)
 		{
 			(start, end) = (end, start);
@@ -578,7 +604,7 @@ public class CodeMatcher
 
 	private CodeMatcher Search(Func<CodeInstruction, bool> predicate, int direction)
 	{
-		FixStart();
+		FixStart(); //todo: Should invalid position throw instead? Breaking change
 		while (IsValid && predicate(Instruction) == false)
 			Pos += direction;
 		lastError = IsInvalid ? $"Cannot find {predicate}" : null;
@@ -642,9 +668,9 @@ public class CodeMatcher
 
 	private CodeMatcher Match(CodeMatch[] matches, int direction, bool useEnd)
 	{
-		lastMatchCall = delegate()
+		lastMatchCall = delegate ()
 		{
-			FixStart();
+			FixStart(); //todo: Should invalid position throw instead? Breaking change
 			while (IsValid)
 			{
 				if (MatchSequence(Pos, matches))
