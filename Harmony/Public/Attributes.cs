@@ -21,7 +21,8 @@ namespace HarmonyLib
 		StaticConstructor,
 		/// <summary>This is an enumerator (<see cref="IEnumerable{T}"/>, <see cref="IEnumerator{T}"/> or UniTask coroutine)</summary>
 		/// <remarks>This path will target the <see cref="IEnumerator.MoveNext"/> method that contains the actual enumerator code</remarks>
-		Enumerator
+		Enumerator,
+		Async
 	}
 
 	/// <summary>Specifies the type of argument</summary>
@@ -112,7 +113,21 @@ namespace HarmonyLib
 		public HarmonyMethod info = new HarmonyMethod();
 	}
 
-	/// <summary>Annotation to define targets of your Harmony patch methods</summary>
+	/// <summary>Annotation to define a category for use with PatchCategory</summary>
+	///
+	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	public class HarmonyPatchCategory : HarmonyAttribute
+	{
+		/// <summary>Annotation specifying the category</summary>
+		/// <param name="category">Name of patch category</param>
+		///
+		public HarmonyPatchCategory(string category)
+		{
+			info.category = category;
+		}
+	}
+
+	/// <summary>Annotation to define your Harmony patch methods</summary>
 	///
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Delegate | AttributeTargets.Method, AllowMultiple = true)]
 	public class HarmonyPatch : HarmonyAttribute

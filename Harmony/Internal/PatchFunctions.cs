@@ -146,7 +146,7 @@ namespace HarmonyLib
 				// TODO: Handle new debugType
 				Logger.Log(Logger.LogChannel.IL,
 					() => $"Generated reverse patcher ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
-			}, new ILHookConfig { ManualApply = true });
+			}, applyByDefault: false);
 
 			try
 			{
@@ -157,7 +157,7 @@ namespace HarmonyLib
 				throw HarmonyException.Create(ex, patchBody);
 			}
 
-			var replacement = hook.GetCurrentTarget() as MethodInfo;
+			var replacement = hook.Method as MethodInfo;
 			PatchTools.RememberObject(standin.method, replacement);
 			return replacement;
 		}
