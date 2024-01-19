@@ -27,7 +27,7 @@ internal static class CecilEmitter
 
 	public static void Dump(MethodDefinition md, IEnumerable<string> dumpPaths, MethodBase original = null)
 	{
-		var name = $"HarmonyDump.{md.GetID(withType: false, simple: true).Replace(":", "_").Replace(" ", "_")}.{Guid.NewGuid().GetHashCode():X8}";
+		var name = $"HarmonyDump.{SanitizeTypeName(md.GetID(withType: false, simple: true))}.{Guid.NewGuid().GetHashCode():X8}";
 		var originalName = (original?.Name ?? md.Name).Replace('.', '_');
 		using var module = ModuleDefinition.CreateModule(name,
 			new ModuleParameters
@@ -119,5 +119,14 @@ internal static class CecilEmitter
 				Logger.Log(Logger.LogChannel.Error, () => $"Failed to dump {md.GetID(simple: true)} to {fullPath}: {e}");
 			}
 		}
+	}
+
+	private static string SanitizeTypeName(string typeName)
+	{
+		return typeName
+			.Replace(":", "_")
+			.Replace(" ", "_")
+			.Replace("<", "{")
+			.Replace(">", "}");
 	}
 }
