@@ -9,6 +9,7 @@ using MonoMod.Core.Utils;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Web;
@@ -120,7 +121,6 @@ namespace HarmonyLibTests.IL
 				@".locals init (
     System.Boolean V_0
     System.Boolean V_1
-    System.Exception V_2
 )
 IL_0000: nop
 .try
@@ -129,69 +129,69 @@ IL_0000: nop
   IL_0002: ldsfld System.Boolean HarmonyLibTests.Assets.TryCatchMethodClass::run
   IL_0007: stloc.0
   IL_0008: ldloc.0
-  IL_0009: brfalse IL_001b
-  IL_000e: nop
-  IL_000f: ldstr ""Run""
-  IL_0014: call System.Void System.Console::WriteLine(System.String)
+  IL_0009: brfalse IL_0019
+  IL_000e: ldstr ""Run""
+  IL_0013: call System.Void System.Console::WriteLine(System.String)
+  IL_0018: nop
   IL_0019: nop
-  IL_001a: nop
-  IL_001b: nop
-  IL_001c: leave IL_002f
+  IL_001a: leave IL_0032
+  IL_001f: leave IL_0032
 } // end .try
 finally
 {
-  IL_0021: nop
-  IL_0022: ldstr ""Finally""
-  IL_0027: call System.Void System.Console::WriteLine(System.String)
-  IL_002c: nop
-  IL_002d: nop
-  IL_002e: endfinally
+  IL_0024: nop
+  IL_0025: ldstr ""Finally""
+  IL_002a: call System.Void System.Console::WriteLine(System.String)
+  IL_002f: nop
+  IL_0030: nop
+  IL_0031: endfinally
 } // end handler (finally)
-IL_002f: ldstr ""Post-finally""
-IL_0034: call System.Void System.Console::WriteLine(System.String)
-IL_0039: nop
+IL_0032: ldstr ""Post-finally""
+IL_0037: call System.Void System.Console::WriteLine(System.String)
+IL_003c: nop
 .try
 {
   .try
   {
-    IL_003a: nop
-    IL_003b: ldsfld System.Boolean HarmonyLibTests.Assets.TryCatchMethodClass::run
-    IL_0040: stloc.1
-    IL_0041: ldloc.1
-    IL_0042: brfalse IL_0054
-    IL_0047: nop
-    IL_0048: ldstr ""Run 2""
-    IL_004d: call System.Void System.Console::WriteLine(System.String)
-    IL_0052: nop
-    IL_0053: nop
+    IL_003d: nop
+    IL_003e: ldsfld System.Boolean HarmonyLibTests.Assets.TryCatchMethodClass::run
+    IL_0043: stloc.1
+    IL_0044: ldloc.1
+    IL_0045: brfalse IL_0055
+    IL_004a: ldstr ""Run 2""
+    IL_004f: call System.Void System.Console::WriteLine(System.String)
     IL_0054: nop
-    IL_0055: leave IL_006d
+    IL_0055: nop
+    IL_0056: leave IL_0078
+    IL_005b: leave IL_0078
   } // end .try
   catch System.Exception
   {
-    IL_005a: stloc.2
-    IL_005b: nop
-    IL_005c: ldstr ""Catch 2""
-    IL_0061: call System.Void System.Console::WriteLine(System.String)
-    IL_0066: nop
-    IL_0067: nop
-    IL_0068: leave IL_006d
+    IL_0060: pop
+    IL_0061: nop
+    IL_0062: ldstr ""Catch 2""
+    IL_0067: call System.Void System.Console::WriteLine(System.String)
+    IL_006c: nop
+    IL_006d: nop
+    IL_006e: leave IL_0078
+    IL_0073: leave IL_0078
   } // end handler (catch)
-  IL_006d: leave IL_0080
+  IL_0078: leave IL_0090
+  IL_007d: leave IL_0090
 } // end .try
 finally
 {
-  IL_0072: nop
-  IL_0073: ldstr ""Finally 2""
-  IL_0078: call System.Void System.Console::WriteLine(System.String)
-  IL_007d: nop
-  IL_007e: nop
-  IL_007f: endfinally
+  IL_0082: nop
+  IL_0083: ldstr ""Finally 2""
+  IL_0088: call System.Void System.Console::WriteLine(System.String)
+  IL_008d: nop
+  IL_008e: nop
+  IL_008f: endfinally
 } // end handler (finally)
-IL_0080: ldstr ""Post-finally 2""
-IL_0085: call System.Void System.Console::WriteLine(System.String)
-IL_008a: nop
-IL_008b: ret
+IL_0090: ldstr ""Post-finally 2""
+IL_0095: call System.Void System.Console::WriteLine(System.String)
+IL_009a: nop
+IL_009b: ret
 ";
 #else
 @".locals init (
@@ -202,44 +202,47 @@ IL_008b: ret
   IL_0005: brfalse IL_0014
   IL_000a: ldstr ""Run""
   IL_000f: call System.Void System.Console::WriteLine(System.String)
-  IL_0014: leave IL_0024
+  IL_0014: leave IL_0029
+  IL_0019: leave IL_0029
 } // end .try
 finally
 {
-  IL_0019: ldstr ""Finally""
-  IL_001e: call System.Void System.Console::WriteLine(System.String)
-  IL_0023: endfinally
+  IL_001e: ldstr ""Finally""
+  IL_0023: call System.Void System.Console::WriteLine(System.String)
+  IL_0028: endfinally
 } // end handler (finally)
-IL_0024: ldstr ""Post-finally""
-IL_0029: call System.Void System.Console::WriteLine(System.String)
+IL_0029: ldstr ""Post-finally""
+IL_002e: call System.Void System.Console::WriteLine(System.String)
 .try
 {
   .try
   {
-    IL_002e: ldsfld System.Boolean HarmonyLibTests.Assets.TryCatchMethodClass::run
-    IL_0033: brfalse IL_0042
-    IL_0038: ldstr ""Run 2""
-    IL_003d: call System.Void System.Console::WriteLine(System.String)
-    IL_0042: leave IL_0057
+    IL_0033: ldsfld System.Boolean HarmonyLibTests.Assets.TryCatchMethodClass::run
+    IL_0038: brfalse IL_0047
+    IL_003d: ldstr ""Run 2""
+    IL_0042: call System.Void System.Console::WriteLine(System.String)
+    IL_0047: leave IL_0076
+    IL_004c: leave IL_0066
   } // end .try
   catch System.Exception
   {
-    IL_0047: pop
-    IL_0048: ldstr ""Catch 2""
-    IL_004d: call System.Void System.Console::WriteLine(System.String)
-    IL_0052: leave IL_0057
+    IL_0051: pop
+    IL_0052: ldstr ""Catch 2""
+    IL_0057: call System.Void System.Console::WriteLine(System.String)
+    IL_005c: leave IL_0076
+    IL_0061: leave IL_0066
   } // end handler (catch)
-  IL_0057: leave IL_0067
+  IL_0066: leave IL_0076
 } // end .try
 finally
 {
-  IL_005c: ldstr ""Finally 2""
-  IL_0061: call System.Void System.Console::WriteLine(System.String)
-  IL_0066: endfinally
+  IL_006b: ldstr ""Finally 2""
+  IL_0070: call System.Void System.Console::WriteLine(System.String)
+  IL_0075: endfinally
 } // end handler (finally)
-IL_0067: ldstr ""Post-finally 2""
-IL_006c: call System.Void System.Console::WriteLine(System.String)
-IL_0071: ret
+IL_0076: ldstr ""Post-finally 2""
+IL_007b: call System.Void System.Console::WriteLine(System.String)
+IL_0080: ret
 ";
 #endif
 			var m = AccessTools.Method(typeof(TryCatchMethodClass), nameof(TryCatchMethodClass.TryCatchMethod));
