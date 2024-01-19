@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net35;net45;netcoreapp3.1;net6.0;net7.0</TargetFrameworks>
+        <TargetFrameworks>net35;net45;netcoreapp3.1;net6.0</TargetFrameworks>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <IsPackable>false</IsPackable>
@@ -62,7 +62,7 @@
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
 
         <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.0.0" />
+        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.1.0-prerelease.2" />
 
         <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
     </ItemGroup>
