@@ -297,7 +297,7 @@ namespace HarmonyLib
 				if (HarmonyGlobalSettings.DisallowLegacyGlobalUnpatchAll)
 				{
 					Logger.Log(Logger.LogChannel.Warn, () => "Legacy UnpatchAll has been called AND DisallowLegacyGlobalUnpatchAll=true. " +
-					                                         "Skipping execution of UnpatchAll");
+																		  "Skipping execution of UnpatchAll");
 					return;
 				}
 
@@ -308,7 +308,7 @@ namespace HarmonyLib
 				if (harmonyID.Length == 0)
 				{
 					Logger.Log(Logger.LogChannel.Warn, () => "Legacy UnpatchAll was called with harmonyID=\"\" which is an invalid id. " +
-					                                         "Skipping execution of UnpatchAll");
+																		  "Skipping execution of UnpatchAll");
 					return;
 				}
 
@@ -414,24 +414,30 @@ namespace HarmonyLib
 			return PatchProcessor.VersionInfo(out currentVersion);
 		}
 
+		private static int _autoGuidCounter = 100;
+
 		/// <summary>Creates a new Harmony instance and applies all patches specified in the type</summary>
 		/// <param name="type">The type to scan for patches.</param>
-		/// <param name="harmonyInstanceId">The ID for the Harmony instance to create, which will be used.</param>
+		/// <param name="harmonyInstanceId">ID of the Harmony instance which will be created. Specify the ID if other plugins may want to interact with your patches.</param>
 		///
 		public static Harmony CreateAndPatchAll(Type type, string harmonyInstanceId = null)
 		{
-			var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
+			if (type == null) throw new ArgumentNullException(nameof(type));
+
+			var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{System.Threading.Interlocked.Increment(ref _autoGuidCounter)}-{type.Assembly.GetName().Name}-{type.FullName}");
 			harmony.PatchAll(type);
 			return harmony;
 		}
 
 		/// <summary>Applies all patches specified in the assembly</summary>
 		/// <param name="assembly">The assembly to scan.</param>
-		/// <param name="harmonyInstanceId">The ID for the Harmony instance to create, which will be used.</param>
+		/// <param name="harmonyInstanceId">ID of the Harmony instance which will be created. Specify the ID if other plugins may want to interact with your patches.</param>
 		///
 		public static Harmony CreateAndPatchAll(Assembly assembly, string harmonyInstanceId = null)
 		{
-			var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{Guid.NewGuid()}");
+			if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+
+			var harmony = new Harmony(harmonyInstanceId ?? $"harmony-auto-{System.Threading.Interlocked.Increment(ref _autoGuidCounter)}-{assembly.GetName().Name}");
 			harmony.PatchAll(assembly);
 			return harmony;
 		}
