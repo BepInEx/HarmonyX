@@ -777,4 +777,31 @@ namespace HarmonyLib
 			NewName = name;
 		}
 	}
+
+	/// <summary> Flags used for optionally patching members that might not exist.</summary>
+	///
+	[Flags]
+	public enum OptionalFlags
+	{
+		/// <summary>Default behavior (throw and abort patching if there are no matches).</summary>
+		/// 
+		None = 0,
+
+		/// <summary> Do not throw an exception and abort the patching process if no matches are found (a warning is logged instead).</summary>
+		/// 
+		AllowNoMatches = 1 << 1,
+	}
+
+	/// <summary>Attribute used for optionally patching members that might not exist.</summary>
+	///
+	[AttributeUsage(AttributeTargets.Method)]
+	public class HarmonyOptional : HarmonyAttribute
+	{
+		/// <summary>Default constructor</summary>
+		///
+		public HarmonyOptional(OptionalFlags flags = OptionalFlags.AllowNoMatches)
+		{
+			info.optionalFlags = flags;
+		}
+	}
 }

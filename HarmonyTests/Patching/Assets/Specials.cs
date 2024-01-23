@@ -127,6 +127,40 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public class OptionalPatch
+	{
+		[HarmonyPrefix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), "missing_method")]
+		public static void Test0() => throw new InvalidOperationException();
+
+		[HarmonyReversePatch, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), "missing_method")]
+		public static void Test1() => throw new InvalidOperationException();
+		
+		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), MethodType.Constructor, typeof(string))]
+		public static void Test2() => throw new InvalidOperationException();
+		
+		[HarmonyTranspiler, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), "missing_method", MethodType.Getter)]
+		public static void Test3() => throw new InvalidOperationException();
+
+		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), nameof(NotEnumerator), MethodType.Enumerator)]
+		public static void Test4() => throw new InvalidOperationException();
+
+		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), nameof(NotEnumerator), MethodType.Async)]
+		public static void Test5() => throw new InvalidOperationException();
+
+		private void NotEnumerator() => throw new InvalidOperationException();
+	}
+
+	public static class OptionalPatchNone
+	{
+		[HarmonyPrefix]
+		[HarmonyOptional(OptionalFlags.None)]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method")]
+		public static void Prefix()
+		{
+			throw new InvalidOperationException();
+		}
+	}
+
 	public static class SafeWrapPatch
 	{
 		public static bool called = false;

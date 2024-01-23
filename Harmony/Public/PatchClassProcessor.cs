@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
+using MonoMod.Utils;
 
 namespace HarmonyLib
 {
@@ -59,7 +60,7 @@ namespace HarmonyLib
 			containerAttributes = HarmonyMethod.Merge(harmonyAttributes);
 			if (containerAttributes.methodType is null) // MethodType default is Normal
 				containerAttributes.methodType = MethodType.Normal;
-			
+
 			this.Category = containerAttributes.category;
 
 			auxilaryMethods = new Dictionary<Type, MethodInfo>();
@@ -128,8 +129,18 @@ namespace HarmonyLib
 					var annotatedOriginal = patchMethod.info.GetOriginalMethod();
 					if (annotatedOriginal is object)
 						lastOriginal = annotatedOriginal;
+
 					if (lastOriginal is null)
+					{
+						if (IsPatchOptional(patchMethod))
+						{
+							Logger.Log(Logger.LogChannel.Warn, () => $"Skipping optional reverse patch {patchMethod.info.method.FullDescription()} - target method not found");
+							continue;
+						}
+
 						throw new ArgumentException($"Undefined target method for reverse patch method {patchMethod.info.method.FullDescription()}");
+					}
+
 					var reversePatcher = instance.CreateReversePatcher(lastOriginal, patchMethod.info);
 					lock (PatchProcessor.locker)
 						_ = reversePatcher.Patch();
@@ -173,7 +184,15 @@ namespace HarmonyLib
 			{
 				lastOriginal = patchMethod.info.GetOriginalMethod();
 				if (lastOriginal is null)
+				{
+					if (IsPatchOptional(patchMethod))
+					{
+						Logger.Log(Logger.LogChannel.Warn, () => $"Skipping optional patch {patchMethod.info.method.FullDescription()} - target method not found");
+						continue;
+					}
+
 					throw new ArgumentException($"Undefined target method for patch method {patchMethod.info.method.FullDescription()}");
+				}
 
 				var job = jobs.GetJob(lastOriginal);
 				job.AddPatch(patchMethod);
@@ -184,6 +203,13 @@ namespace HarmonyLib
 				ProcessPatchJob(job);
 			}
 			return jobs.GetReplacements();
+		}
+
+		static bool IsPatchOptional(AttributePatch patchMethod)
+		{
+			var optionalFlags = patchMethod.info.optionalFlags;
+			var isOptional = optionalFlags != null && optionalFlags.Value.Has(OptionalFlags.AllowNoMatches);
+			return isOptional;
 		}
 
 		void ProcessPatchJob(PatchJobs<MethodInfo>.Job job)
