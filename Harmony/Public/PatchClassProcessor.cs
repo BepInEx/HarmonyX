@@ -128,6 +128,8 @@ namespace HarmonyLib
 					var annotatedOriginal = patchMethod.info.GetOriginalMethod();
 					if (annotatedOriginal is object)
 						lastOriginal = annotatedOriginal;
+					if (lastOriginal is null)
+						throw new ArgumentException($"Undefined target method for reverse patch method {patchMethod.info.method.FullDescription()}");
 					var reversePatcher = instance.CreateReversePatcher(lastOriginal, patchMethod.info);
 					lock (PatchProcessor.locker)
 						_ = reversePatcher.Patch();
