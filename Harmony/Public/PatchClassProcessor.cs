@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Text;
 using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
-using MonoMod.Utils;
 
 namespace HarmonyLib
 {
