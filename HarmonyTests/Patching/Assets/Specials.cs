@@ -147,18 +147,20 @@ namespace HarmonyLibTests.Assets
 		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), nameof(NotEnumerator), MethodType.Async)]
 		public static void Test5() => throw new InvalidOperationException();
 
+		[HarmonyPostfix]
+		[HarmonyOptional]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method1")]
+		[HarmonyPatch(typeof(OptionalPatch), nameof(NotEnumerator), MethodType.Normal)]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method2")]
+		public static void Test6() => throw new InvalidOperationException();
+
 		private void NotEnumerator() => throw new InvalidOperationException();
 	}
 
 	public static class OptionalPatchNone
 	{
-		[HarmonyPrefix]
-		[HarmonyOptional(OptionalFlags.None)]
-		[HarmonyPatch(typeof(OptionalPatch), "missing_method")]
-		public static void Prefix()
-		{
-			throw new InvalidOperationException();
-		}
+		[HarmonyPrefix, HarmonyPatch(typeof(OptionalPatch), "missing_method")]
+		public static void Prefix() => throw new InvalidOperationException();
 	}
 
 	public static class SafeWrapPatch

@@ -67,9 +67,9 @@ namespace HarmonyLib
 		///
 		public bool? wrapTryCatch;
 		
-		/// <summary>Flags used for optionally patching members that might not exist.</summary>
+		/// <summary>Whether to not throw/abort when trying to patch members that do not exist (skip instead).</summary>
 		///
-		public OptionalFlags? optionalFlags;
+		public bool? optional;
 
 		/// <summary>Default constructor</summary>
 		///

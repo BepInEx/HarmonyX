@@ -778,30 +778,17 @@ namespace HarmonyLib
 		}
 	}
 
-	/// <summary> Flags used for optionally patching members that might not exist.</summary>
-	///
-	[Flags]
-	public enum OptionalFlags
-	{
-		/// <summary>Default behavior (throw and abort patching if there are no matches).</summary>
-		/// 
-		None = 0,
-
-		/// <summary> Do not throw an exception and abort the patching process if no matches are found (a warning is logged instead).</summary>
-		/// 
-		AllowNoMatches = 1 << 1,
-	}
-
-	/// <summary>Attribute used for optionally patching members that might not exist.</summary>
+	/// <summary>Attribute used for optionally patching members that might not exist.
+	/// Harmony patches with this attribute will not throw an exception and abort the patching process if the target member is not found (a warning is logged instead).</summary>
 	///
 	[AttributeUsage(AttributeTargets.Method)]
 	public class HarmonyOptional : HarmonyAttribute
 	{
 		/// <summary>Default constructor</summary>
 		///
-		public HarmonyOptional(OptionalFlags flags = OptionalFlags.AllowNoMatches)
+		public HarmonyOptional()
 		{
-			info.optionalFlags = flags;
+			info.optional = true;
 		}
 	}
 }

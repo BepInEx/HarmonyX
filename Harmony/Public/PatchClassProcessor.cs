@@ -132,7 +132,7 @@ namespace HarmonyLib
 
 					if (lastOriginal is null)
 					{
-						if (IsPatchOptional(patchMethod))
+						if (patchMethod.info.optional == true)
 						{
 							Logger.Log(Logger.LogChannel.Warn, () => $"Skipping optional reverse patch {patchMethod.info.method.FullDescription()} - target method not found");
 							continue;
@@ -185,7 +185,7 @@ namespace HarmonyLib
 				lastOriginal = patchMethod.info.GetOriginalMethod();
 				if (lastOriginal is null)
 				{
-					if (IsPatchOptional(patchMethod))
+					if (patchMethod.info.optional == true)
 					{
 						Logger.Log(Logger.LogChannel.Warn, () => $"Skipping optional patch {patchMethod.info.method.FullDescription()} - target method not found");
 						continue;
@@ -203,13 +203,6 @@ namespace HarmonyLib
 				ProcessPatchJob(job);
 			}
 			return jobs.GetReplacements();
-		}
-
-		static bool IsPatchOptional(AttributePatch patchMethod)
-		{
-			var optionalFlags = patchMethod.info.optionalFlags;
-			var isOptional = optionalFlags != null && optionalFlags.Value.Has(OptionalFlags.AllowNoMatches);
-			return isOptional;
 		}
 
 		void ProcessPatchJob(PatchJobs<MethodInfo>.Job job)
