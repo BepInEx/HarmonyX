@@ -43,6 +43,21 @@ namespace HarmonyLibTests.Patching
 		*/
 
 		[Test]
+		public void Test_Optional_Patch()
+		{
+			var instance = new Harmony("special-case-optional-patch");
+			Assert.NotNull(instance);
+
+			Assert.Throws<InvalidOperationException>(OptionalPatch.Thrower);
+			Assert.DoesNotThrow(() => instance.PatchAll(typeof(OptionalPatch)));
+			Assert.DoesNotThrow(OptionalPatch.Thrower);
+
+			Assert.Throws<InvalidOperationException>(OptionalPatchNone.Thrower);
+			Assert.Throws<HarmonyException>(() => instance.PatchAll(typeof(OptionalPatchNone)));
+			Assert.Throws<InvalidOperationException>(OptionalPatchNone.Thrower);
+		}
+
+		[Test]
 		public void Test_Wrap_Patch()
 		{
 			SafeWrapPatch.called = false;
@@ -185,7 +200,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual("MoveNext", EnumeratorPatch.patchTarget.Name);
 
 			var testObject = new EnumeratorCode();
-			Assert.AreEqual(new []{ 1, 2, 3, 4, 5 }, testObject.NumberEnumerator().ToArray());
+			Assert.AreEqual(new[] { 1, 2, 3, 4, 5 }, testObject.NumberEnumerator().ToArray());
 			Assert.AreEqual(6, EnumeratorPatch.runTimes);
 		}
 

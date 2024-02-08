@@ -66,6 +66,10 @@ namespace HarmonyLib
 		/// <summary>Whether to wrap the patch itself into a try/catch.</summary>
 		///
 		public bool? wrapTryCatch;
+		
+		/// <summary>Whether to not throw/abort when trying to patch members that do not exist (skip instead).</summary>
+		///
+		public bool? optional;
 
 		/// <summary>Default constructor</summary>
 		///

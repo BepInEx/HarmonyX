@@ -127,6 +127,48 @@ namespace HarmonyLibTests.Assets
 		}
 	}
 
+	public class OptionalPatch
+	{
+		[HarmonyPrefix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), "missing_method")]
+		public static void Test0() => throw new InvalidOperationException();
+
+		[HarmonyReversePatch, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), "missing_method")]
+		public static void Test1() => throw new InvalidOperationException();
+		
+		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), MethodType.Constructor, typeof(string))]
+		public static void Test2() => throw new InvalidOperationException();
+		
+		[HarmonyTranspiler, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), "missing_method", MethodType.Getter)]
+		public static void Test3() => throw new InvalidOperationException();
+
+		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), nameof(NotEnumerator), MethodType.Enumerator)]
+		public static void Test4() => throw new InvalidOperationException();
+
+		[HarmonyPostfix, HarmonyOptional, HarmonyPatch(typeof(OptionalPatch), nameof(NotEnumerator), MethodType.Async)]
+		public static void Test5() => throw new InvalidOperationException();
+
+		[HarmonyPrefix]
+		[HarmonyOptional]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method1")]
+		[HarmonyPatch(typeof(OptionalPatch), nameof(Thrower), MethodType.Normal)]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method2")]
+		public static bool Test6() => false;
+
+		private void NotEnumerator() => throw new InvalidOperationException();
+		public static void Thrower() => throw new InvalidOperationException();
+	}
+
+	public static class OptionalPatchNone
+	{
+		[HarmonyPrefix]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method1")]
+		[HarmonyPatch(typeof(OptionalPatchNone), nameof(Thrower), MethodType.Normal)]
+		[HarmonyPatch(typeof(OptionalPatch), "missing_method2")]
+		public static bool Test6() => false;
+
+		public static void Thrower() => throw new InvalidOperationException();
+	}
+
 	public static class SafeWrapPatch
 	{
 		public static bool called = false;

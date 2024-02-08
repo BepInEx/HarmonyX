@@ -777,4 +777,18 @@ namespace HarmonyLib
 			NewName = name;
 		}
 	}
+
+	/// <summary>Attribute used for optionally patching members that might not exist.
+	/// Harmony patches with this attribute will not throw an exception and abort the patching process if the target member is not found (a warning is logged instead).</summary>
+	///
+	[AttributeUsage(AttributeTargets.Method)]
+	public class HarmonyOptional : HarmonyAttribute
+	{
+		/// <summary>Default constructor</summary>
+		///
+		public HarmonyOptional()
+		{
+			info.optional = true;
+		}
+	}
 }
