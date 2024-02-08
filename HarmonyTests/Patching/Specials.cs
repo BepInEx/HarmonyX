@@ -48,9 +48,13 @@ namespace HarmonyLibTests.Patching
 			var instance = new Harmony("special-case-optional-patch");
 			Assert.NotNull(instance);
 
+			Assert.Throws<InvalidOperationException>(OptionalPatch.Thrower);
 			Assert.DoesNotThrow(() => instance.PatchAll(typeof(OptionalPatch)));
+			Assert.DoesNotThrow(OptionalPatch.Thrower);
 
+			Assert.Throws<InvalidOperationException>(OptionalPatchNone.Thrower);
 			Assert.Throws<HarmonyException>(() => instance.PatchAll(typeof(OptionalPatchNone)));
+			Assert.Throws<InvalidOperationException>(OptionalPatchNone.Thrower);
 		}
 
 		[Test]
