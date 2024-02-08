@@ -162,7 +162,7 @@ namespace HarmonyLibTests.Assets
 	{
 		[HarmonyPrefix]
 		[HarmonyPatch(typeof(OptionalPatch), "missing_method1")]
-		[HarmonyPatch(typeof(OptionalPatch), nameof(Thrower), MethodType.Normal)]
+		[HarmonyPatch(typeof(OptionalPatchNone), nameof(Thrower), MethodType.Normal)]
 		[HarmonyPatch(typeof(OptionalPatch), "missing_method2")]
 		public static bool Test6() => false;
 
