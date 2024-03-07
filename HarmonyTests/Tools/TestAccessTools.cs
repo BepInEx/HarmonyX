@@ -15,10 +15,7 @@ namespace HarmonyLibTests.Tools
 	public class Test_AccessTools : TestLogger
 	{
 		[OneTimeSetUp]
-		public void CreateAndUnloadTestDummyAssemblies()
-		{
-			TestTools.RunInIsolationContext(CreateTestDummyAssemblies);
-		}
+		public void CreateAndUnloadTestDummyAssemblies() => TestTools.RunInIsolationContext(CreateTestDummyAssemblies);
 
 		// Comment out following attribute if you want to keep the dummy assembly files after the test runs.
 		[OneTimeTearDown]
@@ -77,7 +74,7 @@ namespace HarmonyLibTests.Tools
 			var currentAssemblies = AppDomain.CurrentDomain.GetAssemblies();
 			var referencedDynamicAssemblies = assemblyBuilder.GetReferencedAssemblies()
 				.Select(referencedAssemblyName => currentAssemblies.FirstOrDefault(assembly => assembly.FullName == referencedAssemblyName.FullName))
-				.Where(referencedAssembly => referencedAssembly is object && referencedAssembly.IsDynamic)
+				.Where(referencedAssembly => referencedAssembly is not null && referencedAssembly.IsDynamic)
 				.ToArray();
 			// ILPack currently has an issue where the dynamic assembly has an assembly reference to the runtime assembly (System.Private.CoreLib)
 			// rather than reference assembly (System.Runtime). This causes issues for decompilers, but is fine for loading via Assembly.Load et all,
@@ -280,10 +277,10 @@ namespace HarmonyLibTests.Tools
 			Assert.AreEqual(type, m2.DeclaringType);
 			Assert.AreEqual("Method1", m2.Name);
 
-			var m3 = AccessTools.Method(type, "Method1", new Type[] { });
+			var m3 = AccessTools.Method(type, "Method1", []);
 			Assert.NotNull(m3);
 
-			var m4 = AccessTools.Method(type, "SetField", new Type[] { typeof(string) });
+			var m4 = AccessTools.Method(type, "SetField", [typeof(string)]);
 			Assert.NotNull(m4);
 		}
 
@@ -339,7 +336,7 @@ namespace HarmonyLibTests.Tools
 			Assert.AreEqual(0, empty.Length);
 
 			// TODO: typeof(null) is ambiguous and resolves for now to <object>. is this a problem?
-			var types = AccessTools.GetTypes(new object[] { "hi", 123, null, new Test_AccessTools() });
+			var types = AccessTools.GetTypes(["hi", 123, null, new Test_AccessTools()]);
 			Assert.NotNull(types);
 			Assert.AreEqual(4, types.Length);
 			Assert.AreEqual(typeof(string), types[0]);

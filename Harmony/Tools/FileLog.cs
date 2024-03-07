@@ -12,7 +12,7 @@ namespace HarmonyLib
 	[Obsolete("Use HarmonyFileLog instead")]
 	public static class FileLog
 	{
-		private static readonly object fileLock = new object();
+		private static readonly object fileLock = new();
 		private static bool _logPathInited;
 		private static string _logPath;
 
@@ -63,12 +63,9 @@ namespace HarmonyLib
 		///
 		public static int indentLevel = 0;
 
-		static List<string> buffer = new List<string>();
+		static List<string> buffer = [];
 
-		static string IndentString()
-		{
-			return new string(indentChar, indentLevel);
-		}
+		static string IndentString() => new(indentChar, indentLevel);
 
 		/// <summary>Changes the indentation level</summary>
 		/// <param name="delta">The value to add to the indentation level</param>
@@ -115,7 +112,7 @@ namespace HarmonyLib
 			{
 				var result = buffer;
 				if (clear)
-					buffer = new List<string>();
+					buffer = [];
 				return result;
 			}
 		}

@@ -1,7 +1,6 @@
 using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
@@ -48,7 +47,7 @@ namespace HarmonyLibTests.Patching
 			var original = AccessTools.Method(typeof(Class3), nameof(Class3.TestMethod));
 			Assert.NotNull(original);
 
-			var transpiler = AccessTools.Method(typeof(Transpiling), nameof(Transpiling.TestTranspiler));
+			var transpiler = AccessTools.Method(typeof(Transpiling), nameof(TestTranspiler));
 			Assert.NotNull(transpiler);
 
 			var instance = new Harmony("test-exception1");
@@ -79,11 +78,11 @@ namespace HarmonyLibTests.Patching
 				if (instruction.opcode == insertLoc)
 				{
 					var blocks = instruction.blocks;
-					instruction.blocks = new List<ExceptionBlock>();
+					instruction.blocks = [];
 
 					var log = AccessTools.DeclaredField(typeof(Class3), "log");
 					var tst = typeof(string);
-					var concat = AccessTools.Method(typeof(string), nameof(string.Concat), new Type[] { tst, tst });
+					var concat = AccessTools.Method(typeof(string), nameof(string.Concat), [tst, tst]);
 					yield return new CodeInstruction(OpCodes.Ldarg_0) { blocks = blocks };
 					yield return new CodeInstruction(OpCodes.Ldarg_0);
 					yield return new CodeInstruction(OpCodes.Ldfld, log);

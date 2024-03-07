@@ -1,7 +1,6 @@
 ﻿using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
-using System;
 using System.Collections.Generic;
 
 namespace HarmonyLibTests.Tools
@@ -9,7 +8,7 @@ namespace HarmonyLibTests.Tools
 	[TestFixture, NonParallelizable]
 	public class TestTraverse_Basics : TestLogger
 	{
-		static readonly List<string> fieldNames = new List<string> { "_root", "_type", "_info", "_method", "_params" };
+		static readonly List<string> fieldNames = ["_root", "_type", "_info", "_method", "_params"];
 
 		// Basic integrity check for our test class and the field-testvalue relations
 		//
@@ -64,7 +63,7 @@ namespace HarmonyLibTests.Tools
 
 			var trv4 = new Traverse(new FooBar()).Field("field");
 			AssertIsEmpty(trv4.Method("", new object[0]));
-			AssertIsEmpty(trv4.Method("", new Type[0], new object[0]));
+			AssertIsEmpty(trv4.Method("", [], []));
 		}
 
 		// Traverse should handle basic null values

@@ -66,7 +66,7 @@ namespace HarmonyLib
 		/// <summary>Whether to wrap the patch itself into a try/catch.</summary>
 		///
 		public bool? wrapTryCatch;
-		
+
 		/// <summary>Whether to not throw/abort when trying to patch members that do not exist (skip instead).</summary>
 		///
 		public bool? optional;
@@ -85,7 +85,7 @@ namespace HarmonyLib
 				throw new ArgumentException("Harmony method must be static", nameof(theMethod));
 			method = theMethod;
 			var infos = HarmonyMethodExtensions.GetFromMethod(method);
-			if (infos is object)
+			if (infos is not null)
 				Merge(infos).CopyTo(this);
 		}
 
@@ -165,6 +165,7 @@ namespace HarmonyLib
 		///
 		public static HarmonyMethod Merge(List<HarmonyMethod> attributes)
 		{
+			if (attributes is null || attributes.Count == 0) return new HarmonyMethod();
 			return Merge((IEnumerable<HarmonyMethod>) attributes);
 		}
 
@@ -182,7 +183,7 @@ namespace HarmonyLib
 					// The second half of this if is needed because priority defaults to -1
 					// This causes the value of a HarmonyPriority attribute to be overriden by the next attribute if it is not merged last
 					// should be removed by making priority nullable and default to null at some point
-					if (val is object && (f != nameof(HarmonyMethod.priority) || (int)val != -1))
+					if (val is not null && (f != nameof(priority) || (int)val != -1))
 						HarmonyMethodExtensions.SetValue(resultTrv, f, val);
 				});
 			});
@@ -207,44 +208,24 @@ namespace HarmonyLib
 		// used for error reporting
 		internal string Description()
 		{
-			var cName = declaringType is object ? declaringType.FullDescription() : "undefined";
+			var cName = declaringType is not null ? declaringType.FullDescription() : "undefined";
 			var mName = methodName ?? "undefined";
 			var tName = methodType.HasValue ? methodType.Value.ToString() : "undefined";
-			var aName = argumentTypes is object ? argumentTypes.Description() : "undefined";
+			var aName = argumentTypes is not null ? argumentTypes.Description() : "undefined";
 			return $"(class={cName}, methodname={mName}, type={tName}, args={aName})";
 		}
 
-		internal Type GetDeclaringType()
-		{
-			return declaringType;
-		}
-
-		internal Type[] GetArgumentList()
-		{
-			return argumentTypes ?? EmptyType.NoArgs;
-		}
-
+		internal Type[] GetArgumentList() => argumentTypes ?? Type.EmptyTypes;
 
 		/// <summary>Creates a patch from a given method</summary>
 		/// <param name="method">The original method</param>
 		///
-		public static implicit operator HarmonyMethod(MethodInfo method)
-		{
-			return new HarmonyMethod(method);
-		}
+		public static implicit operator HarmonyMethod(MethodInfo method) => new(method);
 
 		/// <summary>Creates a patch from a given method</summary>
 		/// <param name="delegate">The original method</param>
 		///
-		public static implicit operator HarmonyMethod(Delegate @delegate)
-		{
-			return new HarmonyMethod(@delegate);
-		}
-	}
-
-	internal static class EmptyType
-	{
-		internal static readonly Type[] NoArgs = new Type[0];
+		public static implicit operator HarmonyMethod(Delegate @delegate) => new(@delegate);
 	}
 
 	/// <summary>Annotation extensions</summary>
@@ -275,7 +256,7 @@ namespace HarmonyLib
 			HarmonyMethod.HarmonyFields().ForEach(f =>
 			{
 				var val = fromTrv.Field(f).GetValue();
-				if (val is object)
+				if (val is not null)
 					SetValue(toTrv, f, val);
 			});
 		}
@@ -320,7 +301,7 @@ namespace HarmonyLib
 		{
 			var f_info = attribute.GetType().GetField(nameof(HarmonyAttribute.info), AccessTools.all);
 			if (f_info is null) return null;
-			if (f_info.FieldType.FullName != typeof(HarmonyMethod).FullName) return null;
+			if (f_info.FieldType.FullName != PatchTools.harmonyMethodFullName) return null;
 			var info = f_info.GetValue(attribute);
 			return AccessTools.MakeDeepCopy<HarmonyMethod>(info);
 		}
@@ -333,7 +314,7 @@ namespace HarmonyLib
 		{
 			return type.GetCustomAttributes(true)
 						.Select(attr => GetHarmonyMethodInfo(attr))
-						.Where(info => info is object)
+						.Where(info => info is not null)
 						.ToList();
 		}
 
@@ -341,10 +322,7 @@ namespace HarmonyLib
 		/// <param name="type">The class/type</param>
 		/// <returns>The merged <see cref="HarmonyMethod"/></returns>
 		///
-		public static HarmonyMethod GetMergedFromType(Type type)
-		{
-			return HarmonyMethod.Merge(GetFromType(type));
-		}
+		public static HarmonyMethod GetMergedFromType(Type type) => HarmonyMethod.Merge(GetFromType(type));
 
 		/// <summary>Gets all annotations on a method</summary>
 		/// <param name="method">The method/constructor</param>
@@ -354,7 +332,7 @@ namespace HarmonyLib
 		{
 			return method.GetCustomAttributes(true)
 						.Select(attr => GetHarmonyMethodInfo(attr))
-						.Where(info => info is object)
+						.Where(info => info is not null)
 						.ToList();
 		}
 
@@ -362,9 +340,6 @@ namespace HarmonyLib
 		/// <param name="method">The method/constructor</param>
 		/// <returns>The merged <see cref="HarmonyMethod"/></returns>
 		///
-		public static HarmonyMethod GetMergedFromMethod(MethodBase method)
-		{
-			return HarmonyMethod.Merge(GetFromMethod(method));
-		}
+		public static HarmonyMethod GetMergedFromMethod(MethodBase method) => HarmonyMethod.Merge(GetFromMethod(method));
 	}
 }

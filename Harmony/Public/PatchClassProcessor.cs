@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -20,12 +21,13 @@ namespace HarmonyLib
 
 		readonly List<AttributePatch> patchMethods;
 
-		static readonly List<Type> auxilaryTypes = new List<Type>() {
+		static readonly List<Type> auxilaryTypes =
+		[
 			typeof(HarmonyPrepare),
 			typeof(HarmonyCleanup),
 			typeof(HarmonyTargetMethod),
 			typeof(HarmonyTargetMethods)
-		};
+		];
 
 		/// <summary name="Category">Name of the patch class's category</summary>
 		public string Category { get; set; }
@@ -57,19 +59,18 @@ namespace HarmonyLib
 				return;
 
 			containerAttributes = HarmonyMethod.Merge(harmonyAttributes);
-			if (containerAttributes.methodType is null) // MethodType default is Normal
-				containerAttributes.methodType = MethodType.Normal;
+			containerAttributes.methodType ??= MethodType.Normal;
 
-			this.Category = containerAttributes.category;
+			Category = containerAttributes.category;
 
-			auxilaryMethods = new Dictionary<Type, MethodInfo>();
+			auxilaryMethods = [];
 			foreach (var auxType in auxilaryTypes)
 			{
 				var method = PatchTools.GetPatchMethod(containerType, auxType.FullName);
-				if (method is object) auxilaryMethods[auxType] = method;
+				if (method is not null) auxilaryMethods[auxType] = method;
 			}
 
-			patchMethods = PatchTools.GetPatchMethods(containerType, containerAttributes.GetDeclaringType() != null);
+			patchMethods = PatchTools.GetPatchMethods(containerType, containerAttributes.declaringType != null);
 			foreach (var patchMethod in patchMethods)
 			{
 				var method = patchMethod.info.method;
@@ -93,7 +94,7 @@ namespace HarmonyLib
 			{
 				RunMethod<HarmonyCleanup>(ref exception);
 				ReportException(exception, null);
-				return new List<MethodInfo>();
+				return [];
 			}
 
 			var replacements = new List<MethodInfo>();
@@ -126,7 +127,7 @@ namespace HarmonyLib
 				if (patchMethod.type == HarmonyPatchType.ReversePatch)
 				{
 					var annotatedOriginal = patchMethod.info.GetOriginalMethod();
-					if (annotatedOriginal is object)
+					if (annotatedOriginal is not null)
 						lastOriginal = annotatedOriginal;
 
 					if (lastOriginal is null)
@@ -158,11 +159,11 @@ namespace HarmonyLib
 				{
 					var note = "You cannot combine TargetMethod, TargetMethods or [HarmonyPatchAll] with individual annotations";
 					var info = patchMethod.info;
-					if (info.methodName is object)
+					if (info.methodName is not null)
 						throw new ArgumentException($"{note} [{info.methodName}]");
 					if (info.methodType.HasValue && info.methodType.Value != MethodType.Normal)
 						throw new ArgumentException($"{note} [{info.methodType}]");
-					if (info.argumentTypes is object)
+					if (info.argumentTypes is not null)
 						throw new ArgumentException($"{note} [{info.argumentTypes.Description()}]");
 
 					job.AddPatch(patchMethod);
@@ -218,11 +219,11 @@ namespace HarmonyLib
 					{
 						var patchInfo = job.original.ToPatchInfo();
 
-						patchInfo.AddPrefixes(instance.Id, job.prefixes.ToArray());
-						patchInfo.AddPostfixes(instance.Id, job.postfixes.ToArray());
-						patchInfo.AddTranspilers(instance.Id, job.transpilers.ToArray());
-						patchInfo.AddFinalizers(instance.Id, job.finalizers.ToArray());
-						patchInfo.AddILManipulators(instance.Id, job.ilmanipulators.ToArray());
+						patchInfo.AddPrefixes(instance.Id, [.. job.prefixes]);
+						patchInfo.AddPostfixes(instance.Id, [.. job.postfixes]);
+						patchInfo.AddTranspilers(instance.Id, [.. job.transpilers]);
+						patchInfo.AddFinalizers(instance.Id, [.. job.finalizers]);
+						patchInfo.AddILManipulators(instance.Id, [.. job.ilmanipulators]);
 
 						replacement = PatchFunctions.UpdateWrapper(job.original, patchInfo);
 						PatchManager.AddReplacementOriginal(job.original, replacement);
@@ -240,19 +241,19 @@ namespace HarmonyLib
 
 		List<MethodBase> GetBulkMethods()
 		{
-			var isPatchAll = containerType.GetCustomAttributes(true).Any(a => a.GetType().FullName == typeof(HarmonyPatchAll).FullName);
+			var isPatchAll = containerType.GetCustomAttributes(true).Any(a => a.GetType().FullName == PatchTools.harmonyPatchAllFullName);
 			if (isPatchAll)
 			{
-				var type = containerAttributes.GetDeclaringType();
+				var type = containerAttributes.declaringType;
 				if (type is null)
-					throw new ArgumentException($"Using {typeof(HarmonyPatchAll).FullName} requires an additional attribute for specifying the Class/Type");
+					throw new ArgumentException($"Using {PatchTools.harmonyPatchAllFullName} requires an additional attribute for specifying the Class/Type");
 
 				var list = new List<MethodBase>();
 				list.AddRange(AccessTools.GetDeclaredConstructors(type).Cast<MethodBase>());
 				list.AddRange(AccessTools.GetDeclaredMethods(type).Cast<MethodBase>());
 				var props = AccessTools.GetDeclaredProperties(type);
-				list.AddRange(props.Select(prop => prop.GetGetMethod(true)).Where(method => method is object).Cast<MethodBase>());
-				list.AddRange(props.Select(prop => prop.GetSetMethod(true)).Where(method => method is object).Cast<MethodBase>());
+				list.AddRange(props.Select(prop => prop.GetGetMethod(true)).Where(method => method is not null).Cast<MethodBase>());
+				list.AddRange(props.Select(prop => prop.GetSetMethod(true)).Where(method => method is not null).Cast<MethodBase>());
 				return list;
 			}
 
@@ -276,7 +277,7 @@ namespace HarmonyLib
 			}
 
 			var targetMethod = RunMethod<HarmonyTargetMethod, MethodBase>(null, null, method => method is null ? "null" : null);
-			if (targetMethod is object)
+			if (targetMethod is not null)
 				result.Add(targetMethod);
 
 			return result;
@@ -307,11 +308,12 @@ namespace HarmonyLib
 			throw new HarmonyException($"Patching exception in method {original.FullDescription()}", exception);
 		}
 
+		[SuppressMessage("Style", "IDE0300")]
 		T RunMethod<S, T>(T defaultIfNotExisting, T defaultIfFailing, Func<T, string> failOnResult = null, params object[] parameters)
 		{
 			if (auxilaryMethods.TryGetValue(typeof(S), out var method))
 			{
-				var input = (parameters ?? new object[0]).Union(new object[] { instance }).ToArray();
+				var input = (parameters ?? []).Union(new object[] { instance }).ToArray();
 				var actualParameters = AccessTools.ActualParameters(method, input);
 
 				if (method.ReturnType != typeof(void) && typeof(T).IsAssignableFrom(method.ReturnType) is false)
@@ -328,10 +330,10 @@ namespace HarmonyLib
 					else
 						result = (T)method.Invoke(null, actualParameters);
 
-					if (failOnResult is object)
+					if (failOnResult is not null)
 					{
 						var error = failOnResult(result);
-						if (error is object)
+						if (error is not null)
 							throw new Exception($"Method {method.FullDescription()} returned an unexpected result: {error}");
 					}
 				}
@@ -345,11 +347,12 @@ namespace HarmonyLib
 			return defaultIfNotExisting;
 		}
 
+		[SuppressMessage("Style", "IDE0300")]
 		void RunMethod<S>(ref Exception exception, params object[] parameters)
 		{
 			if (auxilaryMethods.TryGetValue(typeof(S), out var method))
 			{
-				var input = (parameters ?? new object[0]).Union(new object[] { instance }).ToArray();
+				var input = (parameters ?? []).Union(new object[] { instance }).ToArray();
 				var actualParameters = AccessTools.ActualParameters(method, input);
 				try
 				{
