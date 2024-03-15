@@ -100,7 +100,10 @@ namespace HarmonyLib
 			}, debug);
 
 			MethodBody patchBody = null;
-			var hook = new ILHook(standin.method, ctx =>
+#pragma warning disable CA2000 // pinned with PatchTools.RememberObject later
+			var hook = new ILHook(
+#pragma warning restore CA2000
+				standin.method, ctx =>
 			{
 				if (!(original is MethodInfo mi))
 					return;
@@ -155,7 +158,7 @@ namespace HarmonyLib
 			}
 
 			var replacement = hook.Method as MethodInfo;
-			PatchTools.RememberObject(standin.method, replacement);
+			PatchTools.RememberObject(standin.method, (replacement, hook));
 			return replacement;
 		}
 
