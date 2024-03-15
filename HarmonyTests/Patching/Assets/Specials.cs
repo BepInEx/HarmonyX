@@ -553,16 +553,6 @@ namespace HarmonyLibTests.Assets
 		static void Prefix(ConcreteClass __instance, string def, AnotherStruct loc) => TestTools.Log("ConcreteClass_Patch.Method.Prefix");
 	}
 
-	[HarmonyPatch(typeof(AppDomain), nameof(AppDomain.GetData))]
-	public class ExternalMethod_Patch
-	{
-		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-		{
-			yield return new CodeInstruction(OpCodes.Ldnull);
-			yield return new CodeInstruction(OpCodes.Ret);
-		}
-	}
-
 	public class EventHandlerTestClass
 	{
 		public delegate void TestEvent();

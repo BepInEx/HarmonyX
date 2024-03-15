@@ -3,98 +3,152 @@ using MonoMod.Core.Platforms;
 using MonoMod.Utils;
 using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace HarmonyLib.Public.Patching;
 
-/// <inheritdoc/>
+/// <summary>
+///    A method patcher that uses <see cref="MonoMod.Core.Platforms.PlatformTriple.CreateNativeDetour" /> to patch
+///    internal calls, methods marked with <see cref="DllImportAttribute" /> and any other managed method that
+///    CLR managed-to-native trampolines for and which has no IL body defined.
+/// </summary>
 public class NativeDetourMethodPatcher : MethodPatcher
 {
-	private PlatformTriple.NativeDetour? _hook;
-	private Delegate _replacementDelegate;
+	private static readonly ConstructorInfo InvalidOperationExceptionCtor =
+		typeof(InvalidOperationException).GetConstructor([typeof(string)]);
 
-	private readonly Type _returnType;
-	private readonly Type[] _parameterTypes;
-	private readonly Type _altEntryDelegateType;
-	private readonly DataScope<DynamicReferenceCell> _altEntryDelegateStore;
-	private readonly MethodInfo _altEntryDelegateInvoke;
+	private SimpleNativeDetour _detourOriginal;
+	private SimpleNativeDetour _detourAltEntry;
+
+	private IntPtr? _originalEntry;
+
+	private MethodBase _replacement;
+
+	private IDisposable _originalPin;
+	private IDisposable _realReplacementPin;
+	private IDisposable _altHandle;
+
+	private readonly MethodSignature _staticSignature;
+
+	private readonly MethodInfo _altEntryMethod;
+	private readonly IDisposable _altEntryPin;
 
 	/// <inheritdoc/>
 	public NativeDetourMethodPatcher(MethodBase original) : base(original)
 	{
-		var originalParameters = Original.GetParameters();
+		var staticSignature = new MethodSignature(Original, true);
+		_staticSignature = staticSignature;
 
-		var offset = Original.IsStatic ? 0 : 1;
+		var altEntryProxyMethod = GenerateAltEntryProxyStub(Original, staticSignature);
+		_altEntryMethod = altEntryProxyMethod;
+		_altEntryPin = PlatformTriple.Current.PinMethodIfNeeded(altEntryProxyMethod);
+		PlatformTriple.Current.Compile(altEntryProxyMethod);
+	}
 
-		_parameterTypes = new Type[originalParameters.Length + offset];
+	private static MethodInfo GenerateAltEntryProxyStub(MethodBase original, MethodSignature signature)
+	{
+		using var dmd = signature.CreateDmd(
+			$"NativeDetourAltEntry<{original.DeclaringType?.FullName}:{original.Name}>"
+			);
 
-		if (!Original.IsStatic)
-		{
-			_parameterTypes[0] = Original.GetThisParamType();
-		}
+		var il = new ILContext(dmd.Definition);
+		var c = new ILCursor(il);
 
-		for (int i = 0; i < originalParameters.Length; i++)
-		{
-			_parameterTypes[i + offset] = originalParameters[i].ParameterType;
-		}
+		c.EmitLdstr($"{dmd.Definition.Name} should've been detoured!");
+		c.EmitNewobj(InvalidOperationExceptionCtor);
+		c.EmitThrow();
 
-		_returnType = Original is MethodInfo { ReturnType: var ret } ? ret : typeof(void);
-
-		_altEntryDelegateType = DelegateTypeFactory.instance.CreateDelegateType(_returnType, _parameterTypes);
-		_altEntryDelegateInvoke = _altEntryDelegateType.GetMethod("Invoke");
-
-		_altEntryDelegateStore = DynamicReferenceManager.AllocReference(default(Delegate), out _);
+		return dmd.Generate();
 	}
 
 	/// <inheritdoc/>
-	public override DynamicMethodDefinition PrepareOriginal()
+	public override DynamicMethodDefinition PrepareOriginal() =>
+		GenerateAltEntryProxyCaller($"NativeDetourProxy<{Original.DeclaringType?.FullName}:{Original.Name}>");
+
+	/// <inheritdoc/>
+	public override MethodBase DetourTo(MethodBase replacement)
 	{
-		var dmd = new DynamicMethodDefinition(
-			$"NativeHookProxy<{Original.DeclaringType.FullName}:{Original.Name}>",
-			_returnType,
-			_parameterTypes
-		);
+		var triple = PlatformTriple.Current;
+
+		replacement = triple.GetIdentifiable(replacement);
+		if (replacement == _replacement)
+			return replacement;
+
+		lock(_altEntryMethod)
+		{
+			if (replacement == _replacement)
+				return replacement;
+
+			_replacement = replacement;
+
+			var realReplacement = triple.GetRealDetourTarget(Original, replacement);
+			_realReplacementPin?.Dispose();
+			_realReplacementPin = triple.PinMethodIfNeeded(realReplacement);
+
+			var realReplacementPtr = triple.Runtime.GetMethodHandle(realReplacement).GetFunctionPointer();
+
+			// SimpleNativeDetour.ChangeTarget with alt entry is not safe currently, refer to docs
+			_detourOriginal?.Dispose();
+			_altHandle?.Dispose();
+
+			_originalPin ??= triple.PinMethodIfNeeded(Original);
+			// due to _originalPin, it shouldn't change
+			var originalEntry = _originalEntry ??= triple.GetNativeMethodBody(Original);
+
+			(_detourOriginal, var altEntry, _altHandle) = triple.CreateNativeDetour(
+				originalEntry,
+				realReplacementPtr
+			);
+
+			if (_detourAltEntry is { } detourAltEntry)
+				detourAltEntry.ChangeTarget(altEntry);
+			else
+				_detourAltEntry = triple.CreateSimpleDetour(
+					triple.GetNativeMethodBody(_altEntryMethod),
+					altEntry
+				);
+
+
+			PatchManager.AddReplacementOriginal(Original, replacement);
+
+			return replacement;
+		}
+	}
+
+	/// <inheritdoc/>
+	public override DynamicMethodDefinition CopyOriginal() =>
+		GenerateAltEntryProxyCaller($"OrigWrapper<{Original.DeclaringType?.FullName}:{Original.Name}>");
+
+	private DynamicMethodDefinition GenerateAltEntryProxyCaller(string name)
+	{
+		var dmd = _staticSignature.CreateDmd(name);
 
 		var il = new ILContext(dmd.Definition);
-
 		var c = new ILCursor(il);
 
-		c.EmitLoadReference(_altEntryDelegateStore.Data);
-		for (int i = 0; i < _parameterTypes.Length; i++)
-		{
+		for (var i = 0; i < _staticSignature.ParameterCount; i++)
 			c.EmitLdarg(i);
-		}
-		c.EmitCallvirt(_altEntryDelegateInvoke);
+		c.EmitCall(_altEntryMethod);
 		c.EmitRet();
 
 		return dmd;
 	}
 
-	/// <inheritdoc/>
-	public override MethodBase DetourTo(MethodBase replacement)
+	/// <summary>
+	/// A handler for <see cref="PatchManager.ResolvePatcher"/> that checks if a method doesn't have a body
+	/// (e.g. it's icall or marked with <see cref="DllImportAttribute"/>) and thus can be patched with
+	/// <see cref="MonoMod.Core.Platforms.PlatformTriple.CreateNativeDetour"/>.
+	/// </summary>
+	/// <param name="sender">Not used</param>
+	/// <param name="args">Patch resolver arguments</param>
+	///
+	public static void TryResolve(object sender, PatchManager.PatcherResolverEventArgs args)
 	{
-		_replacementDelegate = replacement.CreateDelegate(_altEntryDelegateType);
-		var replacementDelegatePtr = Marshal.GetFunctionPointerForDelegate(_replacementDelegate);
-		if (_hook is { } hook)
-		{
-			hook.Simple.ChangeTarget(replacementDelegatePtr);
-		}
-		else
-		{
-			_hook = PlatformTriple.Current.CreateNativeDetour(PlatformTriple.Current.GetNativeMethodBody(Original), replacementDelegatePtr);
-			DynamicReferenceManager.SetValue(_altEntryDelegateStore.Data, Marshal.GetDelegateForFunctionPointer(_hook.Value.AltEntry, _altEntryDelegateType));
-		}
-		return replacement;
-	}
+		// original cannot be executed without alt entry
+		if(!PlatformTriple.Current.SupportedFeatures.Has(ArchitectureFeature.CreateAltEntryPoint))
+			return;
 
-	/// <inheritdoc/>
-	public override DynamicMethodDefinition CopyOriginal()
-	{
-		return null;
-	}
-
-	public static void TryResolve(object _, PatchManager.PatcherResolverEventArgs args)
-	{
 		if (args.Original.GetMethodBody() == null)
 			args.MethodPatcher = new NativeDetourMethodPatcher(args.Original);
 	}
