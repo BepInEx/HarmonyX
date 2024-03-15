@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
@@ -125,6 +126,8 @@ namespace HarmonyLib
 				manipulator.WriteTo(ctx.Body, standin.method);
 
 				HarmonyManipulator.ApplyManipulators(ctx, original, ilmanipulators, null);
+
+				StackTraceFixes.FixStackTrace(ctx);
 
 				// Normalize rets in case they get removed
 				Instruction retIns = null;

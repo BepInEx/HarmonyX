@@ -1,4 +1,5 @@
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
@@ -333,7 +334,6 @@ public class HarmonyManipulator
 		// Add in all transpilers
 		foreach (var transpiler in transpilers)
 			manipulator.AddTranspiler(transpiler.method);
-		manipulator.AddTranspiler(PatchTools.m_GetExecutingAssemblyReplacementTranspiler);
 
 		// Write new manipulated code to our body
 		manipulator.WriteTo(ctx.Body, original);
@@ -436,6 +436,8 @@ public class HarmonyManipulator
 			}
 
 			ApplyManipulators(ctx, original, ilManipulators.Select(m => m.method).ToList(), returnLabel);
+
+			StackTraceFixes.FixStackTrace(ctx);
 
 			Logger.Log(Logger.LogChannel.IL,
 				() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
