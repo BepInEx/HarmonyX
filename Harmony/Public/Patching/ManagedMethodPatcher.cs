@@ -1,3 +1,4 @@
+using HarmonyLib.Internal.Util;
 using System;
 using System.Reflection;
 using MonoMod.Cil;
@@ -41,7 +42,7 @@ namespace HarmonyLib.Public.Patching
 			{
 				throw HarmonyException.Create(e, hookBody);
 			}
-			return ilHook.Method;
+			return ilHook.GetEndOfChain();
 		}
 
 		/// <inheritdoc />
