@@ -36,7 +36,7 @@ namespace HarmonyLib.Internal.RuntimeFixes
         {
             PatchManager.AddReplacementOriginal(
 	            PlatformTriple.Current.GetIdentifiable(self.Method.Method),
-	            PlatformTriple.Current.GetIdentifiable(self.Method.GetEndOfChain()) as MethodInfo
+	            PlatformTriple.Current.GetIdentifiable(self.Method.GetEndOfChain())
 	         );
         }
 

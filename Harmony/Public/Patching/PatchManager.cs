@@ -131,7 +131,7 @@ namespace HarmonyLib.Public.Patching
 			return GetOriginal(method);
 		}
 
-		internal static void AddReplacementOriginal(MethodBase original, MethodInfo replacement)
+		internal static void AddReplacementOriginal(MethodBase original, MethodBase replacement)
 		{
 			if (replacement == null)
 				return;
