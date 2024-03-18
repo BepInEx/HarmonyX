@@ -5,46 +5,47 @@ on:
     tags:
     - 'v*'
 
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+permissions:
+  contents: write
+
 jobs:
   build:
 
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: | 
-          3.1.x
-          6.0.300
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v4
+      with: 
+        dotnet-version: '8.x'
+
     - name: Get Version
       id: get_version
       shell: bash
       run: |
         tag=${GITHUB_REF##*/}
         echo Current branch: ${tag:1}
-        echo ::set-output name=version_num::${tag:1}
+        echo "version_num=${tag:1}" >> "$GITHUB_OUTPUT"
+
     - name: Run build script
       run: ./build.ps1 --target=Build
       shell: powershell
+      
     - name: Create Release
-      id:  create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        name: Release ${{ github.ref }}
         body: ""
         draft: false
         prerelease: false
-    - name: Upload Release Asset
-      id: upload-release-asset 
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./Harmony/bin/Release/HarmonyX.${{ steps.get_version.outputs.version_num }}.nupkg
-        asset_name: HarmonyX.${{ steps.get_version.outputs.version_num }}.nupkg
-        asset_content_type: application/zip
+        token: ${{ secrets.GITHUB_TOKEN }}
+        files: |
+            ./Harmony/bin/Release/HarmonyX.${{ steps.get_version.outputs.version_num }}.nupkg
