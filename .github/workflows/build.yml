@@ -1,8 +1,9 @@
-name: Build 
+name: Build
 
 on: 
   push:
-
+    branches:
+      - "**"
   workflow_dispatch:
 
 env:
@@ -31,7 +32,7 @@ jobs:
       run: dotnet --info
 
     - name: Run test
-      run: ./build.ps1 --target=Test
+      run: ./build.ps1 --target=Test --useTmpLocalNuget=true
       
   build:
     runs-on: windows-latest
@@ -54,13 +55,13 @@ jobs:
       run: git remote set-url --push origin https://$GITHUB_USER:$GITHUB_PAT@github.com/$GITHUB_REPOSITORY.git
       
     - name: Run build script
-      run: ./build.ps1 --target=Build
+      run: ./build.ps1 --target=Build --useTmpLocalNuget=true
       
     - name: Create a release tag
       if: github.ref == 'refs/heads/master'
       env:
         NUGET_KEY: ${{ secrets.NUGET_KEY }}
-      run: ./build.ps1 --target=Publish --nugetKey="${env:NUGET_KEY}"
+      run: ./build.ps1 --target=Publish --useTmpLocalNuget=true --nugetKey="${env:NUGET_KEY}"
       
     - name: Get target file
       id: getfilename

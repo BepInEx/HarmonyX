@@ -2,6 +2,7 @@
 
 var target = Argument("target", "Build");
 var nugetKey = Argument("nugetKey", "");
+var useTmpLocalNuget = Argument("useTmpLocalNuget", false);
 
 string RunGit(string command, string separator = "") 
 {
@@ -16,14 +17,8 @@ Task("Cleanup")
     .Does(() =>
 {
     Information("Cleaning up old build objects");
-        DotNetClean(".", new DotNetCleanSettings
-    {
-        Configuration = "ReleaseRef",
-    });
-    DotNetClean(".", new DotNetCleanSettings
-    {
-        Configuration = "Release",
-    });
+    CleanDirectories(GetDirectories("./**/bin/"));
+    CleanDirectories(GetDirectories("./**/obj/"));
 });
 
 Task("Build")
@@ -38,13 +33,25 @@ Task("Build")
 
     buildSettings.Configuration = "ReleaseRef";
     DotNetBuild("./Harmony/Harmony.csproj", buildSettings);
+
+    string local_nuget = null;
+    if(useTmpLocalNuget)
+    {
+        local_nuget = System.IO.Path.GetFullPath("./Harmony/bin/.local_nuget");
+        NuGetInit("./Harmony/bin/ReleaseRef/", local_nuget);
+        NuGetAddSource("__local_tmp_harmonyx_nuget", local_nuget);
+    }
+
     buildSettings.Configuration = "Release";
     DotNetBuild("./Harmony/Harmony.csproj", buildSettings);
+
+    if(useTmpLocalNuget)
+        NuGetRemoveSource("__local_tmp_harmonyx_nuget", local_nuget);
 
 });
 
 Task("Test")
-    .IsDependentOn("Cleanup")
+    .IsDependentOn("Build")
     .Does(() =>
 {
     var targets = FindRegexMatchGroupInFile("./HarmonyTests/HarmonyTests.csproj", @"<TargetFrameworks>(.*)<\/TargetFrameworks>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Captures[0].Value.Split(';');
@@ -66,8 +73,8 @@ Task("Publish")
 {
     var version = FindRegexMatchGroupInFile("./Directory.Build.props", @"<HarmonyXVersion>(.*)<\/HarmonyXVersion>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Captures[0].Value;
     version += FindRegexMatchGroupInFile("./Directory.Build.props", @"<HarmonyXVersionSuffix>(.*)<\/HarmonyXVersionSuffix>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Captures[0].Value;
-    var versionTagPresent = !string.IsNullOrWhiteSpace(RunGit($"ls-remote --tags origin v{version}"));
 
+    var versionTagPresent = !string.IsNullOrWhiteSpace(RunGit($"ls-remote --tags origin v{version}"));
     if(versionTagPresent) 
     {
         Information("New version exists, no need to push.");

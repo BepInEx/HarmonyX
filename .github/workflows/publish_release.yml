@@ -36,7 +36,7 @@ jobs:
         echo "version_num=${tag:1}" >> "$GITHUB_OUTPUT"
 
     - name: Run build script
-      run: ./build.ps1 --target=Build
+      run: ./build.ps1 --target=Build --useTmpLocalNuget=true
       shell: powershell
       
     - name: Create Release
