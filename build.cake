@@ -1,9 +1,8 @@
-#addin nuget:?package=Cake.FileHelpers&version=4.0.0
-#tool "nuget:?package=NUnit.ConsoleRunner&version=3.12.0"
-#addin "nuget:?package=Cake.Incubator&version=6.0.0"
+#addin nuget:?package=Cake.FileHelpers&version=7.0.0
 
 var target = Argument("target", "Build");
 var nugetKey = Argument("nugetKey", "");
+var useTmpLocalNuget = Argument("useTmpLocalNuget", false);
 
 string RunGit(string command, string separator = "") 
 {
@@ -22,50 +21,60 @@ Task("Cleanup")
     CleanDirectories(GetDirectories("./**/obj/"));
 });
 
-Task("PullDependencies")
-    .Does(() =>
-{
-    Information("Restoring NuGet packages");
-    DotNetRestore(".");
-});
-
 Task("Build")
     .IsDependentOn("Cleanup")
-    .IsDependentOn("PullDependencies")
     .Does(() =>
 {
     var buildSettings = new DotNetBuildSettings {
-        Configuration = "Release",
-		MSBuildSettings = new DotNetCoreMSBuildSettings()
+		MSBuildSettings = new DotNetMSBuildSettings()
     };
     buildSettings.MSBuildSettings.Targets.Add("build");
     buildSettings.MSBuildSettings.Targets.Add("pack");
-    DotNetBuild(".", buildSettings);
+
+    buildSettings.Configuration = "ReleaseRef";
+    DotNetBuild("./Harmony/Harmony.csproj", buildSettings);
+
+    string local_nuget = null;
+    if(useTmpLocalNuget)
+    {
+        local_nuget = System.IO.Path.GetFullPath("./Harmony/bin/.local_nuget");
+        NuGetInit("./Harmony/bin/ReleaseRef/", local_nuget);
+        NuGetAddSource("__local_tmp_harmonyx_nuget", local_nuget);
+    }
+
+    buildSettings.Configuration = "Release";
+    DotNetBuild("./Harmony/Harmony.csproj", buildSettings);
+
+    if(useTmpLocalNuget)
+        NuGetRemoveSource("__local_tmp_harmonyx_nuget", local_nuget);
+
 });
 
 Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-	var testTargets = new [] { "net35", "netcoreapp3.1", "net6.0" };
-	foreach (var target in testTargets)
-	{
-	    Information($"Testing {target}");
-		DotNetCoreTest("./HarmonyTests/HarmonyTests.csproj", new DotNetCoreTestSettings {
-			Configuration = "Release",
-			Framework = target,
-			Verbosity = DotNetCoreVerbosity.Normal
-		});
-	}
+    var targets = FindRegexMatchGroupInFile("./HarmonyTests/HarmonyTests.csproj", @"<TargetFrameworks>(.*)<\/TargetFrameworks>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Captures[0].Value.Split(';');
+
+    foreach (var target in targets)
+    {
+        Information($"Testing {target}");
+        DotNetTest("./HarmonyTests/HarmonyTests.csproj", new DotNetTestSettings {
+            Configuration = "Release",
+            Framework = target,
+            Verbosity = DotNetVerbosity.Normal
+        });
+    }
 });
 
 Task("Publish")
     .IsDependentOn("Build")
     .Does(() => 
 {
-    var version = FindRegexMatchGroupInFile("./Harmony/Harmony.csproj", @"<Version>(.*)<\/Version>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    var versionTagPresent = !string.IsNullOrWhiteSpace(RunGit($"ls-remote --tags origin v{version}"));
+    var version = FindRegexMatchGroupInFile("./Directory.Build.props", @"<HarmonyXVersion>(.*)<\/HarmonyXVersion>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Captures[0].Value;
+    version += FindRegexMatchGroupInFile("./Directory.Build.props", @"<HarmonyXVersionSuffix>(.*)<\/HarmonyXVersionSuffix>", 1, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Captures[0].Value;
 
+    var versionTagPresent = !string.IsNullOrWhiteSpace(RunGit($"ls-remote --tags origin v{version}"));
     if(versionTagPresent) 
     {
         Information("New version exists, no need to push.");
@@ -82,6 +91,10 @@ Task("Publish")
     }
 
     NuGetPush($"./Harmony/bin/Release/HarmonyX.{version}.nupkg", new NuGetPushSettings {
+        Source = "https://api.nuget.org/v3/index.json",
+        ApiKey = nugetKey
+    });
+    NuGetPush($"./Harmony/bin/ReleaseRef/HarmonyX.Ref.{version}.nupkg", new NuGetPushSettings {
         Source = "https://api.nuget.org/v3/index.json",
         ApiKey = nugetKey
     });

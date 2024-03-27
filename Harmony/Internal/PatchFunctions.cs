@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Public.Patching;
 using HarmonyLib.Tools;
@@ -25,10 +26,7 @@ namespace HarmonyLib
 		/// <param name="debug">Use debug mode</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug)
-		{
-			return new PatchSorter(patches, debug).Sort(original);
-		}
+		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug) => new PatchSorter(patches, debug).Sort(original);
 
 		/// <summary>Sorts patch methods by their priority rules</summary>
 		/// <param name="original">The original method</param>
@@ -36,10 +34,7 @@ namespace HarmonyLib
 		/// <param name="debug">Use debug mode</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches, bool debug)
-		{
-			return new PatchSorter(patches, debug).SortAsPatches(original);
-		}
+		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches, bool debug) => new PatchSorter(patches, debug).SortAsPatches(original);
 
 		/// <summary>Creates new replacement method with the latest patches and detours the original method</summary>
 		/// <param name="original">The original method</param>
@@ -105,7 +100,10 @@ namespace HarmonyLib
 			}, debug);
 
 			MethodBody patchBody = null;
-			var hook = new ILHook(standin.method, ctx =>
+#pragma warning disable CA2000 // pinned with PatchTools.RememberObject later
+			var hook = new ILHook(
+#pragma warning restore CA2000
+				standin.method, ctx =>
 			{
 				if (!(original is MethodInfo mi))
 					return;
@@ -131,6 +129,8 @@ namespace HarmonyLib
 				manipulator.WriteTo(ctx.Body, standin.method);
 
 				HarmonyManipulator.ApplyManipulators(ctx, original, ilmanipulators, null);
+
+				StackTraceFixes.FixStackTrace(ctx);
 
 				// Normalize rets in case they get removed
 				Instruction retIns = null;
@@ -158,7 +158,7 @@ namespace HarmonyLib
 			}
 
 			var replacement = hook.Method as MethodInfo;
-			PatchTools.RememberObject(standin.method, replacement);
+			PatchTools.RememberObject(standin.method, (replacement, hook));
 			return replacement;
 		}
 
@@ -188,20 +188,14 @@ namespace HarmonyLib
 			var originals = PatchProcessor.GetAllPatchedMethods().ToList(); // keep as is to avoid "Collection was modified"
 			foreach (var original in originals)
 			{
-				var hasBody = original.HasMethodBody();
 				var info = PatchProcessor.GetPatchInfo(original);
 				var patchProcessor = new PatchProcessor(null, original);
 
-				if (hasBody)
-				{
-					info.Postfixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-					info.Prefixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-				}
-
+				info.Postfixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				info.Prefixes.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
 				info.ILManipulators.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
 				info.Transpilers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
-				if (hasBody)
-					info.Finalizers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
+				info.Finalizers.DoIf(executionCondition, patchInfo => patchProcessor.Unpatch(patchInfo.PatchMethod));
 			}
 		}
 	}

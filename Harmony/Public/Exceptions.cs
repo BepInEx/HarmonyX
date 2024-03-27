@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using MonoMod.Utils;
 
 namespace HarmonyLib
 {

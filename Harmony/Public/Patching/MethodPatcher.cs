@@ -1,5 +1,4 @@
 using System.Reflection;
-using HarmonyLib.Internal.Patching;
 using MonoMod.Utils;
 
 namespace HarmonyLib.Public.Patching

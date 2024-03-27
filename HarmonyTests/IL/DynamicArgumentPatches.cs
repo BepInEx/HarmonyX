@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -9,25 +9,15 @@ using System.Runtime.CompilerServices;
 
 namespace HarmonyLibTests.IL
 {
-	public struct Vec3
+	public struct Vec3(int v1, int v2, int v3)
 	{
-		public int v1;
-		public int v2;
-		public int v3;
+		public int v1 = v1;
+		public int v2 = v2;
+		public int v3 = v3;
 
-		public Vec3(int v1, int v2, int v3)
-		{
-			this.v1 = v1;
-			this.v2 = v2;
-			this.v3 = v3;
-		}
+		public static Vec3 Zero => new(0, 0, 0);
 
-		public static Vec3 Zero => new Vec3(0, 0, 0);
-
-		public override string ToString()
-		{
-			return v1 + "," + v2 + "," + v3;
-		}
+		public override string ToString() => v1 + "," + v2 + "," + v3;
 	}
 
 	public static class TestMethods1
@@ -67,7 +57,7 @@ namespace HarmonyLibTests.IL
 		{
 			try
 			{
-				return new List<int>();
+				return [];
 			}
 			finally
 			{
@@ -78,14 +68,14 @@ namespace HarmonyLibTests.IL
 	[TestFixture, NonParallelizable]
 	public class DynamicArgumentPatches : TestLogger
 	{
-		static readonly List<string> log = new List<string>();
+		static readonly List<string> log = [];
 
 		static bool General(string typeName, int token, object instance, object[] args)
 		{
 			var method = AccessTools.TypeByName(typeName).Module.ResolveMethod(token);
 			log.Add(method.Name);
 			log.Add(instance?.GetType().Name ?? "NULL");
-			if (args is object)
+			if (args is not null)
 				foreach (var arg in args)
 					log.Add(arg?.ToString() ?? "NULL");
 			return true;
@@ -194,12 +184,12 @@ namespace HarmonyLibTests.IL
 			}
 		}
 
-		static readonly MethodInfo[] methods = new MethodInfo[]
-		{
+		static readonly MethodInfo[] methods =
+		[
 			AccessTools.Method(typeof(TestMethods1), "Test1"),
 			SymbolExtensions.GetMethodInfo(() => new TestMethods2().Test2(0, "")),
 			SymbolExtensions.GetMethodInfo(() => TestMethods3.Test3(Vec3.Zero, null))
-		};
+		];
 
 		[Test]
 		public void Test_SendingArguments()
@@ -212,7 +202,7 @@ namespace HarmonyLibTests.IL
 
 			TestMethods1.Test1(out var s);
 			_ = new TestMethods2().Test2(123, "hello");
-			_ = TestMethods3.Test3(new Vec3(2, 4, 6), new[] { 100, 200, 300 }.ToList());
+			_ = TestMethods3.Test3(new Vec3(2, 4, 6), [100, 200, 300]);
 
 			var n = 0;
 			Assert.AreEqual(11, log.Count);

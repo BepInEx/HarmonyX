@@ -1,55 +1,55 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net35;net45;netstandard2.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0;net35;net452;netcoreapp3.1;net5.0</TargetFrameworks>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Product>HarmonyX</Product>
         <Company>BepInEx</Company>
         <Copyright>Copyright © BepInEx 2022</Copyright>
-        <Description>A library for patching, replacing and decorating .NET and Mono methods during runtime powered by MonoMod.</Description>
+        <Description>A general non-destructive patch library for .NET and Mono modules</Description>
         <PackageId>HarmonyX</PackageId>
         <Authors>Andreas Pardeike, Geoffrey Horsington, ManlyMarco et al.</Authors>
         <AssemblyName>0Harmony</AssemblyName>
         <SignAssembly>true</SignAssembly>
-        <Version>2.12.0</Version>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageProjectUrl>https://github.com/BepInEx/HarmonyX</PackageProjectUrl>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageTags>Harmony,Mono,Patch,Patching,Runtime,Detour,Detours,Aspect,Aspects</PackageTags>
-        <AssemblyVersion>2.12.0.0</AssemblyVersion>
-        <FileVersion>2.12.0.0</FileVersion>
         <PackageIcon>logo_mini.png</PackageIcon>
         <PackageIconUrl>https://raw.githubusercontent.com/BepInEx/HarmonyX/master/logo_mini.png</PackageIconUrl>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <DefaultItemExcludes>$(DefaultItemExcludes);Documentation/**</DefaultItemExcludes>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <CheckEolTargetFramework>false</CheckEolTargetFramework>
+		<Version>$(HarmonyXVersion)</Version>
+		<AssemblyVersion>$(HarmonyXVersionFull)</AssemblyVersion>
+		<FileVersion>$(HarmonyXVersionFull)</FileVersion>
+		<PackageVersion>$(HarmonyXVersion)$(HarmonyXVersionSuffix)</PackageVersion>
+		<InformationalVersion>$(HarmonyXVersion)$(HarmonyXVersionSuffix)</InformationalVersion>
+        <NoWarn>$(NoWarn);SYSLIB0011;NU5131</NoWarn>
+		<Configurations>Debug;Release;ReleaseRef</Configurations>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<ClearOutputDirectory>True</ClearOutputDirectory>
         <RootNamespace>HarmonyLib</RootNamespace>
-    </PropertyGroup>
+	</PropertyGroup>
 
-    <Choose>
-        <!--
-        Ideally would check for .NET Core and .NET 5.0+ via TargetFrameworkIdentifier being .NETCoreApp, but that property isn't defined at this point,
-        so instead, relying on the fact that all .NET Core and .NET 5.0+ (and .NET Standard) have a period in their TFMs.
-        -->
-        <When Condition="$(TargetFramework.Contains('.'))">
-            <PropertyGroup>
-                <IsCoreOrStandard>true</IsCoreOrStandard>
-            </PropertyGroup>
-        </When>
-        <Otherwise>
-            <PropertyGroup>
-                <IsCoreOrStandard>false</IsCoreOrStandard>
-                <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-            </PropertyGroup>
-        </Otherwise>
-    </Choose>
+	<PropertyGroup Condition="'$(TargetFramework)'=='net5.0' Or '$(TargetFramework)'=='net6.0' Or '$(TargetFramework)'=='net7.0' Or '$(TargetFramework)'=='net8.0'">
+		<IsNET5OrGreater>true</IsNET5OrGreater>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(IsNET5OrGreater)' != 'true'">
+		<IsNET5OrGreater>false</IsNET5OrGreater>
+	</PropertyGroup>
 
     <ItemGroup>
+        <None Include="..\README.md" Pack="false" PackagePath="" />
         <None Include="..\LICENSE" Pack="true" PackagePath="" />
         <None Include="..\logo_mini.png" Pack="true" Visible="false" PackagePath="" />
-        <None Include="..\README.md" Pack="false" PackagePath="" />
-    </ItemGroup>
+		<None Include="..\_._" Pack="true" Visible="false" PackagePath="lib/netstandard2.0" Condition="$(Configuration)!='ReleaseRef'" />
+	</ItemGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Debug'">
         <Optimize>false</Optimize>
@@ -60,21 +60,67 @@
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <Optimize>true</Optimize>
-        <DebugType>none</DebugType>
-        <DebugSymbols>false</DebugSymbols>
+        <DebugType>portable</DebugType>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
 
-    <ItemGroup>
+    <Choose>
+        <When Condition="'$(Configuration)'=='ReleaseRef'">
+            <ItemGroup>
+                <PackageReference Include="MonoMod.RuntimeDetour" Version="$(MonoModRuntimeDetour)" PrivateAssets="all" />
+            </ItemGroup>
+        </When>
+        <Otherwise>
+            <ItemGroup>
+                <PackageReference Include="MonoMod.RuntimeDetour" Version="$(MonoModRuntimeDetour)" />
+            </ItemGroup>
+        </Otherwise>
+    </Choose>
+
+	<ItemGroup>
         <!-- Reference assemblies are needed for non-Windows .NET Framework targeting builds. -->
-        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
-
-        <!-- Reference MonoMod.RuntimeDetour for our detour needs -->
-        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.1.0-prerelease.2" />
-
-        <!-- Reference SRE helpers for .NET Standard -->
-        <PackageReference Include="System.Reflection.Emit" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
-        <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+        
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
     </ItemGroup>
+
+	<!-- netstandard2.0 reference assemblies -->
+	<PropertyGroup Condition="$(Configuration)!='ReleaseRef' And $(TargetFramework)=='netstandard2.0'">
+		<!-- Remove from /lib in NuGet -->
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+	</PropertyGroup>
+	<ItemGroup Condition="$(Configuration)!='ReleaseRef' And $(TargetFramework)=='netstandard2.0'">
+		<PackageReference Include="System.Reflection.Emit" Version="4.7.0" PrivateAssets="all" IncludeAssets="compile" />
+	</ItemGroup>
+	<ItemGroup Condition="$(Configuration)!='ReleaseRef' And $(TargetFramework)=='netstandard2.0'">
+		<PackageReference Include="HarmonyX.Ref" Version="$(HarmonyXVersion)$(HarmonyXVersionSuffix)" GeneratePath="true" />
+	</ItemGroup>
+	<Target Name="CustomBeforeBuild" AfterTargets="ResolvePackageDependenciesForBuild" Condition="$(Configuration)!='ReleaseRef'">
+		<ItemGroup>
+			<ReferenceToBeRemoved Include="@(Reference)" Condition="'%(Reference.PathInPackage)' == 'ref/netstandard2.0/0Harmony.dll'" />
+			<Reference Remove="@(ReferenceToBeRemoved)" />
+		</ItemGroup>
+	</Target>
+	<!-- netstandard2.0 reference assemblies -->
+
+	<ItemGroup Condition="'$(TargetFramework)'=='net5.0'">
+		<PackageReference Include="System.Text.Json" Version="5.0.2" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)'=='net6.0'">
+		<PackageReference Include="System.Text.Json" Version="6.0.9" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)'=='net7.0'">
+		<PackageReference Include="System.Text.Json" Version="7.0.4" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
+		<PackageReference Include="System.Text.Json" Version="8.0.1" />
+	</ItemGroup>
+	<ItemGroup Condition="!$(IsNET5OrGreater)">
+		<Compile Remove="**\*.net5.cs" />
+		<Compile Remove="**\*.net6.cs" />
+		<Compile Remove="**\*.net7.cs" />
+		<Compile Remove="**\*.net8.cs" />
+	</ItemGroup>
 
     <Target Name="RemoveOldNuGetPackages" BeforeTargets="PreBuildEvent">
         <PropertyGroup>
@@ -86,15 +132,54 @@
         <Delete Files="@(OldNugetPackages)" />
     </Target>
 
-    <Target Name="Zip" AfterTargets="Pack" DependsOnTargets="CleanZip" Condition="'$(Configuration)'=='Release'">
-        <ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)bin\$(Configuration)" DestinationFile="$(MSBuildThisFileDirectory)bin\Harmony.$(Version).zip" Overwrite="true" />
-    </Target>
+	<Target Name="CleanZip" AfterTargets="Clean">
+		<ItemGroup>
+			<OldZipFiles Include="$(MSBuildThisFileDirectory)bin\Harmony-Ref.*.zip" Condition="'$(Configuration)'=='ReleaseRef'"/>
+			<OldZipFiles Include="$(MSBuildThisFileDirectory)bin\Harmony.*.zip" Condition="'$(Configuration)'=='Release'"/>
+		</ItemGroup>
+		<Delete Files="@(OldZipFiles)" />
+	</Target>
 
-    <Target Name="CleanZip" AfterTargets="Clean">
-        <ItemGroup>
-            <OldZipFiles Include="$(MSBuildThisFileDirectory)bin\*.zip" />
-        </ItemGroup>
-        <Delete Files="@(OldZipFiles)" />
-    </Target>
+	<Target Name="RemoveExtraDlls" AfterTargets="Pack">
+		<ItemGroup>
+			<ExtraDlls Include="$(MSBuildThisFileDirectory)bin\**\MonoMod.*.*" />
+			<ExtraDlls Include="$(MSBuildThisFileDirectory)bin\**\Mono.*.*" />
+			<ExtraDlls Include="$(MSBuildThisFileDirectory)bin\**\System.*.*" />
+		</ItemGroup>
+		<Delete Files="@(ExtraDlls)" />
+	</Target>
 
+	<Target Name="Zip" AfterTargets="RemoveExtraDlls" DependsOnTargets="CleanZip">
+		<ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)bin\$(Configuration)" DestinationFile="$(MSBuildThisFileDirectory)bin\Harmony-Ref.$(Version).zip" Overwrite="true" Condition="'$(Configuration)'=='ReleaseRef'"/>
+		<ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)bin\$(Configuration)" DestinationFile="$(MSBuildThisFileDirectory)bin\Harmony.$(Version).zip" Overwrite="true" Condition="'$(Configuration)'=='Release'"/>
+	</Target>
+
+	<!-- ReleaseRef -->
+	<PropertyGroup Condition="$(Configuration)=='ReleaseRef'">
+		<TargetFrameworks>netstandard2.0;</TargetFrameworks>
+		<PackageId>HarmonyX.Ref</PackageId>
+		<!-- Remove from /lib in NuGet -->
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<!-- Create reference Assemblies instead of a full assembly -->
+		<ProduceOnlyReferenceAssembly>true</ProduceOnlyReferenceAssembly>
+		<!-- Add our target for packing -->
+		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddRefAssemblyToPackage</TargetsForTfmSpecificContentInPackage>
+	</PropertyGroup>
+	<ItemGroup Condition="$(Configuration)=='ReleaseRef'">
+		<!-- Adding System.Reflection.Emit.* because there are public types exposed from its's package -->
+		<PackageReference Include="System.Reflection.Emit" Version="4.7.0" IncludeAssets="compile" />
+	</ItemGroup>
+	<Target Name="AddRefAssemblyToPackage" Condition="$(Configuration)=='ReleaseRef'">
+		<ItemGroup>
+			<!-- Adding the Reference Assembly and the xml documentation to /ref of NuGet -->
+			<TfmSpecificPackageFile Include="$(OutDir)$(AssemblyName).dll">
+				<PackagePath>ref/netstandard2.0</PackagePath>
+			</TfmSpecificPackageFile>
+			<TfmSpecificPackageFile Include="$(OutDir)$(AssemblyName).xml">
+				<PackagePath>ref/netstandard2.0</PackagePath>
+			</TfmSpecificPackageFile>
+		</ItemGroup>
+	</Target>
+	<!-- ReleaseRef -->
+	
 </Project>

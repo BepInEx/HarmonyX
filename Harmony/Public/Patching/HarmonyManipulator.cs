@@ -1,4 +1,5 @@
 using HarmonyLib.Internal.Patching;
+using HarmonyLib.Internal.RuntimeFixes;
 using HarmonyLib.Internal.Util;
 using HarmonyLib.Tools;
 using Mono.Cecil.Cil;
@@ -27,6 +28,7 @@ public class HarmonyManipulator
 	private static readonly string OriginalMethodParam = "__originalMethod";
 	private static readonly string RunOriginalParam = "__runOriginal";
 	private static readonly string ResultVar = "__result";
+	private static readonly string ResultRefVar = "__resultRef";
 	private static readonly string ArgsArrayVar = "__args";
 	private static readonly string StateVar = "__state";
 	private static readonly string ExceptionVar = "__exception";
@@ -53,6 +55,9 @@ public class HarmonyManipulator
 	private List<PatchContext> postfixes;
 	private List<PatchContext> prefixes;
 	private List<PatchContext> transpilers;
+
+	private Type _returnType;
+	private Type ReturnType => _returnType ??= AccessTools.GetReturnedType(original);
 
 	/// <summary>
 	///    Initializes a new instance of the <see cref="HarmonyManipulator" /> class.
@@ -157,10 +162,18 @@ public class HarmonyManipulator
 		// Start emitting at the start
 		il.emitBefore = il.IL.Body.Instructions[0];
 
+		var returnType = ReturnType;
 		if (!variables.TryGetValue(ResultVar, out var returnValueVar))
+			returnValueVar = variables[ResultVar] = returnType == typeof(void) ? null : il.DeclareVariable(returnType);
+
+		// Alloc __result if by ref
+		if (returnValueVar is not null && returnType.IsByRef)
 		{
-			var retVal = AccessTools.GetReturnedType(original);
-			returnValueVar = variables[ResultVar] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
+			il.Emit(OpCodes.Ldc_I4_1);
+			il.Emit(OpCodes.Newarr, returnType.GetElementType());
+			il.Emit(OpCodes.Ldc_I4_0);
+			il.Emit(OpCodes.Ldelema, returnType.GetElementType());
+			il.Emit(OpCodes.Stloc, returnValueVar);
 		}
 
 		// A prefix that can modify control flow has one of the following:
@@ -187,12 +200,14 @@ public class HarmonyManipulator
 			var start = il.DeclareLabel();
 			il.MarkLabel(start);
 
-			EmitCallParameter(method, false, out var tmpObjectVar, out var tmpBoxVars);
+			EmitCallParameter(method, false, out var tmpInstanceBoxingVar, out var tmpObjectVar, out var resultRefInvoke, out var tmpBoxVars);
 			il.Emit(OpCodes.Call, method);
 
 			if (prefix.hasArgsArrayArg)
 				EmitAssignRefsFromArgsArray(variables[ArgsArrayVar]);
 
+			EmitInstanceUnbox(tmpInstanceBoxingVar, original.DeclaringType);
+			EmitResultRefInvoke(resultRefInvoke);
 			EmitResultUnbox(tmpObjectVar, returnValueVar);
 			EmitArgUnbox(tmpBoxVars);
 
@@ -270,8 +285,40 @@ public class HarmonyManipulator
 		if (tmp == null)
 			return;
 		il.Emit(OpCodes.Ldloc, tmp);
-		il.Emit(OpCodes.Unbox_Any, AccessTools.GetReturnedType(original));
+		il.Emit(OpCodes.Unbox_Any, ReturnType);
 		il.Emit(OpCodes.Stloc, result);
+	}
+
+	private void EmitResultRefInvoke(MethodInfo resultRefInvoke)
+	{
+		if(resultRefInvoke is null)
+			return;
+
+		var returnRefVar = variables[ResultRefVar];
+		var label = il.DeclareLabel();
+		il.Emit(OpCodes.Ldloc, returnRefVar);
+		il.Emit(OpCodes.Brfalse_S, label);
+
+		il.Emit(OpCodes.Ldloc, returnRefVar);
+		il.Emit(OpCodes.Callvirt, resultRefInvoke);
+		il.Emit(OpCodes.Stloc, variables[ResultVar]);
+		il.Emit(OpCodes.Ldnull);
+		il.Emit(OpCodes.Stloc, returnRefVar);
+
+		il.MarkLabel(label);
+		il.Emit(OpCodes.Nop);
+	}
+
+	private void EmitInstanceUnbox(
+		VariableDefinition box,
+		Type declaringType)
+	{
+		if (box == null)
+			return;
+		il.Emit(OpCodes.Ldarg_0);
+		il.Emit(OpCodes.Ldloc, box);
+		il.Emit(OpCodes.Unbox_Any, declaringType);
+		il.Emit(OpCodes.Stobj, declaringType);
 	}
 
 	private void WriteTranspilers()
@@ -368,9 +415,13 @@ public class HarmonyManipulator
 							il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
 			}
 
-			WritePrefixes(returnLabel);
-			WritePostfixes(returnLabel, originalHasReturn);
-			WriteFinalizers(returnLabel);
+			var canModifyControlFlow = WritePrefixes(returnLabel);
+			WritePostfixes(returnLabel, originalHasReturn || canModifyControlFlow);
+			WriteFinalizers(returnLabel, originalHasReturn);
+
+			// remove ret for dead-end methods
+			if(!originalHasReturn && !canModifyControlFlow && postfixes.Count == 0 && finalizers.Count == 0 )
+				ctx.Instrs.RemoveAt(ctx.Instrs.Count - 1);
 
 			il.MarkLabel(returnLabel);
 			il.SetOpenLabelsTo(ctx.Instrs[ctx.Instrs.Count - 1]);
@@ -385,6 +436,8 @@ public class HarmonyManipulator
 			}
 
 			ApplyManipulators(ctx, original, ilManipulators.Select(m => m.method).ToList(), returnLabel);
+
+			StackTraceFixes.FixStackTrace(ctx);
 
 			Logger.Log(Logger.LogChannel.IL,
 				() => $"Generated patch ({ctx.Method.FullName}):\n{ctx.Body.ToILDasmString()}", debug);
@@ -486,7 +539,7 @@ public class HarmonyManipulator
 	}
 
 	private bool WriteFinalizers(
-		ILEmitter.Label returnLabel)
+		ILEmitter.Label returnLabel, bool originalHasReturn)
 	{
 		// Finalizer layout:
 		// Create __exception variable to store exception info and a skip flag
@@ -522,7 +575,7 @@ public class HarmonyManipulator
 
 		if (!variables.TryGetValue(ResultVar, out var returnValueVar))
 		{
-			var retVal = AccessTools.GetReturnedType(original);
+			var retVal = ReturnType;
 			returnValueVar = variables[ResultVar] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
 		}
 
@@ -539,12 +592,14 @@ public class HarmonyManipulator
 				var start = il.DeclareLabel();
 				il.MarkLabel(start);
 
-				EmitCallParameter(method, false, out var tmpObjectVar, out var tmpBoxVars);
+				EmitCallParameter(method, false, out var tmpInstanceBoxingVar, out var tmpObjectVar, out var resultRefInvoke, out var tmpBoxVars);
 				il.Emit(OpCodes.Call, method);
 
 				if (finalizer.hasArgsArrayArg)
 					EmitAssignRefsFromArgsArray(variables[ArgsArrayVar]);
 
+				EmitInstanceUnbox(tmpInstanceBoxingVar, original.DeclaringType);
+				EmitResultRefInvoke(resultRefInvoke);
 				EmitResultUnbox(tmpObjectVar, returnValueVar);
 				EmitArgUnbox(tmpBoxVars);
 
@@ -563,7 +618,7 @@ public class HarmonyManipulator
 		}
 
 		// First, store potential result into a variable and empty the stack
-		if (returnValueVar != null)
+		if (returnValueVar != null && originalHasReturn)
 			il.Emit(OpCodes.Stloc, returnValueVar);
 
 		// Write finalizers inside the `try`
@@ -637,7 +692,7 @@ public class HarmonyManipulator
 
 		if (!variables.TryGetValue(ResultVar, out var returnValueVar))
 		{
-			var retVal = AccessTools.GetReturnedType(original);
+			var retVal = ReturnType;
 			returnValueVar = variables[ResultVar] = retVal == typeof(void) ? null : il.DeclareVariable(retVal);
 		}
 
@@ -658,12 +713,14 @@ public class HarmonyManipulator
 			var start = il.DeclareLabel();
 			il.MarkLabel(start);
 
-			EmitCallParameter(method, true, out var tmpObjectVar, out var tmpBoxVars);
+			EmitCallParameter(method, true, out var tmpInstanceBoxingVar, out var tmpObjectVar, out var resultRefInvoke, out var tmpBoxVars);
 			il.Emit(OpCodes.Call, method);
 
 			if (postfix.hasArgsArrayArg)
 				EmitAssignRefsFromArgsArray(variables[ArgsArrayVar]);
 
+			EmitInstanceUnbox(tmpInstanceBoxingVar, original.DeclaringType);
+			EmitResultRefInvoke(resultRefInvoke);
 			EmitResultUnbox(tmpObjectVar, returnValueVar);
 			EmitArgUnbox(tmpBoxVars);
 
@@ -692,12 +749,14 @@ public class HarmonyManipulator
 			if (postfix.wrapTryCatch)
 				il.Emit(OpCodes.Ldloc, returnValueVar);
 
-			EmitCallParameter(method, true, out var tmpObjectVar, out var tmpBoxVars);
+			EmitCallParameter(method, true, out var tmpInstanceBoxingVar, out var tmpObjectVar, out var resultRefInvoke, out var tmpBoxVars);
 			il.Emit(OpCodes.Call, method);
 
 			if (postfix.hasArgsArrayArg)
 				EmitAssignRefsFromArgsArray(variables[ArgsArrayVar]);
 
+			EmitInstanceUnbox(tmpInstanceBoxingVar, original.DeclaringType);
+			EmitResultRefInvoke(resultRefInvoke);
 			EmitResultUnbox(tmpObjectVar, returnValueVar);
 			EmitArgUnbox(tmpBoxVars);
 
@@ -784,42 +843,56 @@ public class HarmonyManipulator
 		{
 			var p = parameters[i];
 			var paramType = p.ParameterType;
-			if (!paramType.IsByRef)
-				continue;
-			paramType = paramType.OpenRefType();
-
-			il.Emit(OpCodes.Ldarg, i + startOffset);
-			il.Emit(OpCodes.Ldloc, argsArrayVariable);
-			il.Emit(OpCodes.Ldc_I4, i);
-			il.Emit(OpCodes.Ldelem_Ref);
-
-			if (paramType.IsValueType)
+			if (paramType.IsByRef)
 			{
-				il.Emit(OpCodes.Unbox_Any, paramType);
+				paramType = paramType.OpenRefType();
 
-				if (AccessTools.IsStruct(paramType))
-					il.Emit(OpCodes.Stobj, paramType);
+				il.Emit(OpCodes.Ldarg, i + startOffset);
+				il.Emit(OpCodes.Ldloc, argsArrayVariable);
+				il.Emit(OpCodes.Ldc_I4, i);
+				il.Emit(OpCodes.Ldelem_Ref);
+
+				if (paramType.IsValueType)
+				{
+					il.Emit(OpCodes.Unbox_Any, paramType);
+
+					if (AccessTools.IsStruct(paramType))
+						il.Emit(OpCodes.Stobj, paramType);
+					else
+						il.Emit(paramType.GetCecilStoreOpCode());
+				}
 				else
-					il.Emit(paramType.GetCecilStoreOpCode());
+				{
+					il.Emit(OpCodes.Castclass, paramType);
+					il.Emit(OpCodes.Stind_Ref);
+				}
 			}
 			else
 			{
-				il.Emit(OpCodes.Castclass, paramType);
-				il.Emit(OpCodes.Stind_Ref);
+				il.Emit(OpCodes.Ldloc, argsArrayVariable);
+				il.Emit(OpCodes.Ldc_I4, i);
+				il.Emit(OpCodes.Ldelem_Ref);
+				il.Emit(paramType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass, paramType);
+				il.Emit(OpCodes.Starg, i + startOffset);
 			}
 		}
 	}
 
 	private void EmitCallParameter(MethodInfo patch,
 		bool allowFirsParamPassthrough,
+		out VariableDefinition tmpInstanceBoxingVar,
 		out VariableDefinition tmpObjectVar,
+		out MethodInfo resultRefInvoke,
 		out List<ArgumentBoxInfo> tmpBoxVars)
 	{
+		tmpInstanceBoxingVar = null;
 		tmpObjectVar = null;
+		resultRefInvoke = null;
 		tmpBoxVars = new List<ArgumentBoxInfo>();
 		var isInstance = original.IsStatic is false;
 		var originalParameters = original.GetParameters();
 		var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
+		var originalType = original.DeclaringType;
 
 		// check for passthrough using first parameter (which must have same type as return type)
 		var parameters = patch.GetParameters().ToList();
@@ -841,19 +914,45 @@ public class HarmonyManipulator
 			if (patchParam.Name == InstanceParam)
 			{
 				if (original.IsStatic)
+				{
 					il.Emit(OpCodes.Ldnull);
+					continue;
+				}
+
+				var paramType = patchParam.ParameterType;
+				var parameterIsRef = paramType.IsByRef;
+
+				if (originalType is null || !AccessTools.IsStruct(originalType))
+				{
+					if (parameterIsRef)
+						il.Emit(OpCodes.Ldarga, 0);
+					else
+						il.Emit(OpCodes.Ldarg_0);
+					continue;
+				}
+
+				if (paramType != typeof(object) && paramType != typeof(object).MakeByRefType())
+				{
+					il.Emit(OpCodes.Ldarg_0);
+					if (!parameterIsRef)
+						il.Emit(OpCodes.Ldobj, originalType);
+					continue;
+				}
+
+				if (parameterIsRef)
+				{
+					il.Emit(OpCodes.Ldarg_0);
+					il.Emit(OpCodes.Ldobj, originalType);
+					il.Emit(OpCodes.Box, originalType);
+					tmpInstanceBoxingVar = il.DeclareVariable(typeof(object));
+					il.Emit(OpCodes.Stloc, tmpInstanceBoxingVar);
+					il.Emit(OpCodes.Ldloca, tmpInstanceBoxingVar);
+				}
 				else
 				{
-					var instanceIsRef = original.DeclaringType != null && AccessTools.IsStruct(original.DeclaringType);
-					var parameterIsRef = patchParam.ParameterType.IsByRef;
-					if (instanceIsRef == parameterIsRef) il.Emit(OpCodes.Ldarg_0);
-					if (instanceIsRef && parameterIsRef is false)
-					{
-						il.Emit(OpCodes.Ldarg_0);
-						il.Emit(OpCodes.Ldobj, original.DeclaringType);
-					}
-
-					if (instanceIsRef is false && parameterIsRef) il.Emit(OpCodes.Ldarga, 0);
+					il.Emit(OpCodes.Ldarg_0);
+					il.Emit(OpCodes.Ldobj, originalType);
+					il.Emit(OpCodes.Box, originalType);
 				}
 
 				continue;
@@ -875,16 +974,16 @@ public class HarmonyManipulator
 				if (fieldName.All(char.IsDigit))
 				{
 					// field access by index only works for declared fields
-					fieldInfo = AccessTools.DeclaredField(original.DeclaringType, int.Parse(fieldName));
+					fieldInfo = AccessTools.DeclaredField(originalType, int.Parse(fieldName));
 					if (fieldInfo is null)
 						throw new ArgumentException(
-							$"No field found at given index in class {original.DeclaringType.FullName}", fieldName);
+							$"No field found at given index in class {originalType.FullName}", fieldName);
 				}
 				else
 				{
-					fieldInfo = AccessTools.Field(original.DeclaringType, fieldName);
+					fieldInfo = AccessTools.Field(originalType, fieldName);
 					if (fieldInfo is null)
-						throw new ArgumentException($"No such field defined in class {original.DeclaringType.FullName}",
+						throw new ArgumentException($"No such field defined in class {originalType.FullName}",
 							fieldName);
 				}
 
@@ -913,7 +1012,7 @@ public class HarmonyManipulator
 			// treat __result var special
 			if (patchParam.Name == ResultVar)
 			{
-				var returnType = AccessTools.GetReturnedType(original);
+				var returnType = ReturnType;
 				if (returnType == typeof(void))
 					throw new Exception($"Cannot get result from void method {original.FullDescription()}");
 				var resultType = patchParam.ParameterType;
@@ -939,6 +1038,29 @@ public class HarmonyManipulator
 					}
 				}
 
+				continue;
+			}
+
+			// treat __resultRef delegate special
+			if (patchParam.Name == ResultRefVar)
+			{
+				var returnType = ReturnType;
+				if (!returnType.IsByRef)
+					throw new Exception(
+						$"Cannot use {ResultRefVar} with non-ref return type {returnType.FullName} of method {original.FullDescription()}");
+
+				var resultType = patchParam.ParameterType;
+				var expectedType = typeof(RefResult<>).MakeGenericType(returnType.GetElementType());
+				var expectedTypeRef = expectedType.MakeByRefType();
+				if (resultType != expectedTypeRef)
+					throw new Exception(
+						$"Wrong type of {ResultRefVar} for method {original.FullDescription()}. Expected {expectedTypeRef.FullName}, got {resultType.FullName}");
+
+				if (!variables.TryGetValue(ResultRefVar, out var returnRefVar))
+					returnRefVar = variables[ResultRefVar] = il.DeclareVariable(expectedTypeRef);
+				il.Emit(OpCodes.Ldloca, returnRefVar);
+
+				resultRefInvoke = AccessTools.Method(expectedType, "Invoke");
 				continue;
 			}
 
@@ -974,7 +1096,6 @@ public class HarmonyManipulator
 							patchParam.ParameterType.GetConstructor(new[] {typeof(object), typeof(IntPtr)});
 						if (delegateConstructor != null)
 						{
-							var originalType = original.DeclaringType;
 							if (methodInfo.IsStatic)
 								il.Emit(OpCodes.Ldnull);
 							else

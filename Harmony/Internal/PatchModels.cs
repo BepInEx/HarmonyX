@@ -14,11 +14,11 @@ namespace HarmonyLib
 		{
 			internal MethodBase original;
 			internal T replacement;
-			internal List<HarmonyMethod> prefixes = new List<HarmonyMethod>();
-			internal List<HarmonyMethod> postfixes = new List<HarmonyMethod>();
-			internal List<HarmonyMethod> transpilers = new List<HarmonyMethod>();
-			internal List<HarmonyMethod> finalizers = new List<HarmonyMethod>();
-			internal List<HarmonyMethod> ilmanipulators = new List<HarmonyMethod>();
+			internal List<HarmonyMethod> prefixes = [];
+			internal List<HarmonyMethod> postfixes = [];
+			internal List<HarmonyMethod> transpilers = [];
+			internal List<HarmonyMethod> finalizers = [];
+			internal List<HarmonyMethod> ilmanipulators = [];
 
 			internal void AddPatch(AttributePatch patch)
 			{
@@ -43,7 +43,7 @@ namespace HarmonyLib
 			}
 		}
 
-		internal Dictionary<MethodBase, Job> state = new Dictionary<MethodBase, Job>();
+		internal Dictionary<MethodBase, Job> state = [];
 
 		internal Job GetJob(MethodBase method)
 		{
@@ -67,24 +67,21 @@ namespace HarmonyLib
 			).ToList();
 		}
 
-		internal List<T> GetReplacements()
-		{
-			return state.Values.Select(job => job.replacement).ToList();
-		}
+		internal List<T> GetReplacements() => state.Values.Select(job => job.replacement).ToList();
 	}
 
 	// AttributePatch contains all information for a patch defined by attributes
 	//
 	internal class AttributePatch
 	{
-		static readonly HarmonyPatchType[] allPatchTypes = new[] {
+		static readonly HarmonyPatchType[] allPatchTypes = [
 			HarmonyPatchType.Prefix,
 			HarmonyPatchType.Postfix,
 			HarmonyPatchType.Transpiler,
 			HarmonyPatchType.Finalizer,
 			HarmonyPatchType.ReversePatch,
 			HarmonyPatchType.ILManipulator,
-		};
+		];
 
 		internal HarmonyMethod info;
 		internal HarmonyPatchType? type;
@@ -105,7 +102,7 @@ namespace HarmonyLib
 				throw new ArgumentException("Patch method " + patch.FullDescription() + " must be static");
 
 			var list = allAttributes
-				.Where(attr => attr.GetType().BaseType.FullName == harmonyAttributeName)
+				.Where(attr => attr.GetType().BaseType.FullName == PatchTools.harmonyAttributeFullName)
 				.Select(attr =>
 				{
 					var f_info = AccessTools.Field(attr.GetType(), nameof(HarmonyAttribute.info));
@@ -116,8 +113,8 @@ namespace HarmonyLib
 
 			var completeMethods = new List<HarmonyMethod>();
 
-			static bool Same(HarmonyMethod m1, HarmonyMethod m2) => m1.GetDeclaringType() == m2.GetDeclaringType() && m1.methodName == m2.methodName && m1.GetArgumentList().SequenceEqual(m2.GetArgumentList());
-			static bool IsComplete(HarmonyMethod m, bool collectIncomplete) => (collectIncomplete || m.GetDeclaringType() != null) && m.methodName != null;
+			static bool Same(HarmonyMethod m1, HarmonyMethod m2) => m1.declaringType == m2.declaringType && m1.methodName == m2.methodName && m1.GetArgumentList().SequenceEqual(m2.GetArgumentList());
+			static bool IsComplete(HarmonyMethod m, bool collectIncomplete) => (collectIncomplete || m.declaringType != null) && m.methodName != null;
 
 			var groupedAttributes = list.ToLookup(m => IsComplete(m, collectIncomplete));
 			var incomplete = groupedAttributes[false].ToList();
