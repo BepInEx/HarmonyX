@@ -14,20 +14,20 @@ namespace HarmonyLib
 		}
 
 		const BindingFlags BasicFlags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.SetField | BindingFlags.GetProperty | BindingFlags.SetProperty;
-		static readonly Dictionary<MemberType, BindingFlags> declaredOnlyBindingFlags = new Dictionary<MemberType, BindingFlags>()
+		static readonly Dictionary<MemberType, BindingFlags> declaredOnlyBindingFlags = new()
 		{
 			{ MemberType.Any, BasicFlags | BindingFlags.Instance | BindingFlags.Static },
 			{ MemberType.Instance, BasicFlags | BindingFlags.Instance },
 			{ MemberType.Static, BasicFlags | BindingFlags.Static }
 		};
 
-		readonly Dictionary<Type, Dictionary<string, FieldInfo>> declaredFields = new Dictionary<Type, Dictionary<string, FieldInfo>>();
-		readonly Dictionary<Type, Dictionary<string, PropertyInfo>> declaredProperties = new Dictionary<Type, Dictionary<string, PropertyInfo>>();
-		readonly Dictionary<Type, Dictionary<string, Dictionary<int, MethodBase>>> declaredMethods = new Dictionary<Type, Dictionary<string, Dictionary<int, MethodBase>>>();
+		readonly Dictionary<Type, Dictionary<string, FieldInfo>> declaredFields = [];
+		readonly Dictionary<Type, Dictionary<string, PropertyInfo>> declaredProperties = [];
+		readonly Dictionary<Type, Dictionary<string, Dictionary<int, MethodBase>>> declaredMethods = [];
 
-		readonly Dictionary<Type, Dictionary<string, FieldInfo>> inheritedFields = new Dictionary<Type, Dictionary<string, FieldInfo>>();
-		readonly Dictionary<Type, Dictionary<string, PropertyInfo>> inheritedProperties = new Dictionary<Type, Dictionary<string, PropertyInfo>>();
-		readonly Dictionary<Type, Dictionary<string, Dictionary<int, MethodBase>>> inheritedMethods = new Dictionary<Type, Dictionary<string, Dictionary<int, MethodBase>>>();
+		readonly Dictionary<Type, Dictionary<string, FieldInfo>> inheritedFields = [];
+		readonly Dictionary<Type, Dictionary<string, PropertyInfo>> inheritedProperties = [];
+		readonly Dictionary<Type, Dictionary<string, Dictionary<int, MethodBase>>> inheritedMethods = [];
 
 		static T Get<T>(Dictionary<Type, Dictionary<string, T>> dict, Type type, string name, Func<T> fetcher)
 		{
@@ -35,7 +35,7 @@ namespace HarmonyLib
 			{
 				if (dict.TryGetValue(type, out var valuesByName) is false)
 				{
-					valuesByName = new Dictionary<string, T>();
+					valuesByName = [];
 					dict[type] = valuesByName;
 				}
 				if (valuesByName.TryGetValue(name, out var value) is false)
@@ -53,12 +53,12 @@ namespace HarmonyLib
 			{
 				if (dict.TryGetValue(type, out var valuesByName) is false)
 				{
-					valuesByName = new Dictionary<string, Dictionary<int, T>>();
+					valuesByName = [];
 					dict[type] = valuesByName;
 				}
 				if (valuesByName.TryGetValue(name, out var valuesByArgument) is false)
 				{
-					valuesByArgument = new Dictionary<int, T>();
+					valuesByArgument = [];
 					valuesByName[name] = valuesByArgument;
 				}
 				var argumentsHash = AccessTools.CombinedHashCode(arguments);

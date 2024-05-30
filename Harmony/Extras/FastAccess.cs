@@ -43,7 +43,7 @@ namespace HarmonyLib
 		{
 			var constructorInfo =
 				typeof(T).GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null,
-					new Type[0], null);
+					[], null);
 			if (constructorInfo is null)
 			{
 				throw new ApplicationException(string.Format(
@@ -110,11 +110,11 @@ namespace HarmonyLib
 			foreach (var name in names)
 			{
 				var field = typeof(T).GetField(name, AccessTools.all);
-				if (field is object)
+				if (field is not null)
 					return CreateGetterHandler<T, S>(field);
 
 				var property = typeof(T).GetProperty(name, AccessTools.all);
-				if (property is object)
+				if (property is not null)
 					return CreateGetterHandler<T, S>(property);
 			}
 
@@ -162,14 +162,8 @@ namespace HarmonyLib
 			return (SetterHandler<T, S>)dynamicSet.Generate().CreateDelegate(typeof(SetterHandler<T, S>));
 		}
 
-		static DynamicMethodDefinition CreateGetDynamicMethod<T, S>(Type type)
-		{
-			return new DynamicMethodDefinition($"DynamicGet_{type.Name}", typeof(S), new Type[] { typeof(T) });
-		}
+		static DynamicMethodDefinition CreateGetDynamicMethod<T, S>(Type type) => new($"DynamicGet_{type.Name}", typeof(S), [typeof(T)]);
 
-		static DynamicMethodDefinition CreateSetDynamicMethod<T, S>(Type type)
-		{
-			return new DynamicMethodDefinition($"DynamicSet_{type.Name}", typeof(void), new Type[] { typeof(T), typeof(S) });
-		}
+		static DynamicMethodDefinition CreateSetDynamicMethod<T, S>(Type type) => new($"DynamicSet_{type.Name}", typeof(void), [typeof(T), typeof(S)]);
 	}
 }

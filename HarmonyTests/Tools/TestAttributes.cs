@@ -14,7 +14,7 @@ namespace HarmonyLibTests.Tools
 			var infos = HarmonyMethodExtensions.GetFromType(type);
 			var info = HarmonyMethod.Merge(infos);
 			Assert.NotNull(info);
-			Assert.AreEqual(typeof(string), info.GetDeclaringType());
+			Assert.AreEqual(typeof(string), info.declaringType);
 			Assert.AreEqual("foobar", info.methodName);
 			Assert.NotNull(info.argumentTypes);
 			Assert.AreEqual(2, info.argumentTypes.Length);

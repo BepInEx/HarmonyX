@@ -1,9 +1,9 @@
+using MonoMod.Core.Platforms;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using MonoMod.Core.Platforms;
 
 namespace HarmonyLib.Public.Patching
 {
@@ -103,6 +103,14 @@ namespace HarmonyLib.Public.Patching
 
 		internal static MethodBase GetOriginal(MethodInfo replacement)
 		{
+			if (replacement is null)
+				return null;
+
+			// The runtime can return several different MethodInfo's that point to the same method. Use the correct one
+			replacement = PlatformTriple.Current.GetIdentifiable(replacement) as MethodInfo;
+			if (replacement is null)
+				return null;
+
 			lock (ReplacementToOriginals)
 			{
 				ReplacementToOriginals.RemoveAll(kv => !kv.Key.IsAlive);
@@ -118,35 +126,12 @@ namespace HarmonyLib.Public.Patching
 
 		internal static MethodBase FindReplacement(StackFrame frame)
 		{
-			methodAddress ??= typeof(StackFrame).GetField("methodAddress", BindingFlags.Instance | BindingFlags.NonPublic);
-
-			var frameMethod = frame.GetMethod();
-			var methodStart = 0L;
-
-			if (frameMethod is null)
-			{
-				if (methodAddress == null)
-					return null;
-
-				methodStart = (long) methodAddress.GetValue(frame);
-			}
-			else
-			{
-				var baseMethod = PlatformTriple.Current.GetIdentifiable(frameMethod);
-				methodStart = PlatformTriple.Current.GetNativeMethodBody(baseMethod).ToInt64();
-			}
-
-			// Failed to find any usable method, if `frameMethod` is null, we can not find any
-			// method from the stacktrace.
-			if (methodStart == 0)
-				return frameMethod;
-
-			lock (ReplacementToOriginals)
-				return ReplacementToOriginals
-					.FirstOrDefault(kv => kv.Key.IsAlive && PlatformTriple.Current.GetNativeMethodBody((MethodBase)kv.Key.Target).ToInt64() == methodStart).Key.Target as MethodBase;
+			var method = frame.GetMethod() as MethodInfo;
+			if (method == null) return null;
+			return GetOriginal(method);
 		}
 
-		internal static void AddReplacementOriginal(MethodBase original, MethodInfo replacement)
+		internal static void AddReplacementOriginal(MethodBase original, MethodBase replacement)
 		{
 			if (replacement == null)
 				return;

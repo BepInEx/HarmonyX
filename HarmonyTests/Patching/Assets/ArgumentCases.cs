@@ -13,106 +13,55 @@ namespace HarmonyLibTests.Assets
 	public class ArgumentOriginalMethods
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void Object_2_Object(ArgumentTypes.Object p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void Object_2_Object(ArgumentTypes.Object p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void Object_2_ObjectRef(ArgumentTypes.Object p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void Object_2_ObjectRef(ArgumentTypes.Object p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void ObjectRef_2_Object(ref ArgumentTypes.Object p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void ObjectRef_2_Object(ref ArgumentTypes.Object p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void ObjectRef_2_ObjectRef(ref ArgumentTypes.Object p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void ObjectRef_2_ObjectRef(ref ArgumentTypes.Object p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void Value_2_Value(ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void Value_2_Value(ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void Value_2_Boxing(ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void Value_2_Boxing(ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void Value_2_ValueRef(ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void Value_2_ValueRef(ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void Value_2_BoxingRef(ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void Value_2_BoxingRef(ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void ValueRef_2_Value(ref ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void ValueRef_2_Value(ref ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void ValueRef_2_Boxing(ref ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void ValueRef_2_Boxing(ref ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void ValueRef_2_ValueRef(ref ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void ValueRef_2_ValueRef(ref ArgumentTypes.Value p) => Console.WriteLine("ok");
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public void ValueRef_2_BoxingRef(ref ArgumentTypes.Value p)
-		{
-			Console.WriteLine("ok");
-		}
+		public void ValueRef_2_BoxingRef(ref ArgumentTypes.Value p) => Console.WriteLine("ok");
 	}
 
 	public static class ArgumentPatchMethods
 	{
 		public static string result;
 
-		public static void Reset()
-		{
-			result = "";
-		}
+		public static void Reset() => result = "";
 
-		public static void To_Object(ArgumentTypes.Object p)
-		{
-			result += p.GetType().Name[0];
-		}
+		public static void To_Object(ArgumentTypes.Object p) => result += p.GetType().Name[0];
 
-		public static void To_Value(ArgumentTypes.Value p)
-		{
-			result += p.GetType().Name[0];
-		}
+		public static void To_Value(ArgumentTypes.Value p) => result += p.GetType().Name[0];
 
-		public static void To_Boxing(object p)
-		{
-			result += p.GetType().Name[0];
-		}
+		public static void To_Boxing(object p) => result += p.GetType().Name[0];
 
-		public static void To_ObjectRef(ref ArgumentTypes.Object p)
-		{
-			result += p.GetType().Name[0];
-		}
+		public static void To_ObjectRef(ref ArgumentTypes.Object p) => result += p.GetType().Name[0];
 
 		public static void To_ValueRef(ref ArgumentTypes.Value p)
 		{
@@ -124,6 +73,40 @@ namespace HarmonyLibTests.Assets
 		{
 			result += p.GetType().Name[0];
 			_ = Traverse.Create(p).Field("n").SetValue(102);
+		}
+	}
+
+	public class SimpleArgumentArrayUsage
+	{
+		public static int n;
+		public static string s;
+		public static SomeStruct st;
+		public static float[] f;
+
+		public struct SomeStruct
+		{
+			public int n;
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void Method(int n, string s, SomeStruct st, float[] f)
+		{
+			SimpleArgumentArrayUsage.n = n;
+			SimpleArgumentArrayUsage.s = s;
+			SimpleArgumentArrayUsage.st = st;
+			SimpleArgumentArrayUsage.f = f;
+		}
+	}
+
+	[HarmonyPatch(typeof(SimpleArgumentArrayUsage), nameof(SimpleArgumentArrayUsage.Method))]
+	public static class SimpleArgumentArrayUsagePatch
+	{
+		public static void Prefix(object[] __args)
+		{
+			__args[0] = 123;
+			__args[1] = "patched";
+			__args[2] = new SimpleArgumentArrayUsage.SomeStruct() { n = 456 };
+			__args[3] = new float[] { 1.2f, 3.4f, 5.6f };
 		}
 	}
 
@@ -148,8 +131,8 @@ namespace HarmonyLibTests.Assets
 			s3 = "de";
 			st2 = new SomeStruct() { n = 12 };
 			st3 = new SomeStruct() { n = 45 };
-			f2 = new float[] { 1f, 3f, 5f };
-			f3 = new float[] { 2f, 4f, 6f };
+			f2 = [1f, 3f, 5f];
+			f3 = [2f, 4f, 6f];
 		}
 	}
 
@@ -186,13 +169,13 @@ namespace HarmonyLibTests.Assets
 			float[] f1, float[] f2, float[] f3
 		)
 		{
-			postfixInput = new object[]
-			{
+			postfixInput =
+			[
 				n1, n2, n3,
 				s1, s2, s3,
 				st1, st2, st3,
 				f1, f2, f3
-			};
+			];
 		}
 	}
 }

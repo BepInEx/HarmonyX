@@ -7,19 +7,14 @@ namespace HarmonyLibTests.Assets
 
 	public class TraverseProperties
 	{
-		public static string[] testStrings = new string[] { "test01", "test02", "test03", "test04", "test05", "test06", "test07" };
-		public static string[] propertyNames = new string[] { "PublicProperty", "PublicPrivateProperty", "AutoProperty", "BaseProperty1", "BaseProperty2", "BaseProperty3", "ImmediateProperty" };
+		public static string[] testStrings = ["test01", "test02", "test03", "test04", "test05", "test06", "test07"];
+		public static string[] propertyNames = ["PublicProperty", "PublicPrivateProperty", "AutoProperty", "BaseProperty1", "BaseProperty2", "BaseProperty3", "ImmediateProperty"];
 	}
 
-	public class Traverse_ExtraClass
+	public class Traverse_ExtraClass(string val)
 	{
-		public readonly string someString = "-";
-		public readonly Traverse_BaseClass baseClass = new Traverse_BaseClass();
-
-		public Traverse_ExtraClass(string val)
-		{
-			someString = val;
-		}
+		public readonly string someString = val;
+		public readonly Traverse_BaseClass baseClass = new();
 	}
 
 	public class Traverse_BaseClass
@@ -50,13 +45,13 @@ namespace HarmonyLibTests.Assets
 		static string StaticProperty => "test1";
 		private string BaseProperty => "base-property";
 
-		private string BaseMethod() { return "base-method"; }
+		private string BaseMethod() => "base-method";
 	}
 
 	public static class TraverseFields_Static
 	{
 		static readonly string staticField = "test2";
-		public static readonly Traverse_ExtraClass extraClassInstance = new Traverse_ExtraClass("test2");
+		public static readonly Traverse_ExtraClass extraClassInstance = new("test2");
 	}
 
 	public static class TraverseProperties_Static
@@ -161,10 +156,7 @@ namespace HarmonyLibTests.Assets
 			}
 		}
 
-		public override string ToString()
-		{
-			return "TraverseProperties_AccessModifiers";
-		}
+		public override string ToString() => "TraverseProperties_AccessModifiers";
 	}
 
 	public class TraverseProperties_SubClass : Traverse_BaseClass

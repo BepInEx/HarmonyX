@@ -15,11 +15,10 @@ namespace HarmonyLib
 	public class DelegateTypeFactory
 	{
 		private static int counter;
-		private static readonly Dictionary<MethodInfo, List<DelegateEntry>> TypeCache =
-			new Dictionary<MethodInfo, List<DelegateEntry>>();
+		private static readonly Dictionary<MethodInfo, List<DelegateEntry>> TypeCache = new();
 		private static readonly MethodBase CallingConvAttr = AccessTools.Constructor(
 			typeof(UnmanagedFunctionPointerAttribute),
-			new[] {typeof(CallingConvention)});
+			[typeof(CallingConvention)]);
 
 		/// <summary>
 		///    Instance for the delegate type factory
@@ -27,7 +26,7 @@ namespace HarmonyLib
 		/// <remarks>
 		///    Exists for API compatibility with Harmony
 		/// </remarks>
-		public static readonly DelegateTypeFactory instance = new DelegateTypeFactory();
+		public static readonly DelegateTypeFactory instance = new();
 
 		/// <summary>
 		///    Creates a delegate type for a method
@@ -35,10 +34,7 @@ namespace HarmonyLib
 		/// <param name="returnType">Type of the return value</param>
 		/// <param name="argTypes">Types of the arguments</param>
 		/// <returns>The new delegate type for the given type info</returns>
-		public Type CreateDelegateType(Type returnType, Type[] argTypes)
-		{
-			return CreateDelegateType(returnType, argTypes, null);
-		}
+		public Type CreateDelegateType(Type returnType, Type[] argTypes) => CreateDelegateType(returnType, argTypes, null);
 
 		/// <summary>
 		///    Creates a delegate type for a method
@@ -95,10 +91,7 @@ namespace HarmonyLib
 		/// <summary>Creates a delegate type for a method</summary>
 		/// <param name="method">The method</param>
 		/// <returns>The new delegate type</returns>
-		public Type CreateDelegateType(MethodInfo method)
-		{
-			return CreateDelegateType(method, null);
-		}
+		public Type CreateDelegateType(MethodInfo method) => CreateDelegateType(method, null);
 
 		/// <summary>Creates a delegate type for a method</summary>
 		/// <param name="method">The method</param>
@@ -112,7 +105,7 @@ namespace HarmonyLib
 				return entry.delegateType;
 
 			if (entries == null)
-				TypeCache[method] = entries = new List<DelegateEntry>();
+				TypeCache[method] = entries = [];
 
 			entry = new DelegateEntry
 			{

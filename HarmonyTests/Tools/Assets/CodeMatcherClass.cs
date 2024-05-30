@@ -1,24 +1,39 @@
 using System;
 
-namespace HarmonyLibTests.Assets;
-
-public class CodeMatcherClass1
+namespace HarmonyTests.Tools.Assets
 {
-	public void Foo()
+	public class CodeMatcherClass
 	{
-	}
+		public static void Method()
+		{
+			Foo();
+			Bar("hello");
+		}
 
-	public void Bar()
-	{
-	}
+		public static void Foo()
+		{
+		}
 
-	public void MultipleFooCalls()
-	{
-		Foo();
-		Console.WriteLine("Foo!");
-		Foo();
-		Console.WriteLine("Foo!");
-		Foo();
-		Console.WriteLine("Foo!");
+		public static void Bar(string s)
+		{
+		}
+
+		public void Baz()
+		{
+		}
+
+		public void Qux()
+		{
+		}
+
+		public void MultipleFooCalls()
+		{
+			Baz();
+			Console.WriteLine("Baz!");
+			Baz();
+			Console.WriteLine("Baz!");
+			Baz();
+			Console.WriteLine("Baz!");
+		}
 	}
 }

@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using HarmonyLibTests.Assets;
 using NUnit.Framework;
 using System;
@@ -26,10 +26,7 @@ namespace HarmonyLibTests.Patching
 				}
 			}
 
-			internal void SetList(List<T> list)
-			{
-				this.list = list;
-			}
+			internal void SetList(List<T> list) => this.list = list;
 
 			internal MyEnumerator(List<T> list)
 			{
@@ -67,32 +64,23 @@ namespace HarmonyLibTests.Patching
 			}
 		}
 
-		public List<T> list = new List<T>();
+		public List<T> list = [];
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public MyEnumerator GetEnumerator()
-		{
-			return new MyEnumerator(list);
-		}
+		public MyEnumerator GetEnumerator() => new(list);
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		IEnumerator<T> IEnumerable<T>.GetEnumerator()
-		{
-			return new MyEnumerator(list);
-		}
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => new MyEnumerator(list);
 
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return new MyEnumerator(list);
-		}
+		IEnumerator IEnumerable.GetEnumerator() => new MyEnumerator(list);
 	}
 
 	public class TestGenericStructReturnTypes_Patch
 	{
 		public static MyList<int>.MyEnumerator Postfix(MyList<int>.MyEnumerator input)
 		{
-			input.SetList(new List<int>() { 100, 200, 300 });
+			input.SetList([100, 200, 300]);
 			return input;
 		}
 	}
@@ -120,7 +108,7 @@ namespace HarmonyLibTests.Patching
 			_ = patcher.AddPostfix(postfix);
 			_ = patcher.Patch();
 
-			var list = new MyList<int> { list = new List<int>() { 1, 2, 3 } };
+			var list = new MyList<int> { list = [1, 2, 3] };
 
 			var enumerator = list.GetEnumerator();
 			var result = new List<int>();
@@ -143,8 +131,10 @@ namespace HarmonyLibTests.Patching
 			var prefix = patchClass.GetMethod("Prefix");
 			Assert.NotNull(prefix);
 
+#pragma warning disable IDE0028
 			var list1 = new Class13<int> { 1, 2, 3 };
 			list1.Add(1000);
+#pragma warning restore IDE0028
 			var e1 = list1.GetEnumerator();
 			_ = e1.MoveNext();
 			_ = e1.MoveNext();
@@ -163,8 +153,10 @@ namespace HarmonyLibTests.Patching
 			Class13Patch.method = null;
 			Class13Patch.result = 0;
 
+#pragma warning disable IDE0028
 			var list2 = new Class13<int> { 1, 2, 3 };
 			list2.Add(1000);
+#pragma warning restore IDE0028
 			var e2 = list2.GetEnumerator();
 			_ = e2.MoveNext();
 			_ = e2.MoveNext();

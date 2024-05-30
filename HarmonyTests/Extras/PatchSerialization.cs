@@ -12,7 +12,7 @@ namespace HarmonyTests.Extras
 		{
 			var method = SymbolExtensions.GetMethodInfo(() => ExpectedJSON());
 			var fix = "\"$FIX$\":[{\"index\":0,\"debug\":true,\"owner\":\"$NAME$\",\"priority\":600,\"methodToken\":$MT$,\"moduleGUID\":\"$MGUID$\",\"after\":[],\"before\":[\"p1\",null,\"p2\"]}]";
-			var fixes = new[] { "prefixes", "postfixes", "transpilers", "finalizers" }
+			var fixes = new[] { "prefixes", "postfixes", "transpilers", "finalizers", "ilmanipulators" }
 				.Select(name =>
 				{
 					return fix
@@ -27,18 +27,19 @@ namespace HarmonyTests.Extras
 			return "{" + fixes + "}";
 		}
 
-#if NET50_OR_GREATER
+#if !NETFRAMEWORK
 		[Test]
 		public void Serialize()
 		{
 			var method = SymbolExtensions.GetMethodInfo(() => ExpectedJSON());
-			var hMethod = new HarmonyMethod(method, Priority.High, new[] { "p1", null, "p2" }, new string[0], true);
+			var hMethod = new HarmonyMethod(method, Priority.High, ["p1", null, "p2"], [], true);
 
 			var patchInfo = new PatchInfo();
-			patchInfo.AddPrefixes("prefixes", new[] { hMethod });
-			patchInfo.AddPostfixes("postfixes", new[] { hMethod });
-			patchInfo.AddTranspilers("transpilers", new[] { hMethod });
-			patchInfo.AddFinalizers("finalizers", new[] { hMethod });
+			patchInfo.AddPrefixes("prefixes", [hMethod]);
+			patchInfo.AddPostfixes("postfixes", [hMethod]);
+			patchInfo.AddTranspilers("transpilers", [hMethod]);
+			patchInfo.AddFinalizers("finalizers", [hMethod]);
+			patchInfo.AddILManipulators("ilmanipulators", [hMethod]);
 
 			PatchInfoSerialization.useBinaryFormatter = false;
 			var result = PatchInfoSerialization.Serialize(patchInfo);
@@ -55,8 +56,8 @@ namespace HarmonyTests.Extras
 			var patchInfo = PatchInfoSerialization.Deserialize(data);
 
 			var n = 0;
-			var names = new[] { "prefixes", "postfixes", "transpilers", "finalizers" };
-			new[] { patchInfo.prefixes, patchInfo.postfixes, patchInfo.transpilers, patchInfo.finalizers }
+			var names = new[] { "prefixes", "postfixes", "transpilers", "finalizers", "ilmanipulators" };
+			new[] { patchInfo.prefixes, patchInfo.postfixes, patchInfo.transpilers, patchInfo.finalizers, patchInfo.ilmanipulators }
 				.Do(fixes =>
 				{
 					Assert.AreEqual(1, fixes.Length);
@@ -76,20 +77,21 @@ namespace HarmonyTests.Extras
 		public void SerializeAndDeserialize()
 		{
 			var method = SymbolExtensions.GetMethodInfo(() => ExpectedJSON());
-			var hMethod = new HarmonyMethod(method, Priority.High, new[] { "p1", null, "p2" }, new string[0], true);
+			var hMethod = new HarmonyMethod(method, Priority.High, ["p1", null, "p2"], [], true);
 
 			var originalPatchInfo = new PatchInfo();
-			originalPatchInfo.AddPrefixes("prefixes", new[] { hMethod });
-			originalPatchInfo.AddPostfixes("postfixes", new[] { hMethod });
-			originalPatchInfo.AddTranspilers("transpilers", new[] { hMethod });
-			originalPatchInfo.AddFinalizers("finalizers", new[] { hMethod });
+			originalPatchInfo.AddPrefixes("prefixes", [hMethod]);
+			originalPatchInfo.AddPostfixes("postfixes", [hMethod]);
+			originalPatchInfo.AddTranspilers("transpilers", [hMethod]);
+			originalPatchInfo.AddFinalizers("finalizers", [hMethod]);
+			originalPatchInfo.AddILManipulators("ilmanipulators", [hMethod]);
 
 			var data = PatchInfoSerialization.Serialize(originalPatchInfo);
 			var patchInfo = PatchInfoSerialization.Deserialize(data);
 
 			var n = 0;
-			var names = new[] { "prefixes", "postfixes", "transpilers", "finalizers" };
-			new[] { patchInfo.prefixes, patchInfo.postfixes, patchInfo.transpilers, patchInfo.finalizers }
+			var names = new[] { "prefixes", "postfixes", "transpilers", "finalizers", "ilmanipulators" };
+			new[] { patchInfo.prefixes, patchInfo.postfixes, patchInfo.transpilers, patchInfo.finalizers, patchInfo.ilmanipulators }
 				.Do(fixes =>
 				{
 					Assert.AreEqual(1, fixes.Length);

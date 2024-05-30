@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Diagnostics.CodeAnalysis;
 
 namespace HarmonyLib;
 
@@ -10,29 +11,23 @@ namespace HarmonyLib;
 public class CodeMatcher
 {
 	private readonly ILGenerator generator;
-	private readonly List<CodeInstruction> codes = new();
+	private readonly List<CodeInstruction> codes = [];
 
 	/// <summary>The current position</summary>
 	/// <value>The index or -1 if out of bounds</value>
 	///
 	public int Pos { get; private set; } = -1;
 
-	private Dictionary<string, CodeInstruction> lastMatches = new();
+	private Dictionary<string, CodeInstruction> lastMatches = [];
 	private string lastError;
 
 	private delegate CodeMatcher MatchDelegate();
 
 	private MatchDelegate lastMatchCall;
 
-	private void FixStart()
-	{
-		Pos = Math.Max(0, Pos);
-	}
+	private void FixStart() => Pos = Math.Max(0, Pos);
 
-	private void SetOutOfBounds(int direction)
-	{
-		Pos = direction > 0 ? Length : -1;
-	}
+	private void SetOutOfBounds(int direction) => Pos = direction > 0 ? Length : -1;
 
 	private int PosOrThrow()
 	{
@@ -103,7 +98,10 @@ public class CodeMatcher
 	{
 		return new CodeMatcher(codes, generator)
 		{
-			Pos = Pos, lastMatches = lastMatches, lastError = lastError, lastMatchCall = lastMatchCall
+			Pos = Pos,
+			lastMatches = lastMatches,
+			lastError = lastError,
+			lastMatchCall = lastMatchCall
 		};
 	}
 
@@ -127,27 +125,18 @@ public class CodeMatcher
 	/// <summary>Gets all instructions</summary>
 	/// <returns>A list of instructions</returns>
 	///
-	public List<CodeInstruction> Instructions()
-	{
-		return codes;
-	}
+	public List<CodeInstruction> Instructions() => codes;
 
 	/// <summary>Gets all instructions as an enumeration</summary>
 	/// <returns>A list of instructions</returns>
 	///
-	public IEnumerable<CodeInstruction> InstructionEnumeration()
-	{
-		return codes.AsEnumerable();
-	}
+	public IEnumerable<CodeInstruction> InstructionEnumeration() => codes.AsEnumerable();
 
 	/// <summary>Gets some instructions counting from current position</summary>
 	/// <param name="count">Number of instructions</param>
 	/// <returns>A list of instructions</returns>
 	///
-	public List<CodeInstruction> Instructions(int count)
-	{
-		return codes.GetRange(PosOrThrow(), count).Select(c => new CodeInstruction(c)).ToList();
-	}
+	public List<CodeInstruction> Instructions(int count) => codes.GetRange(PosOrThrow(), count).Select(c => new CodeInstruction(c)).ToList();
 
 	/// <summary>Gets all instructions within a range</summary>
 	/// <param name="start">The start index</param>
@@ -158,9 +147,7 @@ public class CodeMatcher
 	{
 		var instructions = codes;
 		if (start > end)
-		{
-			(start, end) = (end, start);
-		}
+			(end, start) = (start, end);
 
 		instructions = instructions.GetRange(start, end - start + 1);
 		return instructions.Select(c => new CodeInstruction(c)).ToList();
@@ -185,10 +172,7 @@ public class CodeMatcher
 	/// <param name="instructions">The instructions (transpiler argument)</param>
 	/// <returns>A list of Labels</returns>
 	///
-	public List<Label> DistinctLabels(IEnumerable<CodeInstruction> instructions)
-	{
-		return instructions.SelectMany(instruction => instruction.labels).Distinct().ToList();
-	}
+	public List<Label> DistinctLabels(IEnumerable<CodeInstruction> instructions) => instructions.SelectMany(instruction => instruction.labels).Distinct().ToList();
 
 	/// <summary>Reports a failure</summary>
 	/// <param name="method">The method involved</param>
@@ -352,6 +336,27 @@ public class CodeMatcher
 		return this;
 	}
 
+	/// <summary>Declares a local variable but does not add it</summary>
+	/// <param name="variableType">The variable type</param>
+	/// <param name="localVariable">[out] The new local variable</param>
+	/// <returns>The same code matcher</returns>
+	///
+	public CodeMatcher DeclareLocal(Type variableType, out LocalBuilder localVariable)
+	{
+		localVariable = generator.DeclareLocal(variableType);
+		return this;
+	}
+
+	/// <summary>Declares a new label but does not add it</summary>
+	/// <param name="label">[out] The new label</param>
+	/// <returns>The same code matcher</returns>
+	///
+	public CodeMatcher DefineLabel(out Label label)
+	{
+		label = generator.DefineLabel();
+		return this;
+	}
+
 	/// <summary>Creates a label at current position</summary>
 	/// <param name="label">[out] The label</param>
 	/// <returns>The same code matcher</returns>
@@ -368,6 +373,7 @@ public class CodeMatcher
 	/// <param name="label">[out] The new label</param>
 	/// <returns>The same code matcher</returns>
 	///
+	[SuppressMessage("Style", "IDE0300")]
 	public CodeMatcher CreateLabelAt(int position, out Label label)
 	{
 		label = generator.DefineLabel();
@@ -380,10 +386,11 @@ public class CodeMatcher
 	/// <param name="label">[out] The new label</param>
 	/// <returns>The same code matcher</returns>
 	///
+	[SuppressMessage("Style", "IDE0300")]
 	public CodeMatcher CreateLabelWithOffsets(int offset, out Label label)
 	{
 		label = generator.DefineLabel();
-		return AddLabelsAt(Pos + offset, new[] {label});
+		return AddLabelsAt(Pos + offset, new[] { label });
 	}
 
 	/// <summary>Adds an enumeration of labels to current position</summary>
@@ -527,9 +534,7 @@ public class CodeMatcher
 		if (end < 0 || end >= Length) throw new ArgumentOutOfRangeException(nameof(end), "end is out of bounds");
 
 		if (start > end)
-		{
-			(start, end) = (end, start);
-		}
+			(end, start) = (start, end);
 
 		codes.RemoveRange(start, end - start + 1);
 		return this;
@@ -540,10 +545,7 @@ public class CodeMatcher
 	/// <param name="endOffset">The end offset</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher RemoveInstructionsWithOffsets(int startOffset, int endOffset)
-	{
-		return RemoveInstructionsInRange(Pos + startOffset, Pos + endOffset);
-	}
+	public CodeMatcher RemoveInstructionsWithOffsets(int startOffset, int endOffset) => RemoveInstructionsInRange(Pos + startOffset, Pos + endOffset);
 
 	/// <summary>Advances the current position</summary>
 	/// <param name="offset">The offset</param>
@@ -578,29 +580,20 @@ public class CodeMatcher
 	/// <param name="predicate">The predicate</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher SearchForward(Func<CodeInstruction, bool> predicate)
-	{
-		return Search(predicate, 1);
-	}
+	public CodeMatcher SearchForward(Func<CodeInstruction, bool> predicate) => Search(predicate, 1);
 
 	/// <summary>Searches backwards with a predicate and reverses position</summary>
 	/// <param name="predicate">The predicate</param>
 	/// <returns>The same code matcher</returns>
 	///
 	[Obsolete("Use SearchBackwards instead")]
-	public CodeMatcher SearchBack(Func<CodeInstruction, bool> predicate)
-	{
-		return Search(predicate, -1);
-	}
+	public CodeMatcher SearchBack(Func<CodeInstruction, bool> predicate) => Search(predicate, -1);
 
 	/// <summary>Searches backwards with a predicate and reverses position</summary>
 	/// <param name="predicate">The predicate</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher SearchBackwards(Func<CodeInstruction, bool> predicate)
-	{
-		return Search(predicate, -1);
-	}
+	public CodeMatcher SearchBackwards(Func<CodeInstruction, bool> predicate) => Search(predicate, -1);
 
 	private CodeMatcher Search(Func<CodeInstruction, bool> predicate, int direction)
 	{
@@ -616,55 +609,38 @@ public class CodeMatcher
 	/// <param name="matches">Some code matches</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher MatchForward(bool useEnd, params CodeMatch[] matches)
-	{
-		return Match(matches, 1, useEnd);
-	}
+	public CodeMatcher MatchForward(bool useEnd, params CodeMatch[] matches) => Match(matches, 1, useEnd);
+
 	/// <summary>Matches backwards and reverses position</summary>
 	/// <param name="useEnd">True to set position to end of match, false to set it to the beginning of the match</param>
 	/// <param name="matches">Some code matches</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher MatchBack(bool useEnd, params CodeMatch[] matches)
-	{
-		return Match(matches, -1, useEnd);
-	}
+	public CodeMatcher MatchBack(bool useEnd, params CodeMatch[] matches) => Match(matches, -1, useEnd);
 
 	/// <summary>Matches forward and advances position to beginning of matching sequence</summary>
 	/// <param name="matches">Some code matches</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher MatchStartForward(params CodeMatch[] matches)
-	{
-		return Match(matches, 1, false);
-	}
+	public CodeMatcher MatchStartForward(params CodeMatch[] matches) => Match(matches, 1, false);
 
 	/// <summary>Matches forward and advances position to ending of matching sequence</summary>
 	/// <param name="matches">Some code matches</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher MatchEndForward(params CodeMatch[] matches)
-	{
-		return Match(matches, 1, true);
-	}
+	public CodeMatcher MatchEndForward(params CodeMatch[] matches) => Match(matches, 1, true);
 
 	/// <summary>Matches backwards and reverses position to beginning of matching sequence</summary>
 	/// <param name="matches">Some code matches</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher MatchStartBackwards(params CodeMatch[] matches)
-	{
-		return Match(matches, -1, false);
-	}
+	public CodeMatcher MatchStartBackwards(params CodeMatch[] matches) => Match(matches, -1, false);
 
 	/// <summary>Matches backwards and reverses position to ending of matching sequence</summary>
 	/// <param name="matches">Some code matches</param>
 	/// <returns>The same code matcher</returns>
 	///
-	public CodeMatcher MatchEndBackwards(params CodeMatch[] matches)
-	{
-		return Match(matches, -1, true);
-	}
+	public CodeMatcher MatchEndBackwards(params CodeMatch[] matches) => Match(matches, -1, true);
 
 	private CodeMatcher Match(CodeMatch[] matches, int direction, bool useEnd)
 	{
@@ -718,15 +694,12 @@ public class CodeMatcher
 	/// <param name="name">The match name</param>
 	/// <returns>An instruction</returns>
 	///
-	public CodeInstruction NamedMatch(string name)
-	{
-		return lastMatches[name];
-	}
+	public CodeInstruction NamedMatch(string name) => lastMatches[name];
 
 	private bool MatchSequence(int start, CodeMatch[] matches)
 	{
 		if (start < 0) return false;
-		lastMatches = new Dictionary<string, CodeInstruction>();
+		lastMatches = [];
 		foreach (var match in matches)
 		{
 			if (start >= Length || match.Matches(codes, codes[start]) == false)
