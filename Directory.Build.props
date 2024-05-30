@@ -1,0 +1,10 @@
+<Project>
+
+	<PropertyGroup>
+		<HarmonyXVersion>2.12.0</HarmonyXVersion>
+		<HarmonyXVersionFull>2.12.0.0</HarmonyXVersionFull>
+		<HarmonyXVersionSuffix></HarmonyXVersionSuffix>
+		<MonoModRuntimeDetour>25.1.0-prerelease.2</MonoModRuntimeDetour>
+	</PropertyGroup>
+
+</Project>

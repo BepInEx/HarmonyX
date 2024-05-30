@@ -1,4 +1,3 @@
-using Mono.Cecil;
 using MonoMod.Cil;
 using MonoMod.Core.Platforms;
 using MonoMod.Utils;

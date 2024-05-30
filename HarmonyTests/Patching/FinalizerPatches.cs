@@ -229,13 +229,13 @@ namespace HarmonyLibTests.Patching
 			var obj = Activator.CreateInstance(originalType);
 			var m_method = AccessTools.Method(originalType, "Method");
 			Assert.NotNull(m_method, nameof(m_method));
-			info = new Dictionary<string, object>();
+			info = [];
 			try
 			{
 				if (m_method.ReturnType == typeof(void))
 					_ = m_method.Invoke(obj, null);
 				else
-					info["result"] = m_method.Invoke(obj, new object[0]);
+					info["result"] = m_method.Invoke(obj, []);
 				info["outerexception"] = null;
 			}
 			catch (TargetInvocationException e)

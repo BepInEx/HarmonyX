@@ -1,7 +1,6 @@
-extern alias mmc;
 
 using HarmonyLib;
-using mmc::MonoMod.Cil;
+using MonoMod.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,7 +36,7 @@ namespace HarmonyLibTests.Assets
 					item => item.opcode == OpCodes.Ldarg_1,
 					item => item.opcode = OpCodes.Ldarg_0
 				).ToList();
-				var mJoin = AccessTools.Method(typeof(string), nameof(string.Join), new[] { typeof(string), typeof(string[]) });
+				var mJoin = AccessTools.Method(typeof(string), nameof(string.Join), [typeof(string), typeof(string[])]);
 				var idx = list.FindIndex(item => item.opcode == OpCodes.Call && item.operand as MethodInfo == mJoin);
 				list.RemoveRange(idx + 1, list.Count - (idx + 1));
 				list.Add(new CodeInstruction(OpCodes.Ret));
@@ -49,24 +48,15 @@ namespace HarmonyLibTests.Assets
 			return original;
 		}
 
-		public static void Postfix(string original, ref string __result)
-		{
-			__result = "Epilog" + StringOperation(original);
-		}
+		public static void Postfix(string original, ref string __result) => __result = "Epilog" + StringOperation(original);
 	}
 
 	public class Class1Reverse
 	{
 		[MethodImpl(MethodImplOptions.NoInlining)]
-		public string Method(string original, int n)
-		{
-			return original + GetExtra(n);
-		}
+		public string Method(string original, int n) => original + GetExtra(n);
 
-		private static string GetExtra(int n)
-		{
-			return "Extra" + n;
-		}
+		private static string GetExtra(int n) => "Extra" + n;
 	}
 
 	[HarmonyPatch(typeof(Class1Reverse), "Method")]
@@ -130,10 +120,7 @@ namespace HarmonyLibTests.Assets
 	[HarmonyPatch]
 	public class Class1ReversePatchWithTargetMethod
 	{
-		public static MethodBase TargetMethod()
-		{
-			return AccessTools.Method(typeof(Class1Reverse), "GetExtra");
-		}
+		public static MethodBase TargetMethod() => AccessTools.Method(typeof(Class1Reverse), "GetExtra");
 
 		[HarmonyReversePatch]
 		[MethodImpl(MethodImplOptions.NoInlining)]

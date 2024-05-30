@@ -5,6 +5,10 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+#if NETSTANDARD || NET5_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
 
 namespace HarmonyLib
 {
@@ -12,6 +16,30 @@ namespace HarmonyLib
 	///
 	internal static class PatchInfoSerialization
 	{
+#if NETSTANDARD || NET5_0_OR_GREATER
+		static readonly JsonSerializerOptions serializerOptions = new() { IncludeFields = true };
+		internal static bool? useBinaryFormatter = null;
+		internal static bool UseBinaryFormatter
+		{
+			get
+			{
+				if (!useBinaryFormatter.HasValue)
+				{
+					// https://github.com/dotnet/runtime/blob/208e377a5329ad6eb1db5e5fb9d4590fa50beadd/src/libraries/System.Runtime.Serialization.Formatters/src/System/Runtime/Serialization/LocalAppContextSwitches.cs#L14
+					var hasSwitch = AppContext.TryGetSwitch("System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", out var isEnabled);
+					if (hasSwitch)
+						useBinaryFormatter = isEnabled;
+					else
+					{
+						// Default true, in line with Microsoft - https://github.com/dotnet/runtime/blob/208e377a5329ad6eb1db5e5fb9d4590fa50beadd/src/libraries/Common/src/System/LocalAppContextSwitches.Common.cs#L54
+						useBinaryFormatter = true;
+					}
+				}
+				return useBinaryFormatter.Value;
+			}
+		}
+#endif
+
 		class Binder : SerializationBinder
 		{
 			/// <summary>Control the binding of a serialized object to a type</summary>
@@ -33,6 +61,7 @@ namespace HarmonyLib
 				return typeToDeserialize;
 			}
 		}
+		internal static readonly BinaryFormatter binaryFormatter = new() { Binder = new Binder() };
 
 		/// <summary>Serializes a patch info</summary>
 		/// <param name="patchInfo">The <see cref="PatchInfo"/></param>
@@ -40,10 +69,18 @@ namespace HarmonyLib
 		///
 		internal static byte[] Serialize(this PatchInfo patchInfo)
 		{
+#if NETSTANDARD || NET5_0_OR_GREATER
+			if (UseBinaryFormatter)
+			{
+#endif
 			using var streamMemory = new MemoryStream();
-			var formatter = new BinaryFormatter();
-			formatter.Serialize(streamMemory, patchInfo);
+			binaryFormatter.Serialize(streamMemory, patchInfo);
 			return streamMemory.GetBuffer();
+#if NETSTANDARD || NET5_0_OR_GREATER
+			}
+			else
+				return JsonSerializer.SerializeToUtf8Bytes(patchInfo);
+#endif
 		}
 
 		/// <summary>Deserialize a patch info</summary>
@@ -52,9 +89,19 @@ namespace HarmonyLib
 		///
 		internal static PatchInfo Deserialize(byte[] bytes)
 		{
-			var formatter = new BinaryFormatter { Binder = new Binder() };
-			var streamMemory = new MemoryStream(bytes);
-			return (PatchInfo)formatter.Deserialize(streamMemory);
+#if NETSTANDARD || NET5_0_OR_GREATER
+			if (UseBinaryFormatter)
+			{
+#endif
+			using var streamMemory = new MemoryStream(bytes);
+			return (PatchInfo)binaryFormatter.Deserialize(streamMemory);
+#if NETSTANDARD || NET5_0_OR_GREATER
+			}
+			else
+			{
+				return JsonSerializer.Deserialize<PatchInfo>(bytes, serializerOptions);
+			}
+#endif
 		}
 
 		/// <summary>Compare function to sort patch priorities</summary>
@@ -83,127 +130,112 @@ namespace HarmonyLib
 	{
 		/// <summary>Prefixes as an array of <see cref="Patch"/></summary>
 		///
-		public Patch[] prefixes = new Patch[0];
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonInclude]
+#endif
+		public Patch[] prefixes = [];
 
 		/// <summary>Postfixes as an array of <see cref="Patch"/></summary>
 		///
-		public Patch[] postfixes = new Patch[0];
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonInclude]
+#endif
+		public Patch[] postfixes = [];
 
 		/// <summary>Transpilers as an array of <see cref="Patch"/></summary>
 		///
-		public Patch[] transpilers = new Patch[0];
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonInclude]
+#endif
+		public Patch[] transpilers = [];
 
 		/// <summary>Finalizers as an array of <see cref="Patch"/></summary>
 		///
-		public Patch[] finalizers = new Patch[0];
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonInclude]
+#endif
+		public Patch[] finalizers = [];
 
 		/// <summary>ILManipulators as an array of <see cref="Patch"/></summary>
 		///
-		public Patch[] ilmanipulators = new Patch[0];
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonInclude]
+#endif
+		public Patch[] ilmanipulators = [];
 
 		/// <summary>Returns if any of the patches wants debugging turned on</summary>
 		///
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonIgnore]
+#endif
 		public bool Debugging => prefixes.Any(p => p.debug) || postfixes.Any(p => p.debug) || transpilers.Any(p => p.debug) || finalizers.Any(p => p.debug) || ilmanipulators.Any(p => p.debug);
 
 		/// <summary>Returns a list of paths that the IL should be dumped to</summary>
 		///
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonIgnore]
+#endif
 		public string[] DebugEmitPaths => prefixes.Concat(postfixes).Concat(transpilers).Concat(finalizers).Concat(ilmanipulators).Select(p => p.debugEmitPath).Where(p => p != null).ToArray();
 
 		/// <summary>Adds prefixes</summary>
 		/// <param name="owner">An owner (Harmony ID)</param>
 		/// <param name="methods">The patch methods</param>
 		///
-		internal void AddPrefixes(string owner, params HarmonyMethod[] methods)
-		{
-			prefixes = Add(owner, methods, prefixes);
-		}
+		internal void AddPrefixes(string owner, params HarmonyMethod[] methods) => prefixes = Add(owner, methods, prefixes);
 
 		/// <summary>Adds a prefix</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
-		public void AddPrefix(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug)
-		{
-			AddPrefixes(owner, new HarmonyMethod(patch, priority, before, after, debug));
-		}
+		public void AddPrefix(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddPrefixes(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes prefixes</summary>
 		/// <param name="owner">The owner of the prefixes, or <c>*</c> for all</param>
 		///
-		public void RemovePrefix(string owner)
-		{
-			prefixes = Remove(owner, prefixes);
-		}
+		public void RemovePrefix(string owner) => prefixes = Remove(owner, prefixes);
 
 		/// <summary>Adds postfixes</summary>
 		/// <param name="owner">An owner (Harmony ID)</param>
 		/// <param name="methods">The patch methods</param>
 		///
-		internal void AddPostfixes(string owner, params HarmonyMethod[] methods)
-		{
-			postfixes = Add(owner, methods, postfixes);
-		}
+		internal void AddPostfixes(string owner, params HarmonyMethod[] methods) => postfixes = Add(owner, methods, postfixes);
 
 		/// <summary>Adds a postfix</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
-		public void AddPostfix(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug)
-		{
-			AddPostfixes(owner, new HarmonyMethod(patch, priority, before, after, debug));
-		}
+		public void AddPostfix(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddPostfixes(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes postfixes</summary>
 		/// <param name="owner">The owner of the postfixes, or <c>*</c> for all</param>
 		///
-		public void RemovePostfix(string owner)
-		{
-			postfixes = Remove(owner, postfixes);
-		}
+		public void RemovePostfix(string owner) => postfixes = Remove(owner, postfixes);
 
 		/// <summary>Adds transpilers</summary>
 		/// <param name="owner">An owner (Harmony ID)</param>
 		/// <param name="methods">The patch methods</param>
 		///
-		internal void AddTranspilers(string owner, params HarmonyMethod[] methods)
-		{
-			transpilers = Add(owner, methods, transpilers);
-		}
+		internal void AddTranspilers(string owner, params HarmonyMethod[] methods) => transpilers = Add(owner, methods, transpilers);
 
 		/// <summary>Adds a transpiler</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
-		public void AddTranspiler(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug)
-		{
-			AddTranspilers(owner, new HarmonyMethod(patch, priority, before, after, debug));
-		}
+		public void AddTranspiler(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddTranspilers(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes transpilers</summary>
 		/// <param name="owner">The owner of the transpilers, or <c>*</c> for all</param>
 		///
-		public void RemoveTranspiler(string owner)
-		{
-			transpilers = Remove(owner, transpilers);
-		}
+		public void RemoveTranspiler(string owner) => transpilers = Remove(owner, transpilers);
 
 		/// <summary>Adds finalizers</summary>
 		/// <param name="owner">An owner (Harmony ID)</param>
 		/// <param name="methods">The patch methods</param>
 		///
-		internal void AddFinalizers(string owner, params HarmonyMethod[] methods)
-		{
-			finalizers = Add(owner, methods, finalizers);
-		}
+		internal void AddFinalizers(string owner, params HarmonyMethod[] methods) => finalizers = Add(owner, methods, finalizers);
 
 		/// <summary>Adds a finalizer</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
-		public void AddFinalizer(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug)
-		{
-			AddFinalizers(owner, new HarmonyMethod(patch, priority, before, after, debug));
-		}
+		public void AddFinalizer(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddFinalizers(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes finalizers</summary>
 		/// <param name="owner">The owner of the finalizers, or <c>*</c> for all</param>
 		///
-		public void RemoveFinalizer(string owner)
-		{
-			finalizers = Remove(owner, finalizers);
-		}
+		public void RemoveFinalizer(string owner) => finalizers = Remove(owner, finalizers);
 
 		/// <summary>Adds ilmanipulators</summary>
 		/// <param name="owner">An owner (Harmony ID)</param>
@@ -247,13 +279,15 @@ namespace HarmonyLib
 
 			// concat lists
 			var initialIndex = current.Length;
-			return current
-				.Concat(
-					add
-						.Where(method => method != null)
-						.Select((method, i) => new Patch(method, i + initialIndex, owner))
-				)
-				.ToArray();
+			return
+			[
+				.. current
+,
+				.. add
+					.Where(method => method != null)
+					.Select((method, i) => new Patch(method, i + initialIndex, owner))
+,
+			];
 		}
 
 		/// <summary>Gets a list of patches with any from the given owner removed</summary>
@@ -263,13 +297,16 @@ namespace HarmonyLib
 		private static Patch[] Remove(string owner, Patch[] current)
 		{
 			return owner == "*"
-				? new Patch[0]
+				? []
 				: current.Where(patch => patch.owner != owner).ToArray();
 		}
 	}
 
 	/// <summary>A serializable patch</summary>
 	///
+#if NETSTANDARD || NET5_0_OR_GREATER
+	[JsonConverter(typeof(PatchJsonConverter))]
+#endif
 	[Serializable]
 	public class Patch : IComparable
 	{
@@ -312,6 +349,9 @@ namespace HarmonyLib
 
 		/// <summary>The method of the static patch method</summary>
 		///
+#if NETSTANDARD || NET5_0_OR_GREATER
+		[JsonIgnore]
+#endif
 		public MethodInfo PatchMethod
 		{
 			get
@@ -350,8 +390,8 @@ namespace HarmonyLib
 			this.index = index;
 			this.owner = owner;
 			this.priority = priority == -1 ? Priority.Normal : priority;
-			this.before = before ?? new string[0];
-			this.after = after ?? new string[0];
+			this.before = before ?? [];
+			this.after = after ?? [];
 			this.debug = debug;
 			PatchMethod = patch;
 		}
@@ -373,8 +413,8 @@ namespace HarmonyLib
 			this.index = index;
 			this.owner = owner;
 			this.priority = priority == -1 ? Priority.Normal : priority;
-			this.before = before ?? new string[0];
-			this.after = after ?? new string[0];
+			this.before = before ?? [];
+			this.after = after ?? [];
 			this.debug = debug;
 			this.wrapTryCatch = wrapTryCatch;
 			PatchMethod = patch;
@@ -398,8 +438,8 @@ namespace HarmonyLib
 			this.index = index;
 			this.owner = owner;
 			this.priority = priority == -1 ? Priority.Normal : priority;
-			this.before = before ?? new string[0];
-			this.after = after ?? new string[0];
+			this.before = before ?? [];
+			this.after = after ?? [];
 			this.debug = debug;
 			this.debugEmitPath = debugEmitPath;
 			this.wrapTryCatch = wrapTryCatch;
@@ -412,6 +452,18 @@ namespace HarmonyLib
 		/// <param name="owner">An owner (Harmony ID)</param>
 		public Patch(HarmonyMethod method, int index, string owner)
 			: this(method.method, index, owner, method.priority, method.before, method.after, method.debug ?? false, method.wrapTryCatch ?? false, method.debugEmitPath) { }
+
+		internal Patch(int index, string owner, int priority, string[] before, string[] after, bool debug, int methodToken, string moduleGUID)
+		{
+			this.index = index;
+			this.owner = owner;
+			this.priority = priority == -1 ? Priority.Normal : priority;
+			this.before = before ?? [];
+			this.after = after ?? [];
+			this.debug = debug;
+			this.methodToken = methodToken;
+			this.moduleGUID = moduleGUID;
+		}
 
 		/// <summary>Get the patch method or a DynamicMethod if original patch method is a patch factory</summary>
 		/// <param name="original">The original method/constructor</param>
@@ -427,33 +479,24 @@ namespace HarmonyLib
 			if (parameters[0].ParameterType != typeof(MethodBase)) return method;
 
 			// we have a DynamicMethod factory, let's use it
-			return method.Invoke(null, new object[] { original }) as MethodInfo;
+			return method.Invoke(null, [original]) as MethodInfo;
 		}
 
 		/// <summary>Determines whether patches are equal</summary>
 		/// <param name="obj">The other patch</param>
 		/// <returns>true if equal</returns>
 		///
-		public override bool Equals(object obj)
-		{
-			return ((obj is object) && (obj is Patch) && (PatchMethod == ((Patch)obj).PatchMethod));
-		}
+		public override bool Equals(object obj) => ((obj is not null) && (obj is Patch) && (PatchMethod == ((Patch)obj).PatchMethod));
 
 		/// <summary>Determines how patches sort</summary>
 		/// <param name="obj">The other patch</param>
 		/// <returns>integer to define sort order (-1, 0, 1)</returns>
 		///
-		public int CompareTo(object obj)
-		{
-			return PatchInfoSerialization.PriorityComparer(obj, index, priority);
-		}
+		public int CompareTo(object obj) => PatchInfoSerialization.PriorityComparer(obj, index, priority);
 
 		/// <summary>Hash function</summary>
 		/// <returns>A hash code</returns>
 		///
-		public override int GetHashCode()
-		{
-			return PatchMethod.GetHashCode();
-		}
+		public override int GetHashCode() => PatchMethod.GetHashCode();
 	}
 }

@@ -6,27 +6,27 @@ using System.Linq;
 namespace HarmonyLib
 {
 	/// <summary>A group of patches</summary>
-	/// 
+	///
 	public class Patches
 	{
 		/// <summary>A collection of prefix <see cref="Patch"/></summary>
-		/// 
+		///
 		public readonly ReadOnlyCollection<Patch> Prefixes;
 
 		/// <summary>A collection of postfix <see cref="Patch"/></summary>
-		/// 
+		///
 		public readonly ReadOnlyCollection<Patch> Postfixes;
 
 		/// <summary>A collection of transpiler <see cref="Patch"/></summary>
-		/// 
+		///
 		public readonly ReadOnlyCollection<Patch> Transpilers;
 
 		/// <summary>A collection of finalizer <see cref="Patch"/></summary>
-		/// 
+		///
 		public readonly ReadOnlyCollection<Patch> Finalizers;
 
 		/// <summary>A collection of ILManipulator <see cref="Patch"/></summary>
-		/// 
+		///
 		public readonly ReadOnlyCollection<Patch> ILManipulators;
 
 		/// <summary>Gets all owners (Harmony IDs) or all known patches</summary>
@@ -55,11 +55,11 @@ namespace HarmonyLib
 		///
 		public Patches(Patch[] prefixes, Patch[] postfixes, Patch[] transpilers, Patch[] finalizers, Patch[] ilmanipulators)
 		{
-			if (prefixes is null) prefixes = new Patch[0];
-			if (postfixes is null) postfixes = new Patch[0];
-			if (transpilers is null) transpilers = new Patch[0];
-			if (finalizers is null) finalizers = new Patch[0];
-			if (ilmanipulators is null) ilmanipulators = new Patch[0];
+			prefixes ??= [];
+			postfixes ??= [];
+			transpilers ??= [];
+			finalizers ??= [];
+			ilmanipulators ??= [];
 
 			Prefixes = prefixes.ToList().AsReadOnly();
 			Postfixes = postfixes.ToList().AsReadOnly();

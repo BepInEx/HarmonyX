@@ -25,10 +25,7 @@ namespace HarmonyLib
 		/// <param name="debug">Use debug mode</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug)
-		{
-			return new PatchSorter(patches, debug).Sort(original);
-		}
+		internal static List<MethodInfo> GetSortedPatchMethods(MethodBase original, Patch[] patches, bool debug) => new PatchSorter(patches, debug).Sort(original);
 
 		/// <summary>Sorts patch methods by their priority rules</summary>
 		/// <param name="original">The original method</param>
@@ -36,10 +33,7 @@ namespace HarmonyLib
 		/// <param name="debug">Use debug mode</param>
 		/// <returns>The sorted patch methods</returns>
 		///
-		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches, bool debug)
-		{
-			return new PatchSorter(patches, debug).SortAsPatches(original);
-		}
+		internal static Patch[] GetSortedPatchMethodsAsPatches(MethodBase original, Patch[] patches, bool debug) => new PatchSorter(patches, debug).SortAsPatches(original);
 
 		/// <summary>Creates new replacement method with the latest patches and detours the original method</summary>
 		/// <param name="original">The original method</param>
