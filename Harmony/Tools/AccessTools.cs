@@ -1,3 +1,4 @@
+using MonoMod.Core.Platforms;
 using HarmonyLib.Internal.Util;
 using MonoMod.Utils;
 using System;
@@ -32,7 +33,7 @@ namespace HarmonyLib
 	{
 		/// <summary>Shortcut for <see cref="BindingFlags"/> to simplify the use of reflections and make it work for any access level</summary>
 		///
-		public static readonly BindingFlags all = BindingFlags.Public // This should a be const, but changing from static (readonly) to const breaks binary compatibility.
+		public static readonly BindingFlags all = BindingFlags.Public // This should be a const, but changing from static (readonly) to const breaks binary compatibility.
 			| BindingFlags.NonPublic
 			| BindingFlags.Instance
 			| BindingFlags.Static
@@ -43,7 +44,7 @@ namespace HarmonyLib
 
 		/// <summary>Shortcut for <see cref="BindingFlags"/> to simplify the use of reflections and make it work for any access level but only within the current type</summary>
 		///
-		public static readonly BindingFlags allDeclared = all | BindingFlags.DeclaredOnly; // This should a be const, but changing from static (readonly) to const breaks binary compatibility.
+		public static readonly BindingFlags allDeclared = all | BindingFlags.DeclaredOnly; // This should be a const, but changing from static (readonly) to const breaks binary compatibility.
 
 		/// <summary>Enumerates all assemblies in the current app domain, excluding visual studio assemblies</summary>
 		/// <returns>An enumeration of <see cref="Assembly"/></returns>
@@ -97,7 +98,7 @@ namespace HarmonyLib
 		/// <summary>Enumerates all successfully loaded types in the current app domain, excluding visual studio assemblies</summary>
 		/// <returns>An enumeration of all <see cref="Type"/> in all assemblies, excluding visual studio assemblies</returns>
 		///
-		public static IEnumerable<Type> AllTypes() => AllAssemblies().SelectMany(a => GetTypesFromAssembly(a));
+		public static IEnumerable<Type> AllTypes() => AllAssemblies().SelectMany(GetTypesFromAssembly);
 
 		/// <summary>Enumerates all inner types (non-recursive) of a given type</summary>
 		/// <param name="type">The class/type to start with</param>
@@ -145,6 +146,11 @@ namespace HarmonyLib
 			}
 			return result;
 		}
+
+		/// <summary>Creates an identifiable version of a method</summary>
+		/// <param name="method">The method</param>
+		/// <returns></returns>
+		public static MethodInfo Identifiable(this MethodInfo method) => PlatformTriple.Current.GetIdentifiable(method) as MethodInfo ?? method;
 
 		/// <summary>Gets the reflection information for a directly declared field</summary>
 		/// <param name="type">The class/type where the field is defined</param>

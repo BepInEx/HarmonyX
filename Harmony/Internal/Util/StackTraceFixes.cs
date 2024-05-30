@@ -6,9 +6,7 @@ using MonoMod.Cil;
 using System;
 using System.Diagnostics;
 using System.Reflection;
-using MonoMod.Core.Platforms;
 using MonoMod.RuntimeDetour;
-using MonoMod.Utils;
 using System.Linq;
 
 namespace HarmonyLib.Internal.RuntimeFixes
@@ -32,28 +30,19 @@ namespace HarmonyLib.Internal.RuntimeFixes
         }
 
         // Helper to save the detour info after patch is complete
-        private static void OnILChainRefresh(ILHookInfo self)
-        {
-            PatchManager.AddReplacementOriginal(
-	            PlatformTriple.Current.GetIdentifiable(self.Method.Method),
-	            PlatformTriple.Current.GetIdentifiable(self.Method.GetEndOfChain())
-	         );
-        }
+        private static void OnILChainRefresh(ILHookInfo self) =>
+	        PatchManager.AddReplacementOriginal(self.Method.Method, self.Method.GetEndOfChain());
 
         static Assembly GetExecutingAssemblyReplacement()
         {
 	        var frames = new StackTrace().GetFrames();
-	        if (frames?.Skip(1).FirstOrDefault() is { } frame && Harmony.GetOriginalMethodFromStackframe(frame) is { } original)
+	        if (frames?.Skip(1).FirstOrDefault() is { } frame && Harmony.GetMethodFromStackframe(frame) is { } original)
 		        return original.Module.Assembly;
 	        return Assembly.GetExecutingAssembly();
         }
 
-        private static MethodBase GetMethodReplacement(StackFrame self)
-        {
-	        var method = self.GetMethod();
-	        var original = PatchManager.GetOriginal(PlatformTriple.Current.GetIdentifiable(method) as MethodInfo);
-	        return original ?? method;
-        }
+        private static MethodBase GetMethodReplacement(StackFrame self) =>
+	        Harmony.GetMethodFromStackframe(self) ?? self.GetMethod();
 
         // ReSharper disable InconsistentNaming
         private static readonly MethodInfo GetExecutingAssembly_MethodInfo =
