@@ -107,7 +107,7 @@ namespace HarmonyLib
 					lastOriginal = originals[0];
 				ReversePatch(ref lastOriginal);
 
-				replacements = originals.Count > 0 ? BulkPatch(originals, ref lastOriginal) : PatchWithAttributes(ref lastOriginal);
+				replacements = originals.Count > 0 ? BulkPatch(originals, ref lastOriginal, false) : PatchWithAttributes(ref lastOriginal, false);
 			}
 			catch (Exception ex)
 			{
@@ -117,6 +117,21 @@ namespace HarmonyLib
 			RunMethod<HarmonyCleanup>(ref exception, exception);
 			ReportException(exception, lastOriginal);
 			return replacements;
+		}
+
+		/// <summary>REmoves the patches</summary>
+		///
+		public void Unpatch()
+		{
+			if (containerAttributes is null)
+				return;
+
+			var originals = GetBulkMethods();
+			MethodBase lastOriginal = null;
+			if (originals.Count > 0)
+				_ = BulkPatch(originals, ref lastOriginal, true);
+			else
+				_ = PatchWithAttributes(ref lastOriginal, true);
 		}
 
 		void ReversePatch(ref MethodBase lastOriginal)
@@ -148,7 +163,7 @@ namespace HarmonyLib
 			}
 		}
 
-		List<MethodInfo> BulkPatch(List<MethodBase> originals, ref MethodBase lastOriginal)
+		List<MethodInfo> BulkPatch(List<MethodBase> originals, ref MethodBase lastOriginal, bool unpatch)
 		{
 			var jobs = new PatchJobs<MethodInfo>();
 			for (var i = 0; i < originals.Count; i++)
@@ -172,12 +187,15 @@ namespace HarmonyLib
 			foreach (var job in jobs.GetJobs())
 			{
 				lastOriginal = job.original;
-				ProcessPatchJob(job);
+				if (unpatch)
+					ProcessUnpatchJob(job);
+				else
+					ProcessPatchJob(job);
 			}
 			return jobs.GetReplacements();
 		}
 
-		List<MethodInfo> PatchWithAttributes(ref MethodBase lastOriginal)
+		List<MethodInfo> PatchWithAttributes(ref MethodBase lastOriginal, bool unpatch)
 		{
 			var jobs = new PatchJobs<MethodInfo>();
 			foreach (var patchMethod in patchMethods)
@@ -200,7 +218,10 @@ namespace HarmonyLib
 			foreach (var job in jobs.GetJobs())
 			{
 				lastOriginal = job.original;
-				ProcessPatchJob(job);
+				if (unpatch)
+					ProcessUnpatchJob(job);
+				else
+					ProcessPatchJob(job);
 			}
 			return jobs.GetReplacements();
 		}
@@ -237,6 +258,24 @@ namespace HarmonyLib
 			RunMethod<HarmonyCleanup>(ref exception, job.original, exception);
 			ReportException(exception, job.original);
 			job.replacement = replacement;
+		}
+
+		void ProcessUnpatchJob(PatchJobs<MethodInfo>.Job job)
+		{
+			var patchInfo = job.original.GetPatchInfo() ?? new PatchInfo();
+
+			var hasBody = job.original.HasMethodBody();
+			if (hasBody)
+			{
+				job.postfixes.Do(patch => patchInfo.RemovePatch(patch.method));
+				job.prefixes.Do(patch => patchInfo.RemovePatch(patch.method));
+			}
+			job.transpilers.Do(patch => patchInfo.RemovePatch(patch.method));
+			if (hasBody)
+				job.finalizers.Do(patch => patchInfo.RemovePatch(patch.method));
+
+			var replacement = PatchFunctions.UpdateWrapper(job.original, patchInfo);
+			PatchManager.AddReplacementOriginal(job.original, replacement);
 		}
 
 		List<MethodBase> GetBulkMethods()

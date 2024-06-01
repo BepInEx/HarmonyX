@@ -185,7 +185,6 @@ namespace HarmonyLibTests
 			TestDomainProxy.RunInIsolationContext(action);
 #endif
 
-
 #if NETCOREAPP
 		// .NET Core does not support multiple AppDomains, but it does support unloading assemblies via AssemblyLoadContext.
 		// Based off sample code in https://docs.microsoft.com/en-us/dotnet/standard/assembly/unloadability

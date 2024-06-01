@@ -86,7 +86,6 @@ namespace HarmonyLib
 		internal HarmonyMethod info;
 		internal HarmonyPatchType? type;
 
-		static readonly string harmonyAttributeName = typeof(HarmonyAttribute).FullName;
 		internal static IEnumerable<AttributePatch> Create(MethodInfo patch, bool collectIncomplete = false)
 		{
 			if (patch is null)
@@ -108,7 +107,7 @@ namespace HarmonyLib
 					var f_info = AccessTools.Field(attr.GetType(), nameof(HarmonyAttribute.info));
 					return f_info.GetValue(attr);
 				})
-				.Select(harmonyInfo => AccessTools.MakeDeepCopy<HarmonyMethod>(harmonyInfo))
+				.Select(AccessTools.MakeDeepCopy<HarmonyMethod>)
 				.ToList();
 
 			var completeMethods = new List<HarmonyMethod>();
