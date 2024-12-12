@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -198,13 +198,18 @@ namespace HarmonyLib.Internal.Util
             return loc;
         }
 
+        // https://github.com/MonoMod/MonoMod/commit/2011243901351e69b6b5da89631e01bc8eb61da5
+        // https://github.com/dotnet/runtime/blob/f1332ab0d82ee0e21ca387cbd1c8a87c5dfa4906/src/coreclr/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeLocalBuilder.cs
+        // In .NET 9, LocalBuilder is an abstract type, so we look for RuntimeLocalBuilder first.
+        private static readonly Type t_LocalBuilder =
+            Type.GetType("System.Reflection.Emit.RuntimeLocalBuilder") ?? typeof(LocalBuilder);
         private static readonly ConstructorInfo c_LocalBuilder =
-            typeof(LocalBuilder).GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+            t_LocalBuilder.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
                                 .OrderByDescending(c => c.GetParameters().Length).First();
         private static readonly FieldInfo f_LocalBuilder_position =
-            typeof(LocalBuilder).GetField("position", BindingFlags.NonPublic | BindingFlags.Instance);
+            t_LocalBuilder.GetField("position", BindingFlags.NonPublic | BindingFlags.Instance);
         private static readonly FieldInfo f_LocalBuilder_is_pinned =
-            typeof(LocalBuilder).GetField("is_pinned", BindingFlags.NonPublic | BindingFlags.Instance);
+            t_LocalBuilder.GetField("is_pinned", BindingFlags.NonPublic | BindingFlags.Instance);
         private static int c_LocalBuilder_params = c_LocalBuilder.GetParameters().Length;
     }
 }
