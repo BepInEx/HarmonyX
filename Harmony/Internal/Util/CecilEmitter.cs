@@ -29,12 +29,32 @@ internal static class CecilEmitter
 
 	public static void Dump(MethodDefinition md, IEnumerable<string> dumpPaths, MethodBase original = null)
 	{
+		using var module = DumpImpl(md, original);
+
+		foreach (var settingsDumpPath in dumpPaths)
+		{
+			var fullPath = Path.GetFullPath(settingsDumpPath);
+			try
+			{
+				Directory.CreateDirectory(fullPath);
+				using var stream = File.OpenWrite(Path.Combine(fullPath, $"{module.Name}.dll"));
+				module.Write(stream);
+			}
+			catch (Exception e)
+			{
+				Logger.Log(Logger.LogChannel.Error, () => $"Failed to dump {md.GetID(simple: true)} to {fullPath}: {e}");
+			}
+		}
+	}
+
+	internal static ModuleDefinition DumpImpl(MethodDefinition md, MethodBase original = null)
+	{
 		if(md.Body is null)
 			throw new ArgumentException($"Body of MethodDefinition '{md.Name}' to dump is null");
 
 		var name = $"HarmonyDump.{SanitizeTypeName(md.GetID(withType: false, simple: true))}.{Guid.NewGuid().GetHashCode():X8}";
 		var originalName = (original?.Name ?? md.Name).Replace('.', '_');
-		using var module = ModuleDefinition.CreateModule(name,
+		var module = ModuleDefinition.CreateModule(name,
 			new ModuleParameters
 			{
 				Kind = ModuleKind.Dll, ReflectionImporterProvider = MMReflectionImporter.ProviderNoDefault
@@ -114,20 +134,7 @@ internal static class CecilEmitter
 				new ParameterDefinition("<>_this", ParameterAttributes.None, type.Relink(relinker, clone)));
 		}
 
-		foreach (var settingsDumpPath in dumpPaths)
-		{
-			var fullPath = Path.GetFullPath(settingsDumpPath);
-			try
-			{
-				Directory.CreateDirectory(fullPath);
-				using var stream = File.OpenWrite(Path.Combine(fullPath, $"{module.Name}.dll"));
-				module.Write(stream);
-			}
-			catch (Exception e)
-			{
-				Logger.Log(Logger.LogChannel.Error, () => $"Failed to dump {md.GetID(simple: true)} to {fullPath}: {e}");
-			}
-		}
+		return module;
 	}
 
 	private static string SanitizeTypeName(string typeName)
