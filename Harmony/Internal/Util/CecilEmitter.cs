@@ -27,6 +27,9 @@ internal static class CecilEmitter
 
 	public static void Dump(MethodDefinition md, IEnumerable<string> dumpPaths, MethodBase original = null)
 	{
+		if(md.Body is null)
+			throw new ArgumentException($"Body of MethodDefinition '{md.Name}' to dump is null");
+
 		var name = $"HarmonyDump.{SanitizeTypeName(md.GetID(withType: false, simple: true))}.{Guid.NewGuid().GetHashCode():X8}";
 		var originalName = (original?.Name ?? md.Name).Replace('.', '_');
 		using var module = ModuleDefinition.CreateModule(name,
