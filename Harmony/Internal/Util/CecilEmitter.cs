@@ -19,7 +19,7 @@ namespace HarmonyLib.Internal.Util;
 /// <summary>
 /// Basic safe DLL emitter for dynamically generated <see cref="MethodDefinition"/>s.
 /// </summary>
-/// <remarks>Based on https://github.com/MonoMod/MonoMod.Common/blob/master/Utils/DMDGenerators/DMDCecilGenerator.cs</remarks>
+/// <remarks>Based on https://github.com/MonoMod/MonoMod/blob/reorganize/src/MonoMod.Utils/DMDGenerators/DMDCecilGenerator.cs</remarks>
 internal static class CecilEmitter
 {
 	private static readonly ConstructorInfo UnverifiableCodeAttributeConstructor =
@@ -52,7 +52,21 @@ internal static class CecilEmitter
 		var isVolatile = new TypeReference("System.Runtime.CompilerServices", "IsVolatile", module,
 			module.TypeSystem.CoreLibrary);
 
-		Relinker relinker = (mtp, _) => mtp == md ? clone : module.ImportReference(mtp);
+#pragma warning disable IDE0039 // Use local function
+		Relinker relinker = (mtp, ctx) =>
+		{
+			if (mtp == md)
+				return clone!;
+			if (mtp is MethodReference mr)
+			{
+				if (mr.FullName == md.FullName
+				    && mr.DeclaringType.FullName == md.DeclaringType.FullName
+				    && mr.DeclaringType.Scope.Name == md.DeclaringType.Scope.Name)
+					return clone!;
+			}
+			return module.ImportReference(mtp);
+		};
+#pragma warning restore IDE0039 // Use local function
 
 		clone =
 			new MethodDefinition(original?.Name ?? "_" + md.Name.Replace(".", "_"), md.Attributes, module.TypeSystem.Void)
@@ -61,7 +75,8 @@ internal static class CecilEmitter
 				Attributes = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static,
 				ImplAttributes = MethodImplAttributes.IL | MethodImplAttributes.Managed,
 				DeclaringType = td,
-				HasThis = false
+				HasThis = false,
+				NoInlining = true
 			};
 		td.Methods.Add(clone);
 
@@ -87,12 +102,6 @@ internal static class CecilEmitter
 				IMetadataTokenProvider mtp => mtp.Relink(relinker, clone),
 				_                          => operand
 			};
-
-			if (instr.Previous?.OpCode == OpCodes.Volatile &&
-			    operand is FieldReference fref &&
-			    (fref.FieldType as RequiredModifierType)?.ModifierType != isVolatile)
-				fref.FieldType = new RequiredModifierType(isVolatile, fref.FieldType);
-
 			instr.Operand = operand;
 		}
 
