@@ -47,13 +47,20 @@ internal static class CecilEmitter
 
 		module.Types.Add(td);
 
-		MethodDefinition clone = null;
-
-		var isVolatile = new TypeReference("System.Runtime.CompilerServices", "IsVolatile", module,
-			module.TypeSystem.CoreLibrary);
+		var clone =
+			new MethodDefinition(original?.Name ?? "_" + md.Name.Replace(".", "_"), md.Attributes, module.TypeSystem.Void)
+			{
+				MethodReturnType = md.MethodReturnType,
+				Attributes = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static,
+				ImplAttributes = MethodImplAttributes.IL | MethodImplAttributes.Managed,
+				DeclaringType = td,
+				HasThis = false,
+				NoInlining = true
+			};
+		td.Methods.Add(clone);
 
 #pragma warning disable IDE0039 // Use local function
-		Relinker relinker = (mtp, ctx) =>
+		Relinker relinker = (mtp, _) =>
 		{
 			if (mtp == md)
 				return clone!;
@@ -68,28 +75,16 @@ internal static class CecilEmitter
 		};
 #pragma warning restore IDE0039 // Use local function
 
-		clone =
-			new MethodDefinition(original?.Name ?? "_" + md.Name.Replace(".", "_"), md.Attributes, module.TypeSystem.Void)
-			{
-				MethodReturnType = md.MethodReturnType,
-				Attributes = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static,
-				ImplAttributes = MethodImplAttributes.IL | MethodImplAttributes.Managed,
-				DeclaringType = td,
-				HasThis = false,
-				NoInlining = true
-			};
-		td.Methods.Add(clone);
-
 		foreach (var param in md.Parameters)
 			clone.Parameters.Add(param.Clone().Relink(relinker, clone));
 
 		clone.ReturnType = md.ReturnType.Relink(relinker, clone);
 		var body = clone.Body = md.Body.Clone(clone);
 
-		foreach (var variable in clone.Body.Variables)
+		foreach (var variable in body.Variables)
 			variable.VariableType = variable.VariableType.Relink(relinker, clone);
 
-		foreach (var handler in clone.Body.ExceptionHandlers.Where(handler => handler.CatchType != null))
+		foreach (var handler in body.ExceptionHandlers.Where(handler => handler.CatchType != null))
 			handler.CatchType = handler.CatchType.Relink(relinker, clone);
 
 		foreach (var instr in body.Instructions)
