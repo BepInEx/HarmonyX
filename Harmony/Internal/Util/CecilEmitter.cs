@@ -1,10 +1,12 @@
 using HarmonyLib.Tools;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Collections.Generic;
 using MonoMod.Cil;
 using MonoMod.Utils;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -96,7 +98,7 @@ internal static class CecilEmitter
 			operand = operand switch
 			{
 				ParameterDefinition param  => clone.Parameters[param.Index],
-				ILLabel label => label.Target,
+				ILLabel label => LabelFix(label, body.Instructions, md.Body.Instructions, originalName),
 				IMetadataTokenProvider mtp => mtp.Relink(relinker, clone),
 				_                          => operand
 			};
@@ -135,5 +137,15 @@ internal static class CecilEmitter
 			.Replace(" ", "_")
 			.Replace("<", "{")
 			.Replace(">", "}");
+	}
+
+	private static Instruction LabelFix(ILLabel label, Collection<Instruction> clone, Collection<Instruction> original, string originalName)
+	{
+		Debug.Assert(clone.Count == original.Count);
+		var target = label.Target;
+		var idx = original.IndexOf(target);
+		if (idx == -1)
+			throw new IndexOutOfRangeException($"ILLabel from dump copy of '{originalName}' cannot be relinked. It points to '{target}', which was not found in the original body");
+		return clone[idx];
 	}
 }
