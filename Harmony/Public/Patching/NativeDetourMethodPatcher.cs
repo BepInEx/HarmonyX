@@ -29,21 +29,17 @@ public class NativeDetourMethodPatcher : MethodPatcher
 	private IDisposable _realReplacementPin;
 	private IDisposable _altHandle;
 
-	private readonly MethodSignature _staticSignature;
-
+	private readonly MethodSignature _signature;
 	private readonly MethodInfo _altEntryMethod;
 	private readonly IDisposable _altEntryPin;
 
 	/// <inheritdoc/>
 	public NativeDetourMethodPatcher(MethodBase original) : base(original)
 	{
-		var staticSignature = new MethodSignature(Original, true);
-		_staticSignature = staticSignature;
-
-		var altEntryProxyMethod = GenerateAltEntryProxyStub(Original, staticSignature);
-		_altEntryMethod = altEntryProxyMethod;
-		_altEntryPin = PlatformTriple.Current.PinMethodIfNeeded(altEntryProxyMethod);
-		PlatformTriple.Current.Compile(altEntryProxyMethod);
+		_signature = new MethodSignature(Original);
+		_altEntryMethod = GenerateAltEntryProxyStub(Original, _signature);
+		_altEntryPin = PlatformTriple.Current.PinMethodIfNeeded(_altEntryMethod);
+		PlatformTriple.Current.Compile(_altEntryMethod);
 	}
 
 	private static MethodInfo GenerateAltEntryProxyStub(MethodBase original, MethodSignature signature)
@@ -122,12 +118,12 @@ public class NativeDetourMethodPatcher : MethodPatcher
 
 	private DynamicMethodDefinition GenerateAltEntryProxyCaller(string name)
 	{
-		var dmd = _staticSignature.CreateDmd(name);
+		var dmd = _signature.CreateDmd(name);
 
 		var il = new ILContext(dmd.Definition);
 		var c = new ILCursor(il);
 
-		for (var i = 0; i < _staticSignature.ParameterCount; i++)
+		for (var i = 0; i < _signature.ParameterCount; i++)
 			c.EmitLdarg(i);
 		c.EmitCall(_altEntryMethod);
 		c.EmitRet();
