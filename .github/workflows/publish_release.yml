@@ -49,3 +49,11 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         files: |
             ./Harmony/bin/Release/HarmonyX.${{ steps.get_version.outputs.version_num }}.nupkg
+            
+    - name: Publish
+      env:
+        NUGET_SOURCE: 'nuget.org'
+        NUGET_API_KEY: ${{ secrets.NUGET_KEY }}
+      run: |
+        dotnet nuget push --skip-duplicate "./Harmony/bin/Release/HarmonyX.*.nupkg" \
+          --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY"
