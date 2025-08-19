@@ -4,7 +4,7 @@
 		<HarmonyXVersion>2.14.0</HarmonyXVersion>
 		<HarmonyXVersionFull>2.14.0.0</HarmonyXVersionFull>
 		<HarmonyXVersionSuffix></HarmonyXVersionSuffix>
-		<MonoModRuntimeDetour>25.2.2</MonoModRuntimeDetour>
+		<MonoModRuntimeDetour>25.2.3</MonoModRuntimeDetour>
 	</PropertyGroup>
 
 </Project>

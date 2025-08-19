@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -185,6 +186,7 @@ namespace HarmonyLib
 
 		/// <summary>Adds a prefix</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void AddPrefix(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddPrefixes(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes prefixes</summary>
@@ -200,6 +202,7 @@ namespace HarmonyLib
 
 		/// <summary>Adds a postfix</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void AddPostfix(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddPostfixes(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes postfixes</summary>
@@ -215,6 +218,7 @@ namespace HarmonyLib
 
 		/// <summary>Adds a transpiler</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void AddTranspiler(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddTranspilers(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes transpilers</summary>
@@ -230,6 +234,7 @@ namespace HarmonyLib
 
 		/// <summary>Adds a finalizer</summary>
 		[Obsolete("This method only exists for backwards compatibility since the class is public.")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void AddFinalizer(MethodInfo patch, string owner, int priority, string[] before, string[] after, bool debug) => AddFinalizers(owner, new HarmonyMethod(patch, priority, before, after, debug));
 
 		/// <summary>Removes finalizers</summary>
@@ -259,11 +264,11 @@ namespace HarmonyLib
 		///
 		public void RemovePatch(MethodInfo patch)
 		{
-			prefixes = prefixes.Where(p => p.PatchMethod != patch).ToArray();
-			postfixes = postfixes.Where(p => p.PatchMethod != patch).ToArray();
-			transpilers = transpilers.Where(p => p.PatchMethod != patch).ToArray();
-			finalizers = finalizers.Where(p => p.PatchMethod != patch).ToArray();
-			ilmanipulators = ilmanipulators.Where(p => p.PatchMethod != patch).ToArray();
+			prefixes = [.. prefixes.Where(p => p.PatchMethod != patch)];
+			postfixes = [.. postfixes.Where(p => p.PatchMethod != patch)];
+			transpilers = [.. transpilers.Where(p => p.PatchMethod != patch)];
+			finalizers = [.. finalizers.Where(p => p.PatchMethod != patch)];
+			ilmanipulators = [.. ilmanipulators.Where(p => p.PatchMethod != patch)];
 		}
 
 		/// <summary>Gets a concatenated list of patches</summary>
@@ -298,7 +303,7 @@ namespace HarmonyLib
 		{
 			return owner == "*"
 				? []
-				: current.Where(patch => patch.owner != owner).ToArray();
+				: [.. current.Where(patch => patch.owner != owner)];
 		}
 	}
 

@@ -1,5 +1,6 @@
 using MonoMod.Utils;
 using System;
+using System.ComponentModel;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -14,6 +15,7 @@ namespace HarmonyLib
 	/// <returns>An delegate</returns>
 	///
 	[Obsolete("Use AccessTools.FieldRefAccess<T, S> for fields and AccessTools.MethodDelegate<Func<T, S>> for property getters")]
+	[EditorBrowsable(EditorBrowsableState.Never)]
 	public delegate S GetterHandler<in T, out S>(T source);
 
 	/// <summary>A setter delegate type</summary>
@@ -24,6 +26,7 @@ namespace HarmonyLib
 	/// <returns>An delegate</returns>
 	///
 	[Obsolete("Use AccessTools.FieldRefAccess<T, S> for fields and AccessTools.MethodDelegate<Action<T, S>> for property setters")]
+	[EditorBrowsable(EditorBrowsableState.Never)]
 	public delegate void SetterHandler<in T, in S>(T source, S value);
 
 	/// <summary>A constructor delegate type</summary>
@@ -55,7 +58,7 @@ namespace HarmonyLib
 			var generator = dynamicMethod.GetILGenerator();
 			generator.Emit(OpCodes.Newobj, constructorInfo);
 			generator.Emit(OpCodes.Ret);
-			return (InstantiationHandler<T>)dynamicMethod.Generate().CreateDelegate(typeof(InstantiationHandler<T>));
+			return dynamicMethod.Generate().CreateDelegate<InstantiationHandler<T>>();
 		}
 
 		/// <summary>Creates an getter delegate for a property</summary>
@@ -65,6 +68,7 @@ namespace HarmonyLib
 		/// <returns>The new getter delegate</returns>
 		///
 		[Obsolete("Use AccessTools.MethodDelegate<Func<T, S>>(PropertyInfo.GetGetMethod(true))")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public static GetterHandler<T, S> CreateGetterHandler<T, S>(PropertyInfo propertyInfo)
 		{
 			var getMethodInfo = propertyInfo.GetGetMethod(true);
@@ -75,7 +79,7 @@ namespace HarmonyLib
 			getGenerator.Emit(OpCodes.Call, getMethodInfo);
 			getGenerator.Emit(OpCodes.Ret);
 
-			return (GetterHandler<T, S>)dynamicGet.Generate().CreateDelegate(typeof(GetterHandler<T, S>));
+			return dynamicGet.Generate().CreateDelegate<GetterHandler<T, S>>();
 		}
 
 		/// <summary>Creates an getter delegate for a field</summary>
@@ -85,6 +89,7 @@ namespace HarmonyLib
 		/// <returns>The new getter delegate</returns>
 		///
 		[Obsolete("Use AccessTools.FieldRefAccess<T, S>(fieldInfo)")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public static GetterHandler<T, S> CreateGetterHandler<T, S>(FieldInfo fieldInfo)
 		{
 			var dynamicGet = CreateGetDynamicMethod<T, S>(fieldInfo.DeclaringType);
@@ -94,7 +99,7 @@ namespace HarmonyLib
 			getGenerator.Emit(OpCodes.Ldfld, fieldInfo);
 			getGenerator.Emit(OpCodes.Ret);
 
-			return (GetterHandler<T, S>)dynamicGet.Generate().CreateDelegate(typeof(GetterHandler<T, S>));
+			return dynamicGet.Generate().CreateDelegate<GetterHandler<T, S>>();
 		}
 
 		/// <summary>Creates an getter delegate for a field (with a list of possible field names)</summary>
@@ -105,6 +110,7 @@ namespace HarmonyLib
 		///
 		[Obsolete("Use AccessTools.FieldRefAccess<T, S>(name) for fields and " +
 			"AccessTools.MethodDelegate<Func<T, S>>(AccessTools.PropertyGetter(typeof(T), name)) for properties")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public static GetterHandler<T, S> CreateFieldGetter<T, S>(params string[] names)
 		{
 			foreach (var name in names)
@@ -128,6 +134,7 @@ namespace HarmonyLib
 		/// <returns>The new setter delegate</returns>
 		///
 		[Obsolete("Use AccessTools.MethodDelegate<Action<T, S>>(PropertyInfo.GetSetMethod(true))")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public static SetterHandler<T, S> CreateSetterHandler<T, S>(PropertyInfo propertyInfo)
 		{
 			var setMethodInfo = propertyInfo.GetSetMethod(true);
@@ -139,7 +146,7 @@ namespace HarmonyLib
 			setGenerator.Emit(OpCodes.Call, setMethodInfo);
 			setGenerator.Emit(OpCodes.Ret);
 
-			return (SetterHandler<T, S>)dynamicSet.Generate().CreateDelegate(typeof(SetterHandler<T, S>));
+			return dynamicSet.Generate().CreateDelegate<SetterHandler<T, S>>();
 		}
 
 		/// <summary>Creates an setter delegate for a field</summary>
@@ -149,6 +156,7 @@ namespace HarmonyLib
 		/// <returns>The new getter delegate</returns>
 		///
 		[Obsolete("Use AccessTools.FieldRefAccess<T, S>(fieldInfo)")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
 		public static SetterHandler<T, S> CreateSetterHandler<T, S>(FieldInfo fieldInfo)
 		{
 			var dynamicSet = CreateSetDynamicMethod<T, S>(fieldInfo.DeclaringType);
@@ -159,7 +167,7 @@ namespace HarmonyLib
 			setGenerator.Emit(OpCodes.Stfld, fieldInfo);
 			setGenerator.Emit(OpCodes.Ret);
 
-			return (SetterHandler<T, S>)dynamicSet.Generate().CreateDelegate(typeof(SetterHandler<T, S>));
+			return dynamicSet.Generate().CreateDelegate<SetterHandler<T, S>>();
 		}
 
 		static DynamicMethodDefinition CreateGetDynamicMethod<T, S>(Type type) => new($"DynamicGet_{type.Name}", typeof(S), [typeof(T)]);

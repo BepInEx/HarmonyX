@@ -153,10 +153,9 @@ namespace HarmonyLib
 		///
 		public static List<string> HarmonyFields()
 		{
-			return AccessTools
+			return [.. AccessTools
 				.GetFieldNames(typeof(HarmonyMethod))
-				.Where(s => s != "method")
-				.ToList();
+				.Where(s => s != "method")];
 		}
 
 		/// <summary>Merges annotations</summary>
@@ -324,10 +323,9 @@ namespace HarmonyLib
 		///
 		public static List<HarmonyMethod> GetFromType(Type type)
 		{
-			return type.GetCustomAttributes(true)
+			return [.. type.GetCustomAttributes(true)
 						.Select(GetHarmonyMethodInfo)
-						.Where(info => info is not null)
-						.ToList();
+						.Where(info => info is not null)];
 		}
 
 		/// <summary>Gets merged annotations on a class/type</summary>
@@ -342,10 +340,9 @@ namespace HarmonyLib
 		///
 		public static List<HarmonyMethod> GetFromMethod(MethodBase method)
 		{
-			return method.GetCustomAttributes(true)
+			return [.. method.GetCustomAttributes(true)
 						.Select(GetHarmonyMethodInfo)
-						.Where(info => info is not null)
-						.ToList();
+						.Where(info => info is not null)];
 		}
 
 		/// <summary>Gets merged annotations on a method</summary>
