@@ -395,12 +395,12 @@ public class HarmonyManipulator
 			// Collect state and arg variables
 			foreach (var nfix in auxMethods)
 			{
-				var parameters = nfix.method.GetParameters();
-				var argsParameter = parameters.FirstOrDefault(p => p.Name == ArgsArrayVar);
+				var parametersToRealNames = ParametersWithRealNames(nfix.method);
+				var argsParameterWithRealName = parametersToRealNames.FirstOrDefault(p => p.realName == ArgsArrayVar);
 
-				if (argsParameter != null)
+				if (argsParameterWithRealName.param != null)
 				{
-					if (argsParameter.ParameterType != typeof(object[]))
+					if (argsParameterWithRealName.param.ParameterType != typeof(object[]))
 						throw new InvalidHarmonyPatchArgumentException(
 							$"Patch {nfix.method.FullDescription()} defines __args list, but only type `object[]` is permitted",
 							original, nfix.method);
@@ -409,10 +409,10 @@ public class HarmonyManipulator
 
 				if (nfix.method.DeclaringType?.FullName != null &&
 				    !variables.ContainsKey(nfix.method.DeclaringType.FullName))
-					foreach (var patchParam in parameters
-						         .Where(patchParam => patchParam.Name == StateVar))
+					foreach (var patchParamWithRealName in parametersToRealNames
+						         .Where(paramToRealName => paramToRealName.realName == StateVar))
 						variables[nfix.method.DeclaringType.FullName] =
-							il.DeclareVariable(patchParam.ParameterType.OpenRefType()); // Fix possible reftype
+							il.DeclareVariable(patchParamWithRealName.param.ParameterType.OpenRefType()); // Fix possible reftype
 			}
 
 			var canModifyControlFlow = WritePrefixes(returnLabel);
@@ -892,17 +892,20 @@ public class HarmonyManipulator
 		var isInstance = original.IsStatic is false;
 		var originalParameters = original.GetParameters();
 		var originalParameterNames = originalParameters.Select(p => p.Name).ToArray();
+		var parametersWithRealNames = ParametersWithRealNames(patch);
 		var originalType = original.DeclaringType;
 
 		// check for passthrough using first parameter (which must have same type as return type)
-		var parameters = patch.GetParameters().ToList();
-		if (allowFirsParamPassthrough && patch.ReturnType != typeof(void) && parameters.Count > 0 &&
-		    parameters[0].ParameterType == patch.ReturnType)
-			parameters.RemoveRange(0, 1);
+		if (allowFirsParamPassthrough && patch.ReturnType != typeof(void) && parametersWithRealNames.Count > 0 &&
+		    parametersWithRealNames[0].param.ParameterType == patch.ReturnType)
+			parametersWithRealNames.RemoveRange(0, 1);
 
-		foreach (var patchParam in parameters)
+		foreach (var patchParamWithRealName in parametersWithRealNames)
 		{
-			if (patchParam.Name == OriginalMethodParam)
+			var realParamName = patchParamWithRealName.realName;
+			var patchParam = patchParamWithRealName.param;
+
+			if (realParamName == OriginalMethodParam)
 			{
 				if (EmitOriginalBaseMethod())
 					continue;
@@ -911,7 +914,7 @@ public class HarmonyManipulator
 				continue;
 			}
 
-			if (patchParam.Name == InstanceParam)
+			if (realParamName == InstanceParam)
 			{
 				if (original.IsStatic)
 				{
@@ -958,7 +961,7 @@ public class HarmonyManipulator
 				continue;
 			}
 
-			if (patchParam.Name == ArgsArrayVar)
+			if (realParamName == ArgsArrayVar)
 			{
 				if (variables.TryGetValue(ArgsArrayVar, out var argsArrayVar))
 					il.Emit(OpCodes.Ldloc, argsArrayVar);
@@ -967,9 +970,9 @@ public class HarmonyManipulator
 				continue;
 			}
 
-			if (patchParam.Name.StartsWith(InstanceFieldPrefix, StringComparison.Ordinal))
+			if (realParamName.StartsWith(InstanceFieldPrefix, StringComparison.Ordinal))
 			{
-				var fieldName = patchParam.Name.Substring(InstanceFieldPrefix.Length);
+				var fieldName = realParamName.Substring(InstanceFieldPrefix.Length);
 				FieldInfo fieldInfo;
 				if (fieldName.All(char.IsDigit))
 				{
@@ -999,7 +1002,7 @@ public class HarmonyManipulator
 			}
 
 			// state is special too since each patch has its own local var
-			if (patchParam.Name == StateVar)
+			if (realParamName == StateVar)
 			{
 				var ldlocCode = patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
 				if (variables.TryGetValue(patch.DeclaringType.FullName, out var stateVar))
@@ -1010,7 +1013,7 @@ public class HarmonyManipulator
 			}
 
 			// treat __result var special
-			if (patchParam.Name == ResultVar)
+			if (realParamName == ResultVar)
 			{
 				var returnType = ReturnType;
 				if (returnType == typeof(void))
@@ -1042,7 +1045,7 @@ public class HarmonyManipulator
 			}
 
 			// treat __resultRef delegate special
-			if (patchParam.Name == ResultRefVar)
+			if (realParamName == ResultRefVar)
 			{
 				var returnType = ReturnType;
 				if (!returnType.IsByRef)
@@ -1065,7 +1068,7 @@ public class HarmonyManipulator
 			}
 
 			// any other declared variables
-			if (variables.TryGetValue(patchParam.Name, out var localBuilder))
+			if (variables.TryGetValue(realParamName, out var localBuilder))
 			{
 				var ldlocCode = patchParam.ParameterType.IsByRef ? OpCodes.Ldloca : OpCodes.Ldloc;
 				il.Emit(ldlocCode, localBuilder);
@@ -1073,11 +1076,11 @@ public class HarmonyManipulator
 			}
 
 			int idx;
-			if (patchParam.Name.StartsWith(ParamIndexPrefix, StringComparison.Ordinal))
+			if (realParamName.StartsWith(ParamIndexPrefix, StringComparison.Ordinal))
 			{
-				var val = patchParam.Name.Substring(ParamIndexPrefix.Length);
+				var val = realParamName.Substring(ParamIndexPrefix.Length);
 				if (!int.TryParse(val, out idx))
-					throw new Exception($"Parameter {patchParam.Name} does not contain a valid index");
+					throw new Exception($"Parameter {realParamName} does not contain a valid index");
 				if (idx < 0 || idx >= originalParameters.Length)
 					throw new Exception($"No parameter found at index {idx}");
 			}
@@ -1206,6 +1209,21 @@ public class HarmonyManipulator
 					il.Emit(originalParameters[idx].ParameterType.GetCecilLoadOpCode());
 			}
 		}
+	}
+
+	private static List<(ParameterInfo param, string realName)> ParametersWithRealNames(MethodInfo method)
+	{
+		var baseArgs = method.GetArgumentAttributes();
+		if (method.DeclaringType is not null)
+			baseArgs = baseArgs.Union(method.DeclaringType.GetArgumentAttributes());
+
+		return method.GetParameters().Select(p =>
+		{
+			var arg = p.GetArgumentAttribute();
+			if (arg != null)
+				return (p, arg.OriginalName ?? p.Name);
+			return (p, baseArgs.GetRealName(p.Name, null) ?? p.Name);
+		}).ToList();
 	}
 
 	private class PatchContext
