@@ -21,8 +21,10 @@ namespace HarmonyLib.Internal.Util
         private static Action<CecilILGenerator, OpCode, object> emitCodeDelegate;
         private static Dictionary<Type, CecilOpCode> storeOpCodes = new Dictionary<Type, CecilOpCode>
         {
+	        [typeof(bool)] = CecilOpCodes.Stind_I1,
 	        [typeof(sbyte)] = CecilOpCodes.Stind_I1,
 	        [typeof(byte)] = CecilOpCodes.Stind_I1,
+	        [typeof(char)] =  CecilOpCodes.Stind_I2,
 	        [typeof(short)] = CecilOpCodes.Stind_I2,
 	        [typeof(ushort)] = CecilOpCodes.Stind_I2,
 	        [typeof(int)] = CecilOpCodes.Stind_I4,
@@ -31,12 +33,18 @@ namespace HarmonyLib.Internal.Util
 	        [typeof(ulong)] = CecilOpCodes.Stind_I8,
 	        [typeof(float)] = CecilOpCodes.Stind_R4,
 	        [typeof(double)] = CecilOpCodes.Stind_R8,
+	        [typeof(nint)] = CecilOpCodes.Stind_I,
+	        [typeof(nuint)] = CecilOpCodes.Stind_I,
+	        [typeof(IntPtr)] = CecilOpCodes.Stind_I,
+	        [typeof(UIntPtr)] = CecilOpCodes.Stind_I,
         };
 
         private static Dictionary<Type, CecilOpCode> loadOpCodes = new Dictionary<Type, CecilOpCode>
         {
+				[typeof(bool)] = CecilOpCodes.Ldind_I1,
 				[typeof(sbyte)] = CecilOpCodes.Ldind_I1,
 				[typeof(byte)] = CecilOpCodes.Ldind_I1,
+				[typeof(char)] = CecilOpCodes.Ldind_I2,
 				[typeof(short)] = CecilOpCodes.Ldind_I2,
 				[typeof(ushort)] = CecilOpCodes.Ldind_I2,
 				[typeof(int)] = CecilOpCodes.Ldind_I4,
@@ -45,6 +53,10 @@ namespace HarmonyLib.Internal.Util
 				[typeof(ulong)] = CecilOpCodes.Ldind_I8,
 				[typeof(float)] = CecilOpCodes.Ldind_R4,
 				[typeof(double)] = CecilOpCodes.Ldind_R8,
+				[typeof(nint)] = CecilOpCodes.Ldind_I,
+				[typeof(nuint)] = CecilOpCodes.Ldind_I,
+				[typeof(IntPtr)] = CecilOpCodes.Ldind_I,
+				[typeof(UIntPtr)] = CecilOpCodes.Ldind_I,
         };
 
         [MethodImpl(MethodImplOptions.Synchronized)]
@@ -57,16 +69,18 @@ namespace HarmonyLib.Internal.Util
 
         public static CecilOpCode GetCecilStoreOpCode(this Type t)
         {
+	        var realType = t;
 	        if (t.IsEnum)
-		        return CecilOpCodes.Stind_I4;
-	        return storeOpCodes.TryGetValue(t, out var opCode) ? opCode : CecilOpCodes.Stind_Ref;
+		        realType = Enum.GetUnderlyingType(realType);
+	        return storeOpCodes.TryGetValue(realType, out var opCode) ? opCode : CecilOpCodes.Stind_Ref;
         }
 
 		  public static CecilOpCode GetCecilLoadOpCode(this Type t)
 		  {
-	        if (t.IsEnum)
-		        return CecilOpCodes.Ldind_I4;
-	        return loadOpCodes.TryGetValue(t, out var opCode) ? opCode : CecilOpCodes.Ldind_Ref;
+			  var realType = t;
+			  if (t.IsEnum)
+				  realType = Enum.GetUnderlyingType(realType);
+	        return loadOpCodes.TryGetValue(realType, out var opCode) ? opCode : CecilOpCodes.Ldind_Ref;
 		  }
 
         public static Type OpenRefType(this Type t)
