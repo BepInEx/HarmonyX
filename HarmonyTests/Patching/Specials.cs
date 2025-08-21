@@ -2,6 +2,7 @@ using HarmonyLib;
 using HarmonyLib.Tools;
 using HarmonyLibTests.Assets;
 using HarmonyLibTests.Assets.Methods;
+using MonoMod;
 using NUnit.Framework;
 using System;
 #if NET6_0_OR_GREATER
@@ -138,7 +139,7 @@ namespace HarmonyLibTests.Patching
 		public void Test_Patch_With_Module_Call()
 		{
 			if (AccessTools.IsMonoRuntime)
-				Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "cecil");
+				Switches.SetSwitchValue("DMDType", "cecil");
 			var testMethod = ModuleLevelCall.CreateTestMethod();
 			Assert.AreEqual(0, testMethod());
 
@@ -150,7 +151,7 @@ namespace HarmonyLibTests.Patching
 			instance.Patch(testMethod.Method, postfix: new HarmonyMethod(postfix));
 			Assert.AreEqual(1, testMethod());
 			if (AccessTools.IsMonoRuntime)
-				Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "");
+				Switches.ClearSwitchValue("DMDType");
 		}
 
 		[Test]
