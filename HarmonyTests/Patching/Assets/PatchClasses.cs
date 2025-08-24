@@ -191,7 +191,7 @@ namespace HarmonyLibTests.Assets
 		public static bool prefixed = false;
 		public static bool postfixed = false;
 
-		[HarmonyArgument("xxxyyy", "bar")]
+		[HarmonyArgument("bar", "xxxyyy")]
 #pragma warning disable IDE0060
 		public static void Prefix(object bar) => prefixed = true;
 #pragma warning restore IDE0060

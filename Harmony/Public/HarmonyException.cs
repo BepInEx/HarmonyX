@@ -62,7 +62,7 @@ namespace HarmonyLib
 		/// <summary>Get a list of IL instructions without offsets</summary>
 		/// <returns>A list of <see cref="CodeInstruction"/></returns>
 		///
-		public List<CodeInstruction> GetInstructions() => instructions.OrderBy(ins => ins.Key).Select(ins => ins.Value).ToList();
+		public List<CodeInstruction> GetInstructions() => [.. instructions.OrderBy(ins => ins.Key).Select(ins => ins.Value)];
 
 		/// <summary>Get the error offset of the errornous IL instruction</summary>
 		/// <returns>The offset</returns>

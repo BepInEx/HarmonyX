@@ -14,8 +14,8 @@ namespace HarmonyLib
 	public static class Transpilers
 	{
 		// ReSharper disable once CollectionNeverQueried.Local => used by generated DMDs
-		private static readonly Dictionary<int, Delegate> DelegateCache = new Dictionary<int, Delegate>();
-		private static int delegateCounter;
+		internal static readonly Dictionary<int, Delegate> DelegateCache = new Dictionary<int, Delegate>();
+		internal static int delegateCounter;
 
 		/// <summary>Returns an instruction to call the specified delegate</summary>
 		/// <typeparam name="T">The delegate type to emit</typeparam>
@@ -24,7 +24,8 @@ namespace HarmonyLib
 		///
 		public static CodeInstruction EmitDelegate<T>(T action) where T : Delegate
 		{
-			if (action.Method.IsStatic && action.Target == null) return new CodeInstruction(OpCodes.Call, action.Method);
+			if (action.Method.IsStatic && action.Target == null)
+				return new CodeInstruction(OpCodes.Call, action.Method);
 
 			var paramTypes = action.Method.GetParameters().Select(x => x.ParameterType).ToArray();
 
@@ -61,13 +62,13 @@ namespace HarmonyLib
 						AccessTools.FirstConstructor(targetType, x => x.GetParameters().Length == 0 && !x.IsStatic));
 
 				il.Emit(OpCodes.Ldftn, action.Method);
-				il.Emit(OpCodes.Newobj, AccessTools.Constructor(typeof(T), new[] {typeof(object), typeof(IntPtr)}));
+				il.Emit(OpCodes.Newobj, AccessTools.Constructor(typeof(T), [typeof(object), typeof(IntPtr)]));
 			}
 
 			for (var i = 0; i < paramTypes.Length; i++)
 				il.Emit(OpCodes.Ldarg_S, (short)i);
 
-			il.Emit(OpCodes.Callvirt, AccessTools.Method(typeof(T), "Invoke"));
+			il.Emit(OpCodes.Callvirt, AccessTools.Method(typeof(T), nameof(Action.Invoke)));
 			il.Emit(OpCodes.Ret);
 
 			return new CodeInstruction(OpCodes.Call, dynamicMethod.Generate());

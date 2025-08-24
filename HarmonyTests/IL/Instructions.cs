@@ -264,7 +264,7 @@ IL_0080: ret
 
 			Normalize(body);
 			var transpiledBody = body.ToILDasmString();
-			Assert.AreEqual(expectedIL, transpiledBody);
+			Assert.AreEqual(expectedIL.Replace("\r\n", "\n"), transpiledBody.Replace("\r\n", "\n"));;
 		}
 
 		// Doesn't seem to properly work on dotnet 6 test runner

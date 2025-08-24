@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using static HarmonyLib.Code;
 
 namespace HarmonyLibTests.Tools;
 
@@ -34,6 +35,27 @@ public class Test_CodeMatcher : TestLogger
 	}
 
 	[Test]
+	public void Test_Code_Without_Argument()
+	{
+		var match = Ldc_I4_0;
+		Assert.AreEqual(match.opcode, OpCodes.Ldc_I4_0);
+		Assert.AreEqual(match.opcodeSet, new HashSet<OpCode>() { OpCodes.Ldc_I4_0 });
+		Assert.IsNull(match.operand);
+		Assert.IsEmpty(match.operands);
+	}
+
+	[Test]
+	public void Test_Code_With_Argument()
+	{
+		var method = SymbolExtensions.GetMethodInfo(() => CodeMatcherClass.Bar(""));
+		var code = Call[method];
+		Assert.AreEqual(code.opcode, OpCodes.Call);
+		Assert.AreEqual(code.opcodeSet, new HashSet<OpCode>() { OpCodes.Call });
+		Assert.AreEqual(code.operand, method);
+		Assert.AreEqual(code.operands, new[] { method });
+	}
+
+	[Test]
 	public void Test_MatchStartForward_Code()
 	{
 		var method = SymbolExtensions.GetMethodInfo(() => CodeMatcherClass.Method());
@@ -42,7 +64,7 @@ public class Test_CodeMatcher : TestLogger
 		var mFoo = SymbolExtensions.GetMethodInfo(() => CodeMatcherClass.Foo());
 		var mBar = SymbolExtensions.GetMethodInfo(() => CodeMatcherClass.Bar(""));
 
-		var matcher = new CodeMatcher(instructions).MatchStartForward(Code.Call[mBar]).ThrowIfNotMatch("not found");
+		var matcher = new CodeMatcher(instructions).MatchStartForward(Call[mBar]).ThrowIfNotMatch("not found");
 		Assert.AreEqual(OpCodes.Call, instructions[matcher.Pos].opcode);
 		Assert.AreEqual(mBar, instructions[matcher.Pos].operand);
 	}

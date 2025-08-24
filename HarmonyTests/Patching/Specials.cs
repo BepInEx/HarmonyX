@@ -2,12 +2,15 @@ using HarmonyLib;
 using HarmonyLib.Tools;
 using HarmonyLibTests.Assets;
 using HarmonyLibTests.Assets.Methods;
+using MonoMod;
 using NUnit.Framework;
 using System;
 #if NET6_0_OR_GREATER
 using System.Net.Http;
+using System.Reflection.Emit;
 #else
 using System.Net;
+using System.Reflection.Emit;
 #endif
 using System.Linq;
 
@@ -76,7 +79,7 @@ namespace HarmonyLibTests.Patching
 			Assert.AreEqual(new[] { 1, 0 }, ResultRefStruct.numbersPrefix);
 			Assert.AreEqual(new[] { 2, 0 }, ResultRefStruct.numbersPostfix);
 			Assert.AreEqual(new[] { 3 }, ResultRefStruct.numbersPostfixWithNull);
-			Assert.Throws<Exception>(() => test.ToFinalizer(), "ToFinalizer method does not throw");
+			_ = Assert.Throws<Exception>(() => test.ToFinalizer(), "ToFinalizer method does not throw");
 			Assert.AreEqual(new[] { 5, 0 }, ResultRefStruct.numbersMixed);
 
 			var replacements = processor.Patch();
@@ -136,7 +139,7 @@ namespace HarmonyLibTests.Patching
 		public void Test_Patch_With_Module_Call()
 		{
 			if (AccessTools.IsMonoRuntime)
-				Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "cecil");
+				Switches.SetSwitchValue("DMDType", "cecil");
 			var testMethod = ModuleLevelCall.CreateTestMethod();
 			Assert.AreEqual(0, testMethod());
 
@@ -148,7 +151,7 @@ namespace HarmonyLibTests.Patching
 			instance.Patch(testMethod.Method, postfix: new HarmonyMethod(postfix));
 			Assert.AreEqual(1, testMethod());
 			if (AccessTools.IsMonoRuntime)
-				Environment.SetEnvironmentVariable("MONOMOD_DMD_TYPE", "");
+				Switches.ClearSwitchValue("DMDType");
 		}
 
 		[Test]
@@ -420,7 +423,7 @@ namespace HarmonyLibTests.Patching
 			_ = instance.Patch(original, prefix: new HarmonyMethod(prefixWithControl));
 			DeadEndCode_Patch1.prefixCalled = false;
 			DeadEndCode_Patch1.postfixCalled = false;
-			test.Method();
+			_ = test.Method();
 			Assert.True(DeadEndCode_Patch1.prefixCalled);
 			Assert.True(DeadEndCode_Patch1.postfixCalled);
 		}
@@ -516,7 +519,7 @@ namespace HarmonyLibTests.Patching
 			catch (HarmonyException ex)
 			{
 				Assert.NotNull(ex.InnerException);
-				Assert.IsInstanceOf(typeof(ArgumentException), ex.InnerException);
+				Assert.IsInstanceOf<ArgumentException>(ex.InnerException);
 				Assert.AreEqual("Test", ex.InnerException.Message);
 				return;
 			}
@@ -621,6 +624,38 @@ namespace HarmonyLibTests.Patching
 			Console.WriteLine($"### MarshalledWithEventHandlerTest2 BEFORE");
 			new MarshalledWithEventHandlerTest2Class().Run();
 			Console.WriteLine($"### MarshalledWithEventHandlerTest2 AFTER");
+		}
+
+		[Test]
+		public void Test_CallClosure()
+		{
+			Transpilers.DelegateCache.Clear();
+			Transpilers.delegateCounter = 0;
+			var instance = new ClassTestingCallClosure
+			{
+				field1 = "test",
+				field2 = "tobereplaced"
+			};
+
+			var code1 = instance.WIthoutContext();
+			var action1 = code1.operand as DynamicMethod;
+			Assert.NotNull(action1);
+			var result = action1.Invoke(null, ["TEST"]);
+			Assert.AreEqual(result, "[TEST]");
+			Assert.AreEqual(Transpilers.delegateCounter, 0);
+
+			var code2 = instance.WithContext();
+			Assert.AreEqual(instance.field1, "test");
+			Assert.AreEqual(instance.field2, "tobereplaced");
+			var action2 = code2.operand as DynamicMethod;
+			Assert.NotNull(action2);
+			_ = action2.Invoke(null, []);
+			Assert.AreEqual(instance.field1, "test");
+			Assert.AreEqual(instance.field2, "test");
+			Assert.AreEqual(Transpilers.delegateCounter, 1);
+
+			_ = instance.WithContext();
+			Assert.AreEqual(Transpilers.delegateCounter, 2);
 		}
 	}
 }

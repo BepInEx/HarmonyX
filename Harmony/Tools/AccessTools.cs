@@ -12,6 +12,7 @@ using System.Reflection.Emit;
 using HarmonyLib.Tools;
 using Mono.Cecil;
 using MonoMod.Cil;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 
@@ -31,6 +32,8 @@ namespace HarmonyLib
 	///
 	public static class AccessTools
 	{
+		private static Type[] allTypesCached = null;
+
 		/// <summary>Shortcut for <see cref="BindingFlags"/> to simplify the use of reflections and make it work for any access level</summary>
 		///
 		public static readonly BindingFlags all = BindingFlags.Public // This should be a const, but changing from static (readonly) to const breaks binary compatibility.
@@ -57,13 +60,56 @@ namespace HarmonyLib
 		///
 		public static Type TypeByName(string name)
 		{
-			var type = Type.GetType(name, false);
-			type ??= AllTypes().FirstOrDefault(t => t.FullName == name);
-			type ??= AllTypes().FirstOrDefault(t => t.Name == name);
-			if (type is null)
-				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.TypeByName: Could not find type named {name}");
-			return type;
+			var localType = Type.GetType(name, false);
+			if (localType is not null)
+				return localType;
+
+			foreach (var assembly in AllAssemblies())
+			{
+				var specificType = assembly.GetType(name, false);
+				if (specificType is not null)
+					return specificType;
+			}
+
+			var allTypes = AllTypes().ToArray();
+
+			var fullType = allTypes.FirstOrDefault(t => t.FullName == name);
+			if (fullType is not null)
+				return fullType;
+
+			var partialType = allTypes.FirstOrDefault(t => t.Name == name);
+			if (partialType is not null)
+				return partialType;
+
+			Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.TypeByName: Could not find type named {name}");
+			return null;
 		}
+
+		/// <summary>Searches a type by regular expression. For exact searching, use <see cref="AccessTools.TypeByName(string)"/>.</summary>
+		/// <param name="search">The regular expression that matches against Type.FullName or Type.Name</param>
+		/// <param name="invalidateCache">Refetches the cached types if set to true</param>
+		/// <returns>The first type where FullName or Name matches the search</returns>
+		///
+		public static Type TypeSearch(Regex search, bool invalidateCache = false)
+		{
+			if (allTypesCached == null || invalidateCache)
+				allTypesCached = [.. AllTypes()];
+
+			var fullType = allTypesCached.FirstOrDefault(t => search.IsMatch(t.FullName));
+			if (fullType is not null)
+				return fullType;
+
+			var partialType = allTypesCached.FirstOrDefault(t => search.IsMatch(t.Name));
+			if (partialType is not null)
+				return partialType;
+
+			Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.TypeSearch: Could not find type with regular expression {search}");
+			return null;
+		}
+
+		/// <summary>Clears the type cache that <see cref="AccessTools.TypeSearch(Regex, bool)" /> uses.</summary>
+		///
+		public static void ClearTypeSearchCache() => allTypesCached = [];
 
 		/// <summary>Gets all successfully loaded types from a given assembly</summary>
 		/// <param name="assembly">The assembly</param>
@@ -91,7 +137,7 @@ namespace HarmonyLib
 			catch (ReflectionTypeLoadException ex)
 			{
 				Logger.Log(Logger.LogChannel.Warn, () => $"AccessTools.GetTypesFromAssembly: assembly {assembly} => {ex}");
-				return ex.Types.Where(type => type is not null).ToArray();
+				return [.. ex.Types.Where(type => type is not null)];
 			}
 		}
 
@@ -164,9 +210,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredField: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredField: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredField: name is null/empty");
 				return null;
 			}
 			var fieldInfo = type.GetField(name, allDeclared);
@@ -200,9 +246,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Field: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Field: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Field: name is null/empty");
 				return null;
 			}
 			var fieldInfo = FindIncludingBaseTypes(type, t => t.GetField(name, all));
@@ -254,9 +300,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredProperty: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredProperty: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredProperty: name is null/empty");
 				return null;
 			}
 			var property = type.GetProperty(name, allDeclared);
@@ -361,9 +407,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Property: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Property: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Property: name is null/empty");
 				return null;
 			}
 			var property = FindIncludingBaseTypes(type, t => t.GetProperty(name, all));
@@ -472,9 +518,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredMethod: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredMethod: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.DeclaredMethod: name is null/empty");
 				return null;
 			}
 			MethodInfo result;
@@ -521,9 +567,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Method: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Method: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Method: name is null/empty");
 				return null;
 			}
 			MethodInfo result;
@@ -675,7 +721,7 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetMethodNames: type is null");
 				return [];
 			}
-			return GetDeclaredMethods(type).Select(m => m.Name).ToList();
+			return [.. GetDeclaredMethods(type).Select(m => m.Name)];
 		}
 
 		/// <summary>Gets the names of all method that are declared in the type of the instance</summary>
@@ -703,7 +749,7 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetFieldNames: type is null");
 				return [];
 			}
-			return GetDeclaredFields(type).Select(f => f.Name).ToList();
+			return [.. GetDeclaredFields(type).Select(f => f.Name)];
 		}
 
 		/// <summary>Gets the names of all fields that are declared in the type of the instance</summary>
@@ -731,7 +777,7 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.GetPropertyNames: type is null");
 				return [];
 			}
-			return GetDeclaredProperties(type).Select(f => f.Name).ToList();
+			return [.. GetDeclaredProperties(type).Select(f => f.Name)];
 		}
 
 		/// <summary>Gets the names of all properties that are declared in the type of the instance</summary>
@@ -839,7 +885,7 @@ namespace HarmonyLib
 			var flags = allDeclared;
 			if (searchForStatic.HasValue)
 				flags = searchForStatic.Value ? flags & ~BindingFlags.Instance : flags & ~BindingFlags.Static;
-			return type.GetConstructors(flags).Where(method => method.DeclaringType == type).ToList();
+			return [.. type.GetConstructors(flags).Where(method => method.DeclaringType == type)];
 		}
 
 		/// <summary>Gets reflection information for all declared methods</summary>
@@ -912,9 +958,9 @@ namespace HarmonyLib
 				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Inner: type is null");
 				return null;
 			}
-			if (name is null)
+			if (string.IsNullOrEmpty(name))
 			{
-				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Inner: name is null");
+				Logger.LogText(Logger.LogChannel.Warn, "AccessTools.Inner: name is null/empty");
 				return null;
 			}
 			return FindIncludingBaseTypes(type, t => t.GetNestedType(name, all));
@@ -1007,7 +1053,7 @@ namespace HarmonyLib
 		public static Type[] GetTypes(object[] parameters)
 		{
 			if (parameters is null) return [];
-			return parameters.Select(p => p is null ? typeof(object) : p.GetType()).ToArray();
+			return [.. parameters.Select(p => p is null ? typeof(object) : p.GetType())];
 		}
 
 		/// <summary>Creates an array of input parameters for a given method and a given set of potential inputs</summary>
@@ -1018,13 +1064,13 @@ namespace HarmonyLib
 		public static object[] ActualParameters(MethodBase method, object[] inputs)
 		{
 			var inputTypes = inputs.Select(obj => obj?.GetType()).ToList();
-			return method.GetParameters().Select(p => p.ParameterType).Select(pType =>
+			return [.. method.GetParameters().Select(p => p.ParameterType).Select(pType =>
 			{
 				var index = inputTypes.FindIndex(inType => inType is not null && pType.IsAssignableFrom(inType));
 				if (index >= 0)
 					return inputs[index];
 				return GetDefaultValue(pType);
-			}).ToArray();
+			})];
 		}
 
 		/// <summary>A readable/assignable reference delegate to an instance field of a class or static field (NOT an instance field of a struct)</summary>
@@ -1565,6 +1611,13 @@ namespace HarmonyLib
 			}
 		}
 
+#pragma warning disable CS1591
+		[Obsolete("This overload only exists for runtime backwards compatibility and will be removed in Harmony 3. Use MethodDelegate(MethodInfo, object, bool, Type[]) instead")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public static DelegateType MethodDelegate<DelegateType>(MethodInfo method, object instance, bool virtualCall) where DelegateType : Delegate
+			 => MethodDelegate<DelegateType>(method, instance, virtualCall, null);
+#pragma warning restore CS1591
+
 		/// <summary>Creates a delegate to a given method</summary>
 		/// <typeparam name="DelegateType">The delegate Type</typeparam>
 		/// <param name="method">The method to create a delegate from.</param>
@@ -1579,7 +1632,15 @@ namespace HarmonyLib
 		/// else, invocation of the delegate calls the exact specified <paramref name="method"/> (this is useful for calling base class methods)
 		/// Note: if <c>false</c> and <paramref name="method"/> is an interface method, an ArgumentException is thrown.
 		/// </param>
+		/// <param name="delegateArgs">
+		/// Only applies for instance methods, and if argument <paramref name="instance"/> is null.
+		/// This argument only matters if the target <paramref name="method"/> signature contains a value type (such as struct or primitive types),
+		/// and your <typeparamref name="DelegateType"/> argument is replaced by a non-value type
+		/// (usually <c>object</c>) instead of using said value type.
+		/// Use this if the generic arguments of <typeparamref name="DelegateType"/> doesn't represent the delegate's
+		/// arguments, and calling this function fails
 		/// <returns>A delegate of given <typeparamref name="DelegateType"/> to given <paramref name="method"/></returns>
+		/// </param>
 		/// <remarks>
 		/// <para>
 		/// Delegate invocation is more performant and more convenient to use than <see cref="MethodBase.Invoke(object, object[])"/>
@@ -1591,7 +1652,7 @@ namespace HarmonyLib
 		/// </para>
 		/// </remarks>
 		///
-		public static DelegateType MethodDelegate<DelegateType>(MethodInfo method, object instance = null, bool virtualCall = true) where DelegateType : Delegate
+		public static DelegateType MethodDelegate<DelegateType>(MethodInfo method, object instance = null, bool virtualCall = true, Type[] delegateArgs = null) where DelegateType : Delegate
 		{
 			if (method is null)
 				throw new ArgumentNullException(nameof(method));
@@ -1667,20 +1728,36 @@ namespace HarmonyLib
 				parameterTypes[0] = declaringType;
 				for (var i = 0; i < numParameters; i++)
 					parameterTypes[i + 1] = parameters[i].ParameterType;
+				var delegateArgsResolved = delegateArgs ?? delegateType.GetGenericArguments();
+				var dynMethodReturn = delegateArgsResolved.Length < parameterTypes.Length
+					? parameterTypes
+					: delegateArgsResolved;
 				var dmd = new DynamicMethodDefinition(
 					"OpenInstanceDelegate_" + method.Name,
 					method.ReturnType,
-					parameterTypes)
+					dynMethodReturn)
 				{
 					// OwnerType = declaringType
 				};
 				var ilGen = dmd.GetILGenerator();
-				if (declaringType != null && declaringType.IsValueType)
+				if (declaringType != null && declaringType.IsValueType && delegateArgsResolved.Length > 0 &&
+					!delegateArgsResolved[0].IsByRef)
+				{
 					ilGen.Emit(OpCodes.Ldarga_S, 0);
+				}
 				else
 					ilGen.Emit(OpCodes.Ldarg_0);
 				for (var i = 1; i < parameterTypes.Length; i++)
+				{
 					ilGen.Emit(OpCodes.Ldarg, i);
+					// unbox to make il code valid
+					if (parameterTypes[i].IsValueType && i < delegateArgsResolved.Length &&
+						!delegateArgsResolved[i].IsValueType)
+					{
+						ilGen.Emit(OpCodes.Unbox_Any, parameterTypes[i]);
+					}
+				}
+
 				ilGen.Emit(OpCodes.Call, method);
 				ilGen.Emit(OpCodes.Ret);
 				return (DelegateType)dmd.Generate().CreateDelegate(delegateType);
@@ -1724,6 +1801,13 @@ namespace HarmonyLib
 			return (DelegateType)Activator.CreateInstance(delegateType, instance, method.MethodHandle.GetFunctionPointer());
 		}
 
+#pragma warning disable CS1591
+		[Obsolete("This overload only exists for runtime backwards compatibility and will be removed in Harmony 3. Use MethodDelegate(string, object, bool, Type[]) instead")]
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public static DelegateType MethodDelegate<DelegateType>(string typeColonName, object instance, bool virtualCall) where DelegateType : Delegate
+			 => MethodDelegate<DelegateType>(typeColonName, instance, virtualCall, null);
+#pragma warning restore CS1591
+
 		/// <summary>Creates a delegate to a given method</summary>
 		/// <typeparam name="DelegateType">The delegate Type</typeparam>
 		/// <param name="typeColonName">The method in the form <c>TypeFullName:MemberName</c>, where TypeFullName matches the form recognized by <a href="https://docs.microsoft.com/en-us/dotnet/api/system.type.gettype">Type.GetType</a> like <c>Some.Namespace.Type</c>.</param>
@@ -1738,7 +1822,15 @@ namespace HarmonyLib
 		/// else, invocation of the delegate calls the exact specified <paramref name="typeColonName"/> (this is useful for calling base class methods)
 		/// Note: if <c>false</c> and <paramref name="typeColonName"/> is an interface method, an ArgumentException is thrown.
 		/// </param>
+		/// <param name="delegateArgs">
+		/// Only applies for instance methods, and if argument <paramref name="instance"/> is null.
+		/// This argument only matters if the target <paramref name="typeColonName"/> signature contains a value type (such as struct or primitive types),
+		/// and your <typeparamref name="DelegateType"/> argument is replaced by a non-value type
+		/// (usually <c>object</c>) instead of using said value type.
+		/// Use this if the generic arguments of <typeparamref name="DelegateType"/> doesn't represent the delegate's
+		/// arguments, and calling this function fails
 		/// <returns>A delegate of given <typeparamref name="DelegateType"/> to given <paramref name="typeColonName"/></returns>
+		/// </param>
 		/// <remarks>
 		/// <para>
 		/// Delegate invocation is more performant and more convenient to use than <see cref="MethodBase.Invoke(object, object[])"/>
@@ -1750,12 +1842,8 @@ namespace HarmonyLib
 		/// </para>
 		/// </remarks>
 		///
-		public static DelegateType MethodDelegate<DelegateType>(string typeColonName, object instance = null, bool virtualCall = true) where DelegateType : Delegate
-		{
-			var method = DeclaredMethod(typeColonName);
-			return MethodDelegate<DelegateType>(method, instance, virtualCall);
-
-		}
+		public static DelegateType MethodDelegate<DelegateType>(string typeColonName, object instance = null, bool virtualCall = true, Type[] delegateArgs = null) where DelegateType : Delegate
+			=> MethodDelegate<DelegateType>(DeclaredMethod(typeColonName), instance, virtualCall, delegateArgs);
 
 		/// <summary>Creates a delegate for a given delegate definition, attributed with [<see cref="HarmonyLib.HarmonyDelegate"/>]</summary>
 		/// <typeparam name="DelegateType">The delegate Type, attributed with [<see cref="HarmonyLib.HarmonyDelegate"/>]</typeparam>
@@ -1767,7 +1855,7 @@ namespace HarmonyLib
 		/// <returns>A delegate of given <typeparamref name="DelegateType"/> to the method specified via [<see cref="HarmonyLib.HarmonyDelegate"/>]
 		/// attributes on <typeparamref name="DelegateType"/></returns>
 		/// <remarks>
-		/// This calls <see cref="MethodDelegate{DelegateType}(MethodInfo, object, bool)"/> with the <c>method</c> and <c>virtualCall</c> arguments
+		/// This calls <see cref="MethodDelegate{DelegateType}(MethodInfo, object, bool, Type[])"/> with the <c>method</c> and <c>virtualCall</c> arguments
 		/// determined from the [<see cref="HarmonyLib.HarmonyDelegate"/>] attributes on <typeparamref name="DelegateType"/>,
 		/// and the given <paramref name="instance"/> (for closed instance delegates).
 		/// </remarks>
@@ -1779,7 +1867,7 @@ namespace HarmonyLib
 			var method = harmonyMethod.GetOriginalMethod() as MethodInfo;
 			if (method is null)
 				throw new NullReferenceException($"Delegate {typeof(DelegateType)} has no defined original method");
-			return MethodDelegate<DelegateType>(method, instance, harmonyMethod.nonVirtualDelegate is false);
+			return MethodDelegate<DelegateType>(method, instance, harmonyMethod.nonVirtualDelegate is false, null);
 		}
 
 		/// <summary>Returns who called the current method</summary>
@@ -2026,7 +2114,8 @@ namespace HarmonyLib
 			{
 				var path = pathRoot.Length > 0 ? pathRoot + "." + name : name;
 				var value = processor is not null ? processor(path, src, dst) : src.GetValue();
-				_ = dst.SetValue(MakeDeepCopy(value, dst.GetValueType(), processor, path));
+				if (dst.IsWriteable)
+					_ = dst.SetValue(MakeDeepCopy(value, dst.GetValueType(), processor, path));
 			});
 			return result;
 		}

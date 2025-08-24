@@ -43,7 +43,7 @@ namespace HarmonyLib
 			return methods.FirstOrDefault(m =>
 			{
 				if (m.ReturnType != ici) return false;
-				return m.Name.StartsWith($"<{methodName }>");
+				return m.Name.StartsWith($"<{methodName}>");
 			});
 		}
 

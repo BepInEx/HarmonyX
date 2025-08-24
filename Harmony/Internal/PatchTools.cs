@@ -1,3 +1,4 @@
+using HarmonyLib.Internal.Util;
 using MonoMod.Utils;
 using System;
 using System.Collections.Generic;
@@ -29,14 +30,43 @@ namespace HarmonyLib
 		public static MethodInfo CreateMethod(string name, Type returnType, List<KeyValuePair<string, Type>> parameters, Action<ILGenerator> generator)
 		{
 			var parameterTypes = parameters.Select(p => p.Value).ToArray();
+
+			if (AccessTools.IsMonoRuntime && ReflectionTools.isWindows == false)
+			{
+				var assemblyName = new AssemblyName("TempAssembly");
+
+#if NET2 || NET35
+				var assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+#else
+				var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+#endif
+
+				var moduleBuilder = assemblyBuilder.DefineDynamicModule("TempModule");
+				var typeBuilder = moduleBuilder.DefineType("TempType", TypeAttributes.Public);
+
+				var methodBuilder = typeBuilder.DefineMethod(name,
+					 MethodAttributes.Public | MethodAttributes.Static,
+					 returnType, parameterTypes);
+
+				for (var i = 0; i < parameters.Count; i++)
+					methodBuilder.DefineParameter(i + 1, ParameterAttributes.None, parameters[i].Key);
+
+				generator(methodBuilder.GetILGenerator());
+
+#if NETSTANDARD2_0
+				var createdType = typeBuilder.CreateTypeInfo().AsType();
+#else
+				var createdType = typeBuilder.CreateType();
+#endif
+				return createdType.GetMethod(name, BindingFlags.Public | BindingFlags.Static);
+			}
+
 			var dynamicMethod = new DynamicMethodDefinition(name, returnType, parameterTypes);
 
 			for (var i = 0; i < parameters.Count; i++)
 				dynamicMethod.Definition.Parameters[i].Name = parameters[i].Key;
 
-			var il = dynamicMethod.GetILGenerator();
-			generator(il);
-
+			generator(dynamicMethod.GetILGenerator());
 			return dynamicMethod.Generate();
 		}
 
@@ -65,10 +95,9 @@ namespace HarmonyLib
 
 		internal static List<AttributePatch> GetPatchMethods(Type type, bool collectIncomplete = false)
 		{
-			return AccessTools.GetDeclaredMethods(type)
+			return [.. AccessTools.GetDeclaredMethods(type)
 				.SelectMany(method => AttributePatch.Create(method, collectIncomplete))
-				.Where(attributePatch => attributePatch is not null)
-				.ToList();
+				.Where(attributePatch => attributePatch is not null)];
 		}
 
 		internal static MethodBase GetOriginalMethod(this HarmonyMethod attr)
@@ -78,19 +107,19 @@ namespace HarmonyLib
 				switch (attr.methodType)
 				{
 					case MethodType.Normal:
-						if (attr.methodName is null)
+						if (string.IsNullOrEmpty(attr.methodName))
 							return null;
 						return AccessTools.DeclaredMethod(attr.declaringType, attr.methodName, attr.argumentTypes);
 
 					case MethodType.Getter:
-						if (attr.methodName is null)
-							return AccessTools.DeclaredIndexer(attr.declaringType, attr.argumentTypes)?.GetGetMethod(true);
-						return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName)?.GetGetMethod(true);
+						if (string.IsNullOrEmpty(attr.methodName))
+							return AccessTools.DeclaredIndexerGetter(attr.declaringType, attr.argumentTypes);
+						return AccessTools.DeclaredPropertyGetter(attr.declaringType, attr.methodName);
 
 					case MethodType.Setter:
-						if (attr.methodName is null)
-							return AccessTools.DeclaredIndexer(attr.declaringType, attr.argumentTypes)?.GetSetMethod(true);
-						return AccessTools.DeclaredProperty(attr.declaringType, attr.methodName)?.GetSetMethod(true);
+						if (string.IsNullOrEmpty(attr.methodName))
+							return AccessTools.DeclaredIndexerSetter(attr.declaringType, attr.argumentTypes);
+						return AccessTools.DeclaredPropertySetter(attr.declaringType, attr.methodName);
 
 					case MethodType.Constructor:
 						return AccessTools.DeclaredConstructor(attr.declaringType, attr.argumentTypes);
@@ -101,14 +130,14 @@ namespace HarmonyLib
 							.FirstOrDefault(c => c.IsStatic);
 
 					case MethodType.Enumerator:
-						if (attr.methodName is null)
+						if (string.IsNullOrEmpty(attr.methodName))
 							return null;
 						return AccessTools.EnumeratorMoveNext(AccessTools.DeclaredMethod(attr.declaringType,
 							attr.methodName, attr.argumentTypes));
 
 #if NET452_OR_GREATER || NETSTANDARD || NETCOREAPP
 					case MethodType.Async:
-						if (attr.methodName is null)
+						if (string.IsNullOrEmpty(attr.methodName))
 							return null;
 						return AccessTools.AsyncMoveNext(AccessTools.DeclaredMethod(attr.declaringType, attr.methodName, attr.argumentTypes));
 #endif
