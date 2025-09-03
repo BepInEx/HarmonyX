@@ -54,6 +54,5 @@ jobs:
       env:
         NUGET_SOURCE: 'nuget.org'
         NUGET_API_KEY: ${{ secrets.NUGET_KEY }}
-      run: |
-        dotnet nuget push --skip-duplicate "./Harmony/bin/Release/HarmonyX.*.nupkg" \
-          --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY"
+      shell: bash
+      run: dotnet nuget push ./Harmony/bin/Release/HarmonyX.*.nupkg --skip-duplicate --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY"
