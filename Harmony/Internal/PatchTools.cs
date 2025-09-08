@@ -14,17 +14,12 @@ namespace HarmonyLib
 		internal static readonly string harmonyAttributeFullName = typeof(HarmonyAttribute).FullName;
 		internal static readonly string harmonyPatchAllFullName = typeof(HarmonyPatchAll).FullName;
 
-		// Note: Even though this Dictionary is only stored to and never read from, it still needs to be thread-safe:
-		// https://stackoverflow.com/a/33153868
-		// ThreadStatic has pitfalls (see RememberObject below), but since we must support net35, it's the best available option.
-		[ThreadStatic]
-		private static Dictionary<object, object> objectReferences;
+		private static readonly Dictionary<object, object> objectReferences = new();
 
 		internal static void RememberObject(object key, object value)
 		{
-			// ThreadStatic fields are only initialized for one thread, so ensure it's initialized for current thread.
-			objectReferences ??= new Dictionary<object, object>();
-			objectReferences[key] = value;
+			lock (objectReferences)
+				objectReferences[key] = value;
 		}
 
 		public static MethodInfo CreateMethod(string name, Type returnType, List<KeyValuePair<string, Type>> parameters, Action<ILGenerator> generator)
