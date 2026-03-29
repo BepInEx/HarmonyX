@@ -488,9 +488,12 @@ namespace HarmonyLib
 			else if (code.opcode == OpCodes.Ldloc_1 || code.opcode == OpCodes.Stloc_1) return 1;
 			else if (code.opcode == OpCodes.Ldloc_2 || code.opcode == OpCodes.Stloc_2) return 2;
 			else if (code.opcode == OpCodes.Ldloc_3 || code.opcode == OpCodes.Stloc_3) return 3;
-			else if (code.opcode == OpCodes.Ldloc_S || code.opcode == OpCodes.Ldloc) return Convert.ToInt32(code.operand);
-			else if (code.opcode == OpCodes.Stloc_S || code.opcode == OpCodes.Stloc) return Convert.ToInt32(code.operand);
-			else if (code.opcode == OpCodes.Ldloca_S || code.opcode == OpCodes.Ldloca) return Convert.ToInt32(code.operand);
+			else if (code.opcode == OpCodes.Ldloc_S || code.opcode == OpCodes.Ldloc)
+				return code.operand is LocalBuilder localBuilder? localBuilder.LocalIndex : Convert.ToInt32(code.operand);
+			else if (code.opcode == OpCodes.Stloc_S || code.opcode == OpCodes.Stloc)
+				return code.operand is LocalBuilder localBuilder ? localBuilder.LocalIndex : Convert.ToInt32(code.operand);
+			else if (code.opcode == OpCodes.Ldloca_S || code.opcode == OpCodes.Ldloca)
+				return code.operand is LocalBuilder localBuilder ? localBuilder.LocalIndex : Convert.ToInt32(code.operand);
 			else throw new ArgumentException("Instruction is not a load or store", nameof(code));
 		}
 
